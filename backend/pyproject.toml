@@ -1,22 +1,42 @@
 [project]
-name = "backend"
-version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
-requires-python = ">=3.11"
+name = "csa-risk-assessment-backend"
+version = "1.0.0"
+description = "Enterprise-grade backend for CSA Risk Assessment & Test Script Workbench"
+requires-python = ">=3.12"
 dependencies = [
-    "boto3>=1.43.88",
-    "fastapi>=0.141.1",
-    "langchain-aws>=1.7.5",
-    "langchain-core>=1.6.1",
-    "pydantic>=2.13.5",
-    "sqlalchemy>=2.0.52",
-    "uvicorn>=0.52.4",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "sqlalchemy>=2.0.36",
+    "alembic>=1.14.0",
+    "psycopg2-binary>=2.9.10",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.7.0",
+    "python-multipart>=0.0.18",
+    "structlog>=24.4.0",
+    "httpx>=0.28.0",
 ]
 
-[dependency-groups]
+[project.optional-dependencies]
 dev = [
-    "httpx>=0.28.1",
-    "pytest>=9.1.1",
-    "ruff>=0.16.6",
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+    "httpx>=0.28.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
 ]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "A", "SIM"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+
+[tool.pytest.ini_options]
+testpaths = ["app/tests"]
+asyncio_mode = "auto"
