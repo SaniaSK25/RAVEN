@@ -1,11 +1,61 @@
 # Python-generated files
 __pycache__/
-*.py[oc]
+*.py[cod]
+*$py.class
 build/
 dist/
 wheels/
-*.egg-info
+*.egg-info/
+.eggs/
 
 # Virtual environments
-.venv
-tests/
+.venv/
+venv/
+env/
+.uv/
+
+# Env files - local secrets, never commit (except .env.example template).
+# Teammates copy .env.example -> .env; SQLite default lives in
+# app/core/config.py, prod overrides via real env vars.
+.env*
+!.env.example
+
+# Databases - local dev file, never commit (rebuild via alembic + seed_db.py)
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Alembic - keep migrations, ignore pycache only (covered above)
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+
+# Type checkers / linters
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+dmypy.json
+
+# Logs
+logs/
+*.log
+
+# OS / OneDrive / IDE
+.DS_Store
+Thumbs.db
+desktop.ini
+~$*
+*.tmp
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Misc
+opencode.json
