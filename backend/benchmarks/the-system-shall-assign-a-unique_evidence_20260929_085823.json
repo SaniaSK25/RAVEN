@@ -1,0 +1,77 @@
+{
+  "mode": "evidence",
+  "requirement": "The system shall assign a unique sample identifier to each sample registered in the system and shall prevent reuse of the identifier across active and archived sample.",
+  "model_id": "us.anthropic.claude-opus-4-8",
+  "region": "us-east-1",
+  "timestamp_utc": "20260929_085823",
+  "evidence": {
+    "gamp_category": 4,
+    "gamp_reason": "The requirement describes configurable business logic for unique sample identifier assignment and reuse prevention, which is typical functionality configured within a commercial LIMS/sample management application rather than custom-coded, supporting a GAMP Category 4 (configured product) classification, though the text does not explicitly state whether this is achieved via configuration or custom development.",
+    "severity": {
+      "patient_safety": {
+        "value": false,
+        "confidence": 0.6,
+        "evidence": "The requirement concerns unique sample identifier assignment and reuse prevention; it does not describe any direct clinical action or patient-facing outcome, and the text is silent on patient harm."
+      },
+      "product_quality": {
+        "value": true,
+        "confidence": 0.85,
+        "evidence": "Preventing reuse of a unique sample identifier guards against sample mix-ups, which could otherwise cause an incorrect result or sample error."
+      },
+      "batch_release": {
+        "value": false,
+        "confidence": 0.5,
+        "evidence": "The requirement addresses sample identification uniqueness but does not mention batch disposition or release decisions, so batch release involvement is not supported by the text."
+      },
+      "data_integrity": {
+        "value": true,
+        "confidence": 0.9,
+        "evidence": "Assigning unique identifiers and preventing their reuse across active and archived samples ensures records remain accurate and unambiguous, directly supporting data integrity."
+      },
+      "regulatory_compliance": {
+        "value": true,
+        "confidence": 0.8,
+        "evidence": "Unique, non-reusable record identifiers are foundational to electronic-records traceability expectations, so failure would breach data-integrity/GMP expectations."
+      },
+      "business_continuity": {
+        "value": false,
+        "confidence": 0.55,
+        "evidence": "The requirement specifies identifier uniqueness rather than system availability or throughput; the text is silent on any interruption or slowdown of laboratory operations."
+      }
+    },
+    "probability": {
+      "functional_complexity": {
+        "value": "MEDIUM",
+        "confidence": 0.75,
+        "evidence": "The system must generate unique identifiers and enforce a uniqueness constraint that prevents reuse across both active and archived samples, requiring validation logic beyond a simple assignment."
+      },
+      "dependency_complexity": {
+        "value": "LOW",
+        "confidence": 0.7,
+        "evidence": "The requirement references only sample registration and archived samples within the same system, with no external systems, modules, or data sources mentioned."
+      },
+      "workflow_complexity": {
+        "value": "LOW",
+        "confidence": 0.65,
+        "evidence": "The text describes only sample registration and an active/archived state distinction, without defining roles, multi-step approvals, or explicit state transitions."
+      }
+    },
+    "detectability": {
+      "detection_controls": {
+        "value": "HIGH",
+        "confidence": 0.85,
+        "evidence": "The system shall prevent reuse of the identifier across active and archived samples, indicating an automated uniqueness validation/interlock that blocks duplicate identifiers."
+      },
+      "traceability": {
+        "value": "MEDIUM",
+        "confidence": 0.5,
+        "evidence": "The requirement assigns a unique sample identifier to each registered sample, which supports traceability, but it does not explicitly mention audit trails, logs, or history retention."
+      },
+      "failure_visibility": {
+        "value": "MEDIUM",
+        "confidence": 0.55,
+        "evidence": "Prevention of identifier reuse implies a rejection would surface to the user at registration, but the text does not specify any error message or alert making a failure obvious to a QA reviewer."
+      }
+    }
+  }
+}

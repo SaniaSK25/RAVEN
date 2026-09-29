@@ -2,7 +2,7 @@ from langchain_aws import ChatBedrock
 from langchain_core.prompts import ChatPromptTemplate
 from app.models.models import AssuranceDecision
 
-def assign_assurance_level(requirement_text: str, risk_band: str):
+def assign_assurance_level(requirement_text: str, risk_band: str) -> AssuranceDecision:
     llm = ChatBedrock(
         model_id="",
         region_name=""
@@ -18,7 +18,7 @@ def assign_assurance_level(requirement_text: str, risk_band: str):
     ])
 
     chain = prompt | structured_llm
-    return chain.invoke([
+    return chain.invoke({
         "requirement": requirement_text,
         "risk_band": risk_band
-    ])
+    })
