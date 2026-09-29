@@ -1,0 +1,25 @@
+{
+  "requirement": "The system shall assign a unique sample identifier to each sample registered in the system and shall prevent reuse of the identifier across active and archived sample.",
+  "model_id": "us.anthropic.claude-opus-4-8",
+  "region": "us-east-1",
+  "timestamp_utc": "20260928_123112",
+  "analysis": {
+    "gamp_category": "Category 4",
+    "gamp_rationale": "Unique identifier generation and enforcement of uniqueness across active and archived records is a configurable business rule typically found in a LIMS/sample management platform, making it a configured commercial product function rather than custom-coded logic.",
+    "gxp_impact": true,
+    "gxp_rationale": "Unique sample identification is fundamental to data integrity and traceability; duplicate or reused IDs could cause misattribution of results to the wrong sample, directly impacting product quality and patient safety.",
+    "severity_fact": "If identifiers are duplicated or reused, sample results could be linked to the wrong sample, leading to mix-ups, incorrect release/rejection decisions, loss of traceability, and potential patient harm from misidentified test results.",
+    "probability_fact": "ID collision or reuse is a well-recognized risk in high-throughput systems, especially at sequence rollover, during archival/restore operations, or in concurrent multi-user registration; without explicit uniqueness enforcement the likelihood is meaningful but such logic is a standard, mature platform capability.",
+    "detectability_fact": "A reused or duplicate identifier may not be obvious to an end user during routine use, as the system would typically appear to function normally; detection usually depends on downstream reconciliation or audit rather than an immediate visible error, unless the system actively blocks the duplicate at registration.",
+    "severity_level": "Critical",
+    "probability_level": "Medium",
+    "detectability_level": "Low"
+  },
+  "risk": {
+    "severity_score": 5,
+    "probability_score": 2,
+    "detectability_score": 3,
+    "total_risk_score": 30,
+    "risk_band": "HIGH"
+  }
+}

@@ -1,0 +1,122 @@
+{
+  "mode": "evidence",
+  "requirement": "The system shall assign a unique sample identifier to each sample registered in the system and shall prevent reuse of the identifier across active and archived sample.",
+  "model_id": "us.anthropic.claude-opus-4-8",
+  "region": "us-east-1",
+  "timestamp_utc": "20260929_091300",
+  "evidence": {
+    "gamp_category": 4,
+    "gamp_reason": "The requirement describes configurable business logic for unique sample identifier assignment and uniqueness enforcement across active and archived samples, which is typical functionality of a configured commercial system such as a LIMS (confidence 0.7); the text does not state whether this uniqueness rule is achieved through standard configuration or custom code, so a conservative Category 4 is chosen rather than Category 5.",
+    "severity": {
+      "patient_safety": {
+        "value": false,
+        "confidence": 0.7,
+        "evidence": "The requirement concerns unique sample identifier assignment and reuse prevention, with no stated linkage to patient treatment or direct clinical harm."
+      },
+      "product_quality": {
+        "value": true,
+        "confidence": 0.85,
+        "evidence": "Preventing identifier reuse across active and archived samples guards against sample mix-ups that could cause an incorrect result or sample error."
+      },
+      "batch_release": {
+        "value": false,
+        "confidence": 0.6,
+        "evidence": "The requirement addresses sample identification and does not mention batch disposition or release decisions."
+      },
+      "data_integrity": {
+        "value": true,
+        "confidence": 0.9,
+        "evidence": "Ensuring each sample has a unique, non-reusable identifier prevents records from becoming inaccurate or ambiguous through duplicated identifiers."
+      },
+      "regulatory_compliance": {
+        "value": true,
+        "confidence": 0.8,
+        "evidence": "Unique sample identification supporting accurate, traceable records aligns with GMP and electronic-records expectations for record accuracy."
+      },
+      "business_continuity": {
+        "value": false,
+        "confidence": 0.6,
+        "evidence": "The requirement focuses on identifier uniqueness and does not describe interruption or slowdown of laboratory operations if it fails."
+      }
+    },
+    "probability": {
+      "functional_complexity": {
+        "value": "MEDIUM",
+        "confidence": 0.75,
+        "evidence": "The system must generate a unique identifier and enforce uniqueness by preventing reuse across both active and archived samples, requiring validation logic beyond a simple assignment."
+      },
+      "dependency_complexity": {
+        "value": "LOW",
+        "confidence": 0.7,
+        "evidence": "The requirement references only the sample registry with active and archived samples and names no external systems, modules, or data sources."
+      },
+      "workflow_complexity": {
+        "value": "LOW",
+        "confidence": 0.7,
+        "evidence": "The text describes only sample registration with an implicit active-to-archived state and mentions no distinct roles or multi-step approvals."
+      }
+    },
+    "detectability": {
+      "detection_controls": {
+        "value": "HIGH",
+        "confidence": 0.85,
+        "evidence": "The system shall prevent reuse of the identifier across active and archived samples, indicating an automated uniqueness validation/interlock at registration."
+      },
+      "traceability": {
+        "value": "LOW",
+        "confidence": 0.5,
+        "evidence": "The requirement addresses unique identifier assignment and reuse prevention but is silent on audit trails, logs, or history retention."
+      },
+      "failure_visibility": {
+        "value": "MEDIUM",
+        "confidence": 0.6,
+        "evidence": "A blocked duplicate identifier at registration would surface as a visible rejection, but the text does not describe any user notification, error message, or alert, leaving overall visibility uncertain."
+      }
+    }
+  },
+  "token_usage": {
+    "per_call": [
+      {
+        "group": "SeverityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1533,
+        "output_tokens": 542,
+        "total_tokens": 2075
+      },
+      {
+        "group": "ProbabilityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1191,
+        "output_tokens": 295,
+        "total_tokens": 1486
+      },
+      {
+        "group": "DetectabilityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1218,
+        "output_tokens": 305,
+        "total_tokens": 1523
+      },
+      {
+        "group": "GampClassification",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 813,
+        "output_tokens": 185,
+        "total_tokens": 998
+      }
+    ],
+    "total": {
+      "input_tokens": 4755,
+      "output_tokens": 1327,
+      "total_tokens": 6082
+    }
+  }
+}
