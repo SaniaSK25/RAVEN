@@ -1,15 +1,17 @@
 [project]
-name = "backend"
+name = "raven-backend"
 version = "0.1.0"
-description = "Add your description here"
+description = "Backend for RAVEN - Risk Assessment and Validation Engine"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "boto3>=1.43.88",
+    "alembic>=1.20.0",
     "fastapi>=0.141.1",
-    "langchain-aws>=1.7.5",
-    "langchain-core>=1.6.1",
-    "pydantic>=2.13.5",
+    "passlib[bcrypt]>=1.7.4",
+    "psycopg>=3.3.6",
+    "pydantic-settings>=2.15.0",
+    "python-dotenv>=1.2.3",
+    "python-jose[cryptography]>=3.5.0",
     "sqlalchemy>=2.0.52",
     "uvicorn>=0.52.4",
 ]
@@ -17,6 +19,8 @@ dependencies = [
 [dependency-groups]
 dev = [
     "httpx>=0.28.1",
+    "mypy>=2.3.1",
     "pytest>=9.1.1",
-    "ruff>=0.16.6",
+    "pytest-asyncio>=1.4.0",
+    "ruff>=0.16.9",
 ]
