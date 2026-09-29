@@ -18,3 +18,5 @@ wheels/
 
 # Local config (Bedrock model/region, future keys) — never commit
 .env
+
+tests/
