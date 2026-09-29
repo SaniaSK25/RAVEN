@@ -8,4 +8,13 @@ wheels/
 
 # Virtual environments
 .venv
-tests/
+
+# Pytest cache
+.pytest_cache/
+
+# SQLite databases (created at runtime, never commit)
+*.db
+*.sqlite3
+
+# Local config (Bedrock model/region, future keys) — never commit
+.env
