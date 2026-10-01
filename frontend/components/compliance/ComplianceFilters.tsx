@@ -32,7 +32,7 @@ function toggle<T>(list: T[], value: T): T[] {
 function pillClass(checked: boolean): string {
   return `inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-semibold tracking-wide ${
     checked
-      ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+      ? "border-accent bg-accent text-brand dark:border-accent dark:bg-accent dark:text-brand"
       : "border-zinc-300 bg-white text-zinc-600 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300"
   }`;
 }
