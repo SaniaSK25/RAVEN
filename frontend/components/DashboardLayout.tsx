@@ -38,21 +38,21 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
   return (
-    <div className="flex min-h-screen bg-zinc-50 text-zinc-900 dark:bg-black dark:text-zinc-100">
-      {/* Sidebar */}
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-zinc-200 bg-white md:flex dark:border-zinc-800 dark:bg-zinc-950">
-        <div className="flex h-16 items-center gap-2.5 border-b border-zinc-200 px-5 dark:border-zinc-800">
+    <div className="flex min-h-screen bg-canvas text-ink dark:bg-black dark:text-zinc-100">
+      {/* Sidebar — brand black in both color schemes */}
+      <aside className="hidden w-60 shrink-0 flex-col border-r border-brand bg-brand md:flex dark:border-zinc-800">
+        <div className="flex h-16 items-center gap-2.5 border-b border-white/10 px-5">
           <span
             aria-hidden="true"
-            className="flex h-8 w-8 items-center justify-center rounded bg-zinc-900 text-[13px] font-bold tracking-tight text-white dark:bg-zinc-100 dark:text-zinc-900"
+            className="flex h-8 w-8 items-center justify-center rounded bg-white text-[13px] font-bold tracking-tight text-brand"
           >
             R
           </span>
           <span className="leading-tight">
-            <span className="block text-[15px] font-bold tracking-wide">
+            <span className="block text-[15px] font-bold tracking-wide text-white">
               RAVEN
             </span>
-            <span className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+            <span className="block text-[11px] font-medium text-zinc-400">
               Regulatory QA
             </span>
           </span>
@@ -67,8 +67,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     <Link
                       href={item.href}
                       aria-current="page"
-                      className="flex items-center gap-3 rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900"
+                      className="relative flex items-center gap-3 rounded-md bg-white/10 px-3 py-2 text-sm font-medium text-white"
                     >
+                      <span
+                        aria-hidden="true"
+                        className="absolute top-1/2 left-0 h-5 w-1 -translate-y-1/2 rounded-full bg-accent"
+                      />
                       <Icon aria-hidden="true" className="h-4 w-4" />
                       {item.label}
                     </Link>
@@ -80,7 +84,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   <li key={item.label}>
                     <Link
                       href={item.href}
-                      className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-zinc-50"
+                      className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-zinc-400 hover:bg-white/5 hover:text-white focus-visible:outline-2 focus-visible:outline-accent"
                     >
                       <Icon aria-hidden="true" className="h-4 w-4" />
                       {item.label}
@@ -95,11 +99,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     type="button"
                     disabled
                     title={`${item.label} — coming soon`}
-                    className="flex w-full cursor-not-allowed items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-zinc-500 opacity-70 dark:text-zinc-400"
+                    className="flex w-full cursor-not-allowed items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-zinc-600 opacity-80"
                   >
                     <Icon aria-hidden="true" className="h-4 w-4" />
                     <span className="flex-1 text-left">{item.label}</span>
-                    <span className="rounded border border-zinc-200 px-1.5 py-px text-[10px] font-semibold tracking-wide uppercase dark:border-zinc-700">
+                    <span className="rounded border border-zinc-700 px-1.5 py-px text-[10px] font-semibold tracking-wide text-zinc-500 uppercase">
                       Soon
                     </span>
                   </button>
@@ -108,7 +112,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             })}
           </ul>
         </nav>
-        <p className="border-t border-zinc-200 px-5 py-3 text-[11px] leading-5 text-zinc-400 dark:border-zinc-800 dark:text-zinc-500">
+        <p className="border-t border-white/10 px-5 py-3 text-[11px] leading-5 text-zinc-500">
           QA control center
           <br />
           Demo data — not connected
@@ -121,7 +125,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <span className="flex items-center gap-2.5 md:hidden">
             <span
               aria-hidden="true"
-              className="flex h-7 w-7 items-center justify-center rounded bg-zinc-900 text-xs font-bold text-white dark:bg-zinc-100 dark:text-zinc-900"
+              className="flex h-7 w-7 items-center justify-center rounded bg-brand text-xs font-bold text-white dark:bg-zinc-100 dark:text-zinc-900"
             >
               R
             </span>
