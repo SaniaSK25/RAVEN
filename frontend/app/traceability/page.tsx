@@ -104,7 +104,7 @@ export default function TraceabilityPage() {
                   aria-pressed={view === option}
                   className={`px-4 py-2 text-sm font-medium capitalize first:rounded-l-md last:rounded-r-md focus-visible:outline-2 focus-visible:outline-zinc-900 ${
                     view === option
-                      ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                      ? "bg-accent text-brand dark:bg-accent dark:text-brand"
                       : "bg-white text-zinc-600 hover:bg-zinc-50 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-900"
                   }`}
                 >
