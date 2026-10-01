@@ -8,27 +8,6 @@ from app.models.evidence import (
     ProbabilityEvidence,
     SeverityEvidence,
 )
-from app.models.models import RequirementAnalysis
-
-def analyze_requirement(requirement_text: str) -> RequirementAnalysis:
-    """LEGACY level-based analysis. Kept until cutover; new code uses
-    extract_evidence() below."""
-    llm = get_llm()
-
-    structured_llm = llm.with_structured_output(RequirementAnalysis)
-
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are an expert FDA Quality Assurance and CSV Validation Engineer. "
-        "Analyze the provided software requirement and classify it according to GAMP 5 and GxP impact. "
-        "Extract factual reasoning for severity, probability, and detectability."),
-        ("human", "Analyze this requirement: {requirement}")
-    ])
-
-    agent_chain = prompt | structured_llm
-
-    result = agent_chain.invoke({"requirement": requirement_text})
-    return result
-
 
 EVIDENCE_PREAMBLE = (
     "You are an FDA CSA evidence extractor. For EVERY field output three things: "
