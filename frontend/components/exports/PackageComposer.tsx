@@ -51,7 +51,7 @@ export default function PackageComposer({ selected, onChange, onCreate, creating
                     type="checkbox"
                     checked={checked}
                     onChange={() => onChange(toggle(selected, option.key))}
-                    className="mt-1 h-4 w-4 shrink-0 accent-zinc-900 dark:accent-zinc-100"
+                    className="mt-1 h-4 w-4 shrink-0 accent-accent"
                   />
                   <span>
                     <span className="block text-sm font-medium text-zinc-900 dark:text-zinc-50">
@@ -73,7 +73,7 @@ export default function PackageComposer({ selected, onChange, onCreate, creating
           type="button"
           onClick={onCreate}
           disabled={creating || selected.length === 0}
-          className="inline-flex items-center gap-2 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 focus-visible:outline-2 focus-visible:outline-zinc-900 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-brand hover:bg-accent-dark focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 dark:bg-accent dark:text-brand dark:hover:bg-accent-dark"
         >
           <PackagePlus aria-hidden="true" className="h-4 w-4" />
           {creating ? "Building package…" : "Create Audit Package"}
