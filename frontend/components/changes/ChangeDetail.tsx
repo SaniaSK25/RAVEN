@@ -121,7 +121,7 @@ export default function ChangeDetail({ change }: { change: ChangeRecord }) {
               <span
                 className={`rounded-md border px-2.5 py-1 font-mono text-[13px] font-semibold tabular-nums ${
                   isCurrent
-                    ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+                    ? "border-accent bg-accent text-brand dark:border-accent dark:bg-accent dark:text-brand"
                     : "border-zinc-300 bg-white text-zinc-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-400"
                 }`}
               >
@@ -173,7 +173,7 @@ export default function ChangeDetail({ change }: { change: ChangeRecord }) {
                 <button
                   type="button"
                   onClick={() => setAction("confirmed")}
-                  className="rounded-md bg-zinc-900 px-3.5 py-1.5 text-sm font-medium text-white hover:bg-zinc-700 focus-visible:outline-2 focus-visible:outline-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                  className="rounded-md bg-accent px-3.5 py-1.5 text-sm font-medium text-brand hover:bg-accent-dark focus-visible:outline-2 focus-visible:outline-accent dark:bg-accent dark:text-brand dark:hover:bg-accent-dark"
                 >
                   Confirm still valid
                 </button>
@@ -198,7 +198,7 @@ export default function ChangeDetail({ change }: { change: ChangeRecord }) {
               <button
                 type="button"
                 onClick={() => setAction("confirming")}
-                className="inline-flex items-center gap-1.5 rounded-md bg-zinc-900 px-3.5 py-2 text-sm font-medium text-white hover:bg-zinc-700 focus-visible:outline-2 focus-visible:outline-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                className="inline-flex items-center gap-1.5 rounded-md bg-accent px-3.5 py-2 text-sm font-medium text-brand hover:bg-accent-dark focus-visible:outline-2 focus-visible:outline-accent dark:bg-accent dark:text-brand dark:hover:bg-accent-dark"
               >
                 <BadgeCheck aria-hidden="true" className="h-4 w-4" />
                 Confirm Still Valid
