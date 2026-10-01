@@ -1,16 +1,9 @@
-"""Save one analyzer run as a JSON benchmark file.
+"""Save one evidence extraction + Layer 3 assessment as a JSON benchmark.
 
-Usage (from backend/, VPN on):
-    $env:BEDROCK_MODEL_ID = "us.anthropic.claude-opus-4-8"
-    $env:AWS_REGION = "us-east-1"
-
-    # Legacy level-based analysis + risk (old logic, kept for history):
+Usage (from backend/, VPN on for Bedrock):
     uv run python benchmarks/run_benchmark.py "The system shall ..."
 
-    # New RAVEN evidence record + full Layer 3 assessment:
-    uv run python benchmarks/run_benchmark.py --evidence "The system shall ..."
-
-Writes: benchmarks/<slug>_<UTC-timestamp>.json
+Writes: benchmarks/<slug>_evidence_<UTC-timestamp>.json
 """
 
 import json
@@ -25,9 +18,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from datetime import UTC, datetime
 
-from app.agents.agent_analyzer import analyze_requirement, extract_evidence
+from app.agents.agent_analyzer import extract_evidence
 from app.services.assessment import assess_evidence
-from app.services.rule_engine import calculate_risk
 
 
 def slugify(text: str) -> str:
@@ -37,78 +29,53 @@ def slugify(text: str) -> str:
 
 def main() -> None:
     args = sys.argv[1:]
-    use_evidence = args and args[0] == "--evidence"
-    if use_evidence:
-        args = args[1:]
+    # --evidence kept as an accepted no-op flag (evidence is the only mode).
+    args = [a for a in args if a != "--evidence"]
     if not args:
-        print(
-            'Usage: uv run python benchmarks/run_benchmark.py [--evidence] "The system shall ..."'
-        )
+        print('Usage: uv run python benchmarks/run_benchmark.py "The system shall ..."')
         sys.exit(1)
 
     requirement = args[0]
     timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     out_dir = os.path.dirname(os.path.abspath(__file__))
 
-    if use_evidence:
-        usage_log: list = []
-        evidence = extract_evidence(requirement, usage_log=usage_log)
-        assessment = assess_evidence(evidence)
-        record = {
-            "mode": "evidence",
-            "requirement": requirement,
-            "model_id": os.environ.get("BEDROCK_MODEL_ID"),
-            "region": os.environ.get("AWS_REGION"),
-            "timestamp_utc": timestamp,
-            "evidence": evidence.model_dump(),
-            "assessment": assessment,
-            "token_usage": {
-                "per_call": usage_log,
-                "total": {
-                    "input_tokens": sum(u["input_tokens"] for u in usage_log),
-                    "output_tokens": sum(u["output_tokens"] for u in usage_log),
-                    "total_tokens": sum(u["total_tokens"] for u in usage_log),
-                },
-            },
-        }
-        filename = f"{slugify(requirement)}_evidence_{timestamp}.json"
-        path = os.path.join(out_dir, filename)
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(record, f, indent=2)
-        print(f"Saved benchmark: {path}")
-        print(f"GAMP category: {evidence.gamp_category}")
-        print(
-            f"Scores: S={assessment['severity']['score']} "
-            f"P={assessment['probability']['score']} "
-            f"D={assessment['detectability']['score']} "
-            f"RPN={assessment['rpn']} band={assessment['band']}"
-        )
-        print(
-            f"Assurance: {assessment['assurance']['assurance_level']} "
-            f"({assessment['assurance']['rule_id']})"
-        )
-        print(f"Tokens: {record['token_usage']['total']}")
-        return
-
-    analysis = analyze_requirement(requirement)
-    risk = calculate_risk(analysis)
-
+    usage_log: list = []
+    evidence = extract_evidence(requirement, usage_log=usage_log)
+    assessment = assess_evidence(evidence)
     record = {
-        "mode": "legacy",
+        "mode": "evidence",
         "requirement": requirement,
         "model_id": os.environ.get("BEDROCK_MODEL_ID"),
         "region": os.environ.get("AWS_REGION"),
         "timestamp_utc": timestamp,
-        "analysis": analysis.model_dump(),
-        "risk": risk,
+        "evidence": evidence.model_dump(),
+        "assessment": assessment,
+        "token_usage": {
+            "per_call": usage_log,
+            "total": {
+                "input_tokens": sum(u["input_tokens"] for u in usage_log),
+                "output_tokens": sum(u["output_tokens"] for u in usage_log),
+                "total_tokens": sum(u["total_tokens"] for u in usage_log),
+            },
+        },
     }
-
-    filename = f"{slugify(requirement)}_{timestamp}.json"
+    filename = f"{slugify(requirement)}_evidence_{timestamp}.json"
     path = os.path.join(out_dir, filename)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(record, f, indent=2)
     print(f"Saved benchmark: {path}")
-    print(f"Risk band: {risk['risk_band']} (total {risk['total_risk_score']})")
+    print(f"GAMP category: {evidence.gamp_category}")
+    print(
+        f"Scores: S={assessment['severity']['score']} "
+        f"P={assessment['probability']['score']} "
+        f"D={assessment['detectability']['score']} "
+        f"RPN={assessment['rpn']} band={assessment['band']}"
+    )
+    print(
+        f"Assurance: {assessment['assurance']['assurance_level']} "
+        f"({assessment['assurance']['rule_id']})"
+    )
+    print(f"Tokens: {record['token_usage']['total']}")
 
 
 if __name__ == "__main__":

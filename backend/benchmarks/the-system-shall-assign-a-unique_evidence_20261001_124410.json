@@ -1,0 +1,232 @@
+{
+  "mode": "evidence",
+  "requirement": "The system shall assign a unique sample identifier to each sample registered in the system and shall prevent reuse of the identifier across active and archived sample.",
+  "model_id": "us.anthropic.claude-opus-4-8",
+  "region": "us-east-1",
+  "timestamp_utc": "20261001_124410",
+  "evidence": {
+    "gamp_category": 4,
+    "gamp_reason": "The requirement describes configurable business logic for unique sample identifier generation and uniqueness enforcement across active and archived records, which is typically achieved by configuring a commercial LIMS/sample management system rather than developing bespoke code (Category 5) or using default out-of-box behavior (Category 3).",
+    "severity": {
+      "patient_safety": {
+        "value": false,
+        "confidence": 0.7,
+        "evidence": "The requirement concerns unique sample identifier assignment and reuse prevention, with no direct link to patient harm stated in the text."
+      },
+      "product_quality": {
+        "value": true,
+        "confidence": 0.85,
+        "evidence": "Reuse of a sample identifier across active and archived samples could cause results to be associated with the wrong sample, producing an incorrect result or sample error."
+      },
+      "batch_release": {
+        "value": false,
+        "confidence": 0.6,
+        "evidence": "The requirement addresses sample identifier uniqueness but is silent on batch disposition or release decisions."
+      },
+      "data_integrity": {
+        "value": true,
+        "confidence": 0.9,
+        "evidence": "Preventing reuse of a unique sample identifier across active and archived samples directly protects records from becoming inaccurate or incorrectly attributed."
+      },
+      "regulatory_compliance": {
+        "value": true,
+        "confidence": 0.8,
+        "evidence": "Ensuring unique, non-reusable sample identifiers supports data integrity and traceability expectations under electronic-records and GMP requirements."
+      },
+      "business_continuity": {
+        "value": false,
+        "confidence": 0.6,
+        "evidence": "The requirement focuses on identifier uniqueness and does not describe any interruption or slowing of laboratory operations if it fails."
+      }
+    },
+    "probability": {
+      "functional_complexity": {
+        "value": "MEDIUM",
+        "confidence": 0.75,
+        "evidence": "The system must generate a unique identifier and enforce non-reuse logic across both active and archived samples, requiring uniqueness validation beyond a simple assignment."
+      },
+      "dependency_complexity": {
+        "value": "LOW",
+        "confidence": 0.7,
+        "evidence": "The requirement references only the system's own sample registry (active and archived samples) and does not mention external systems, modules, or outside data sources."
+      },
+      "workflow_complexity": {
+        "value": "LOW",
+        "confidence": 0.7,
+        "evidence": "The text describes a single automated step of assigning and validating an identifier at registration, with no roles, approvals, or multi-step state transitions specified."
+      }
+    },
+    "detectability": {
+      "detection_controls": {
+        "value": "HIGH",
+        "confidence": 0.85,
+        "evidence": "The system shall prevent reuse of the identifier across active and archived samples, implying an automated uniqueness validation/interlock at registration."
+      },
+      "traceability": {
+        "value": "LOW",
+        "confidence": 0.5,
+        "evidence": "The requirement assigns unique identifiers but is silent on audit trails, logs, or history tracking of identifier assignment, so traceability evidence is missing."
+      },
+      "failure_visibility": {
+        "value": "MEDIUM",
+        "confidence": 0.6,
+        "evidence": "A duplicate or reused identifier would surface at registration against both active and archived samples, but the text does not describe user-facing alerts or error messaging, limiting certainty."
+      }
+    }
+  },
+  "assessment": {
+    "gamp_category": 4,
+    "gamp_reason": "The requirement describes configurable business logic for unique sample identifier generation and uniqueness enforcement across active and archived records, which is typically achieved by configuring a commercial LIMS/sample management system rather than developing bespoke code (Category 5) or using default out-of-box behavior (Category 3).",
+    "severity": {
+      "score": 4,
+      "rule_id": "SEV-R3",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "patient_safety",
+          "result": false,
+          "evidence": "The requirement concerns unique sample identifier assignment and reuse prevention, with no direct link to patient harm stated in the text."
+        },
+        {
+          "check": "product_quality",
+          "result": true,
+          "evidence": "Reuse of a sample identifier across active and archived samples could cause results to be associated with the wrong sample, producing an incorrect result or sample error."
+        },
+        {
+          "check": "batch_release",
+          "result": false,
+          "evidence": "The requirement addresses sample identifier uniqueness but is silent on batch disposition or release decisions."
+        }
+      ],
+      "reasoning": "Severity 4: failure affects product quality without direct batch release impact. Supporting evidence: product_quality: Reuse of a sample identifier across active and archived samples could cause results to be associated with the wrong sample, producing an incorrect result or sample error."
+    },
+    "probability": {
+      "score": 2,
+      "rule_id": "PROB-S6",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "functional_complexity",
+          "result": "MEDIUM",
+          "points": 2,
+          "weight": 2,
+          "weighted": 4,
+          "evidence": "The system must generate a unique identifier and enforce non-reuse logic across both active and archived samples, requiring uniqueness validation beyond a simple assignment."
+        },
+        {
+          "check": "dependency_complexity",
+          "result": "LOW",
+          "points": 1,
+          "weight": 1,
+          "weighted": 1,
+          "evidence": "The requirement references only the system's own sample registry (active and archived samples) and does not mention external systems, modules, or outside data sources."
+        },
+        {
+          "check": "workflow_complexity",
+          "result": "LOW",
+          "points": 1,
+          "weight": 1,
+          "weighted": 1,
+          "evidence": "The text describes a single automated step of assigning and validating an identifier at registration, with no roles, approvals, or multi-step state transitions specified."
+        },
+        {
+          "check": "computation",
+          "sum": 6,
+          "mapped": 2,
+          "gamp_category": 4,
+          "gamp_modifier": 0,
+          "final_score": 2
+        }
+      ],
+      "reasoning": "Probability 2: functional complexity MEDIUM, dependency complexity LOW, workflow complexity LOW give weighted sum 6 (formula: 2xF + D + W = 6), which maps to 2. Supporting evidence: functional_complexity: The system must generate a unique identifier and enforce non-reuse logic across both active and archived samples, requiring uniqueness validation beyond a simple assignment. | dependency_complexity: The requirement references only the system's own sample registry (active and archived samples) and does not mention external systems, modules, or outside data sources. | workflow_complexity: The text describes a single automated step of assigning and validating an identifier at registration, with no roles, approvals, or multi-step state transitions specified."
+    },
+    "detectability": {
+      "score": 3,
+      "rule_id": "DET-S3",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "detection_controls",
+          "result": "HIGH",
+          "points": 0,
+          "evidence": "The system shall prevent reuse of the identifier across active and archived samples, implying an automated uniqueness validation/interlock at registration."
+        },
+        {
+          "check": "traceability",
+          "result": "LOW",
+          "points": 2,
+          "evidence": "The requirement assigns unique identifiers but is silent on audit trails, logs, or history tracking of identifier assignment, so traceability evidence is missing."
+        },
+        {
+          "check": "failure_visibility",
+          "result": "MEDIUM",
+          "points": 1,
+          "evidence": "A duplicate or reused identifier would surface at registration against both active and archived samples, but the text does not describe user-facing alerts or error messaging, limiting certainty."
+        },
+        {
+          "check": "computation",
+          "sum": 3,
+          "mapped_score": 3,
+          "controls_floor": null,
+          "floor_applied": false,
+          "final_score": 3
+        }
+      ],
+      "reasoning": "Detectability 3: detection controls HIGH, traceability LOW, failure visibility MEDIUM give point sum 3 (higher sum = harder to detect), which maps to 3 (1 = easily detected, 5 = hard to detect). Supporting evidence: detection_controls: The system shall prevent reuse of the identifier across active and archived samples, implying an automated uniqueness validation/interlock at registration. | traceability: The requirement assigns unique identifiers but is silent on audit trails, logs, or history tracking of identifier assignment, so traceability evidence is missing. | failure_visibility: A duplicate or reused identifier would surface at registration against both active and archived samples, but the text does not describe user-facing alerts or error messaging, limiting certainty."
+    },
+    "rpn": 3.35,
+    "rpn_points": 67,
+    "band": "Medium",
+    "assurance": {
+      "assurance_level": "scripted",
+      "generate_test": true,
+      "rule_id": "ASR-SEV-FLOOR",
+      "reason": "Severity 4 >= 4 forces scripted testing regardless of band (Medium)."
+    }
+  },
+  "token_usage": {
+    "per_call": [
+      {
+        "group": "SeverityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1533,
+        "output_tokens": 549,
+        "total_tokens": 2082
+      },
+      {
+        "group": "ProbabilityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1191,
+        "output_tokens": 306,
+        "total_tokens": 1497
+      },
+      {
+        "group": "DetectabilityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1218,
+        "output_tokens": 310,
+        "total_tokens": 1528
+      },
+      {
+        "group": "GampClassification",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 813,
+        "output_tokens": 157,
+        "total_tokens": 970
+      }
+    ],
+    "total": {
+      "input_tokens": 4755,
+      "output_tokens": 1322,
+      "total_tokens": 6077
+    }
+  }
+}
