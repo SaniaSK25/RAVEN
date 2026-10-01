@@ -29,9 +29,9 @@ from app.models.base_model import ImmutableBaseModel
 
 if TYPE_CHECKING:
     from app.models.compliance_result import ComplianceResult
-    from app.models.evidence import Evidence
     from app.models.requirement import Requirement
     from app.models.risk_assessment import RiskAssessment
+    from app.models.stored_evidence import Evidence
     from app.models.test_script import TestScript
 
 

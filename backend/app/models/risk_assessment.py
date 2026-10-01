@@ -28,11 +28,13 @@ from app.models.mixins import evidence_text_column, non_empty_check, range_check
 if TYPE_CHECKING:
     from app.models.assurance_decision import AssuranceDecision
     from app.models.configuration_version import ConfigurationVersion
-    from app.models.detectability_result import DetectabilityResult
-    from app.models.evidence import Evidence
-    from app.models.probability_result import ProbabilityResult
+    from app.models.engine_results import (
+        DetectabilityResult,
+        ProbabilityResult,
+        SeverityResult,
+    )
     from app.models.requirement_version import RequirementVersion
-    from app.models.severity_result import SeverityResult
+    from app.models.stored_evidence import Evidence
 
 
 class RiskAssessment(Base, MutableBaseModel):

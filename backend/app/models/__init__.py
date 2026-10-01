@@ -10,7 +10,11 @@ from app.models.assurance_decision import AssuranceDecision
 from app.models.base_model import ImmutableBaseModel, MutableBaseModel
 from app.models.compliance_result import ComplianceResult
 from app.models.configuration_version import ConfigurationVersion
-from app.models.detectability_result import DetectabilityResult
+from app.models.engine_results import (
+    DetectabilityResult,
+    ProbabilityResult,
+    SeverityResult,
+)
 from app.models.enums import (
     AssuranceLevel,
     ComplexityLevel,
@@ -20,13 +24,11 @@ from app.models.enums import (
     RiskBand,
     TestScriptStatus,
 )
-from app.models.evidence import Evidence
-from app.models.probability_result import ProbabilityResult
 from app.models.prompt_version import PromptVersion
 from app.models.requirement import Requirement
 from app.models.requirement_version import RequirementVersion
 from app.models.risk_assessment import RiskAssessment
-from app.models.severity_result import SeverityResult
+from app.models.stored_evidence import Evidence
 from app.models.test_script import TestScript
 
 __all__ = [
