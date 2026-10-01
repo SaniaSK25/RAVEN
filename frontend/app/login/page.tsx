@@ -59,12 +59,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-6 py-12 dark:bg-black">
+    <div className="flex min-h-screen items-center justify-center bg-canvas px-6 py-12 dark:bg-black">
       <div className="w-full max-w-md">
         <div className="flex items-center gap-3">
           <span
             aria-hidden="true"
-            className="flex h-10 w-10 items-center justify-center rounded bg-zinc-900 text-base font-bold tracking-tight text-white dark:bg-zinc-100 dark:text-zinc-900"
+            className="flex h-10 w-10 items-center justify-center rounded bg-brand text-base font-bold tracking-tight text-white"
           >
             R
           </span>
@@ -137,7 +137,7 @@ export default function LoginPage() {
                       key={option.value}
                       className={`cursor-pointer rounded-md border px-3.5 py-2.5 ${
                         checked
-                          ? "border-zinc-900 bg-zinc-50 dark:border-zinc-100 dark:bg-zinc-900"
+                          ? "border-accent bg-orange-50 dark:border-accent dark:bg-zinc-900"
                           : "border-zinc-200 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-zinc-700"
                       }`}
                     >
@@ -148,7 +148,7 @@ export default function LoginPage() {
                           value={option.value}
                           checked={checked}
                           onChange={() => setRole(option.value)}
-                          className="h-4 w-4 accent-zinc-900 dark:accent-zinc-100"
+                          className="h-4 w-4 accent-accent"
                         />
                         <span className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
                           {option.label}
@@ -176,7 +176,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={signingIn}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-700 focus-visible:outline-2 focus-visible:outline-zinc-900 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-brand hover:bg-accent-dark focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Lock aria-hidden="true" className="h-4 w-4" />
               {signingIn ? "Signing in…" : "Sign In"}
