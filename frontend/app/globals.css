@@ -1,8 +1,30 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
+  --background: #f7f7f7;
   --foreground: #171717;
+}
+
+/*
+ * RAVEN / MResult brand design tokens.
+ *
+ * Official brand: Primary Black #070708, Vibrant Orange #EF781A,
+ * Neutral White #FFFFFF. Derived neutrals below keep surfaces restrained;
+ * orange is an accent only (CTAs, active indicators, selected controls).
+ * Semantic risk/status colors live in components and are never replaced
+ * by brand orange.
+ */
+@theme {
+  --color-brand: #070708;
+  --color-accent: #ef781a;
+  --color-accent-dark: #d1660f;
+  --color-canvas: #f7f7f7;
+  --color-surface: #ffffff;
+  --color-subtle: #f0f0f0;
+  --color-line: #d9d9d9;
+  --color-ink: #171717;
+  --color-secondary: #525252;
+  --color-muted: #a3a3a3;
 }
 
 @theme inline {
