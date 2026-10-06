@@ -144,7 +144,7 @@ class RiskAssessment(Base, MutableBaseModel):
         Integer,
         nullable=False,
     )
-    """Risk Priority Number: severity x probability x detectability [1, 125]."""
+    """Risk Priority Number: 12 x severity + 5 x probability + 3 x detectability [20, 100]."""
 
     band: Mapped[RiskBand] = mapped_column(
         SAEnum(RiskBand, name="risk_band"),
