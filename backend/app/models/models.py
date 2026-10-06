@@ -25,3 +25,7 @@ class TestScript(BaseModel):
     preconditions: str = Field(
         description= "What must be set up or true before the test begins? (e.g., 'User is ')"
     )
+    steps: list[TestStep] = Field(
+        min_length=1,
+        description= "Numbered test steps; at least one step is required.",
+    )
