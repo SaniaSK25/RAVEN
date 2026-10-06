@@ -19,6 +19,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from datetime import UTC, datetime
 
 from app.agents.agent_analyzer import extract_evidence
+from app.agents.agent_script_writer import (
+    PROMPT_NAME,
+    PROMPT_VERSION,
+    generate_test_script,
+    is_generation_required,
+)
 from app.services.assessment import assess_evidence
 
 
@@ -42,6 +48,9 @@ def main() -> None:
     usage_log: list = []
     evidence = extract_evidence(requirement, usage_log=usage_log)
     assessment = assess_evidence(evidence)
+    test_script = None
+    if is_generation_required(assessment["assurance"]):
+        test_script = generate_test_script(requirement, usage_log=usage_log)
     record = {
         "mode": "evidence",
         "requirement": requirement,
@@ -50,6 +59,8 @@ def main() -> None:
         "timestamp_utc": timestamp,
         "evidence": evidence.model_dump(),
         "assessment": assessment,
+        "test_script": test_script.model_dump() if test_script else None,
+        "prompt": {"name": PROMPT_NAME, "version": PROMPT_VERSION},
         "token_usage": {
             "per_call": usage_log,
             "total": {
@@ -75,6 +86,10 @@ def main() -> None:
         f"Assurance: {assessment['assurance']['assurance_level']} "
         f"({assessment['assurance']['rule_id']})"
     )
+    if test_script:
+        print(f"Test steps: {len(test_script.steps)}")
+    else:
+        print("Test script: skipped (assurance does not require one)")
     print(f"Tokens: {record['token_usage']['total']}")
 
 
