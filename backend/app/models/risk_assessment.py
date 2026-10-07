@@ -168,6 +168,19 @@ class RiskAssessment(Base, MutableBaseModel):
     )
     """True for the single active assessment of the requirement version."""
 
+    freshness: Mapped[str] = mapped_column(
+        String(12),
+        nullable=False,
+        default="fresh",
+        server_default="fresh",
+        index=True,
+    )
+    """Traceability freshness: ``fresh`` | ``stale`` | ``superseded``.
+
+    ``stale`` means the owning requirement changed after this analysis;
+    ``superseded`` means retired (excluded from link derivation).
+    """
+
     # --- Relationships ----------------------------------------------------
 
     requirement_version: Mapped[RequirementVersion] = relationship(

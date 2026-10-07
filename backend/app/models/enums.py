@@ -75,12 +75,84 @@ class TestScriptStatus(str, enum.Enum):
     SUPERSEDED = "SUPERSEDED"
 
 
+class Freshness(str, enum.Enum):
+    """Freshness lifecycle of a traceability artifact.
+
+    ``FRESH`` was produced from the current requirement version.
+    ``STALE`` was produced from an older version that has since changed
+    (needs review, not necessarily wrong). ``SUPERSEDED`` has been
+    retired and no longer participates in derivation.
+    """
+
+    FRESH = "fresh"
+    STALE = "stale"
+    SUPERSEDED = "superseded"
+
+
+class TraceNodeType(str, enum.Enum):
+    """Node types of the traceability graph."""
+
+    REQUIREMENT = "requirement"
+    RISK = "risk"
+    ASSURANCE = "assurance"
+    TEST = "test"
+
+
+class TraceLinkType(str, enum.Enum):
+    """Edge types of the traceability graph (endpoint types are fixed)."""
+
+    HAS_RISK = "has_risk"
+    ASSESSED_AS = "assessed_as"
+    MITIGATED_BY = "mitigated_by"
+    VERIFIES = "verifies"
+
+
+class TraceOrigin(str, enum.Enum):
+    """Who created a trace link."""
+
+    SYSTEM = "system"
+    MANUAL = "manual"
+    IMPORT = "import"
+
+
+class TestOrigin(str, enum.Enum):
+    """Who produced a test script."""
+
+    GENERATED = "generated"
+    MANUAL = "manual"
+    IMPORTED = "imported"
+
+
+class ChangeKind(str, enum.Enum):
+    """What happened to the requirement."""
+
+    EDIT = "edit"
+    DELETE = "delete"
+
+
+class ChangeStatus(str, enum.Enum):
+    """State-machine states of a change event."""
+
+    OPEN = "open"
+    REANALYZED = "reanalyzed"
+    CONFIRMED = "confirmed"
+    ACCEPTED = "accepted"
+    SUPERSEDED = "superseded"
+
+
 __all__ = [
     "AssuranceLevel",
+    "ChangeKind",
+    "ChangeStatus",
     "ComplexityLevel",
     "ComplianceStatus",
     "DetectionLevel",
+    "Freshness",
     "RequirementStatus",
     "RiskBand",
+    "TestOrigin",
     "TestScriptStatus",
+    "TraceLinkType",
+    "TraceNodeType",
+    "TraceOrigin",
 ]
