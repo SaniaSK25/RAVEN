@@ -29,3 +29,20 @@ class TestScript(BaseModel):
         min_length=1,
         description= "Numbered test steps; at least one step is required.",
     )
+
+
+class ScriptPreconditions(BaseModel):
+    """Preconditions half of a test script (extracted in its own call)."""
+
+    preconditions: str = Field(
+        description= "What must be set up or true before the test begins?"
+    )
+
+
+class ScriptSteps(BaseModel):
+    """Steps half of a test script (extracted in its own call)."""
+
+    steps: list[TestStep] = Field(
+        min_length=1,
+        description= "Numbered test steps; at least one step is required.",
+    )
