@@ -1,0 +1,251 @@
+{
+  "mode": "evidence",
+  "requirement": "The system shall maintain the hierarchical location of a stored sample, including facility, room, storage unit, shelf, rack, and position where applicable.",
+  "model_id": "us.anthropic.claude-opus-4-8",
+  "region": "us-east-1",
+  "timestamp_utc": "20261006_110235",
+  "evidence": {
+    "gamp_category": 4,
+    "gamp_reason": "The requirement describes configuring standard sample-management functionality to represent a site-specific hierarchical storage structure (facility, room, unit, shelf, rack, position), which is characteristic of a configured commercial product rather than custom-coded logic.",
+    "severity": {
+      "patient_safety": {
+        "value": false,
+        "confidence": 0.7,
+        "evidence": "The requirement concerns tracking the hierarchical physical location of a stored sample and does not describe any direct interaction with or effect on a patient, though a lost sample could indirectly affect downstream patient care."
+      },
+      "product_quality": {
+        "value": true,
+        "confidence": 0.75,
+        "evidence": "If the system fails to maintain the correct hierarchical location, the wrong sample could be retrieved, leading to a sample mix-up or incorrect result."
+      },
+      "batch_release": {
+        "value": false,
+        "confidence": 0.6,
+        "evidence": "The requirement addresses storage location tracking only and makes no mention of batch disposition or release decisions."
+      },
+      "data_integrity": {
+        "value": true,
+        "confidence": 0.9,
+        "evidence": "The requirement states the system shall maintain location records (facility, room, storage unit, shelf, rack, position), and if these records become inaccurate or incomplete the sample's location data would be compromised."
+      },
+      "regulatory_compliance": {
+        "value": true,
+        "confidence": 0.75,
+        "evidence": "Maintaining accurate sample location records is a GMP record-keeping expectation, so failure to maintain the hierarchical location would breach electronic-records/GMP expectations."
+      },
+      "business_continuity": {
+        "value": true,
+        "confidence": 0.7,
+        "evidence": "If the system cannot maintain the stored sample's location, laboratory staff would be unable to locate samples efficiently, slowing or interrupting laboratory operations."
+      }
+    },
+    "probability": {
+      "functional_complexity": {
+        "value": "MEDIUM",
+        "confidence": 0.7,
+        "evidence": "The system must maintain a multi-level hierarchical location (facility, room, storage unit, shelf, rack, position) which involves structured nested data logic beyond a single simple field."
+      },
+      "dependency_complexity": {
+        "value": "LOW",
+        "confidence": 0.6,
+        "evidence": "The requirement references only internal location attributes of a stored sample and names no external systems, modules, or data sources."
+      },
+      "workflow_complexity": {
+        "value": "LOW",
+        "confidence": 0.65,
+        "evidence": "The text describes maintaining location data without specifying any roles, multi-step processes, or state transitions."
+      }
+    },
+    "detectability": {
+      "detection_controls": {
+        "value": "LOW",
+        "confidence": 0.6,
+        "evidence": "The requirement specifies maintaining hierarchical location data but is silent on any automated checks, interlocks, or validations that would detect incorrect or missing location entries."
+      },
+      "traceability": {
+        "value": "MEDIUM",
+        "confidence": 0.55,
+        "evidence": "The system maintaining the hierarchical location implies some stored location state, but the text does not mention audit trails, logs, or history of location changes."
+      },
+      "failure_visibility": {
+        "value": "LOW",
+        "confidence": 0.6,
+        "evidence": "The requirement describes storing location fields but provides no indication that an incorrect or missing location would be obviously surfaced to a user or QA reviewer."
+      }
+    }
+  },
+  "assessment": {
+    "gamp_category": 4,
+    "gamp_reason": "The requirement describes configuring standard sample-management functionality to represent a site-specific hierarchical storage structure (facility, room, unit, shelf, rack, position), which is characteristic of a configured commercial product rather than custom-coded logic.",
+    "gxp_impact": true,
+    "gxp_reason": "GxP impact via product_quality, data_integrity, regulatory_compliance. Supporting evidence: product_quality: If the system fails to maintain the correct hierarchical location, the wrong sample could be retrieved, leading to a sample mix-up or incorrect result. | data_integrity: The requirement states the system shall maintain location records (facility, room, storage unit, shelf, rack, position), and if these records become inaccurate or incomplete the sample's location data would be compromised. | regulatory_compliance: Maintaining accurate sample location records is a GMP record-keeping expectation, so failure to maintain the hierarchical location would breach electronic-records/GMP expectations.",
+    "severity": {
+      "score": 4,
+      "rule_id": "SEV-R3",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "patient_safety",
+          "result": false,
+          "evidence": "The requirement concerns tracking the hierarchical physical location of a stored sample and does not describe any direct interaction with or effect on a patient, though a lost sample could indirectly affect downstream patient care."
+        },
+        {
+          "check": "product_quality",
+          "result": true,
+          "evidence": "If the system fails to maintain the correct hierarchical location, the wrong sample could be retrieved, leading to a sample mix-up or incorrect result."
+        },
+        {
+          "check": "batch_release",
+          "result": false,
+          "evidence": "The requirement addresses storage location tracking only and makes no mention of batch disposition or release decisions."
+        }
+      ],
+      "reasoning": "Severity 4: failure affects product quality without direct batch release impact. Supporting evidence: product_quality: If the system fails to maintain the correct hierarchical location, the wrong sample could be retrieved, leading to a sample mix-up or incorrect result."
+    },
+    "probability": {
+      "score": 2,
+      "rule_id": "PROB-S6",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "functional_complexity",
+          "result": "MEDIUM",
+          "points": 2,
+          "weight": 2,
+          "weighted": 4,
+          "evidence": "The system must maintain a multi-level hierarchical location (facility, room, storage unit, shelf, rack, position) which involves structured nested data logic beyond a single simple field."
+        },
+        {
+          "check": "dependency_complexity",
+          "result": "LOW",
+          "points": 1,
+          "weight": 1,
+          "weighted": 1,
+          "evidence": "The requirement references only internal location attributes of a stored sample and names no external systems, modules, or data sources."
+        },
+        {
+          "check": "workflow_complexity",
+          "result": "LOW",
+          "points": 1,
+          "weight": 1,
+          "weighted": 1,
+          "evidence": "The text describes maintaining location data without specifying any roles, multi-step processes, or state transitions."
+        },
+        {
+          "check": "computation",
+          "sum": 6,
+          "mapped": 2,
+          "gamp_category": 4,
+          "gamp_modifier": 0,
+          "final_score": 2
+        }
+      ],
+      "reasoning": "Probability 2: functional complexity MEDIUM, dependency complexity LOW, workflow complexity LOW give weighted sum 6 (formula: 2xF + D + W = 6), which maps to 2. Supporting evidence: functional_complexity: The system must maintain a multi-level hierarchical location (facility, room, storage unit, shelf, rack, position) which involves structured nested data logic beyond a single simple field. | dependency_complexity: The requirement references only internal location attributes of a stored sample and names no external systems, modules, or data sources. | workflow_complexity: The text describes maintaining location data without specifying any roles, multi-step processes, or state transitions."
+    },
+    "detectability": {
+      "score": 4,
+      "rule_id": "DET-S5",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "detection_controls",
+          "result": "LOW",
+          "points": 2,
+          "evidence": "The requirement specifies maintaining hierarchical location data but is silent on any automated checks, interlocks, or validations that would detect incorrect or missing location entries."
+        },
+        {
+          "check": "traceability",
+          "result": "MEDIUM",
+          "points": 1,
+          "evidence": "The system maintaining the hierarchical location implies some stored location state, but the text does not mention audit trails, logs, or history of location changes."
+        },
+        {
+          "check": "failure_visibility",
+          "result": "LOW",
+          "points": 2,
+          "evidence": "The requirement describes storing location fields but provides no indication that an incorrect or missing location would be obviously surfaced to a user or QA reviewer."
+        },
+        {
+          "check": "computation",
+          "sum": 5,
+          "mapped_score": 4,
+          "controls_floor": null,
+          "floor_applied": false,
+          "final_score": 4
+        }
+      ],
+      "reasoning": "Detectability 4: detection controls LOW, traceability MEDIUM, failure visibility LOW give point sum 5 (higher sum = harder to detect), which maps to 4 (1 = easily detected, 5 = hard to detect). Supporting evidence: detection_controls: The requirement specifies maintaining hierarchical location data but is silent on any automated checks, interlocks, or validations that would detect incorrect or missing location entries. | traceability: The system maintaining the hierarchical location implies some stored location state, but the text does not mention audit trails, logs, or history of location changes. | failure_visibility: The requirement describes storing location fields but provides no indication that an incorrect or missing location would be obviously surfaced to a user or QA reviewer."
+    },
+    "rpn": 3.5,
+    "rpn_points": 70,
+    "band": "High",
+    "assurance": {
+      "assurance_level": "scripted",
+      "generate_test": true,
+      "rule_id": "ASR-SEV-FLOOR",
+      "reason": "Severity 4 >= 4 forces scripted testing regardless of band (High)."
+    }
+  },
+  "test_script": {
+    "preconditions": "1. The user is logged into the sample management system with privileges to create and view sample records. 2. The following location hierarchy entities exist and are configured in the system: Facility \"FAC-NORTH\", Room \"R-101\", Storage Unit \"FREEZER-01\" (-80\u00b0C), Shelf \"SH-03\", Rack \"RK-07\", and an available Position \"A1\". 3. At least one sample type/record template is available for creating a new stored sample. 4. The system date/time and audit trail are functioning normally. 5. The user has valid test data for a sample to be stored (e.g., Sample ID \"SMP-100001\").",
+    "steps": null
+  },
+  "prompt": {
+    "name": "test_script_generator",
+    "version": 1
+  },
+  "token_usage": {
+    "per_call": [
+      {
+        "group": "SeverityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1534,
+        "output_tokens": 609,
+        "total_tokens": 2143
+      },
+      {
+        "group": "ProbabilityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1192,
+        "output_tokens": 289,
+        "total_tokens": 1481
+      },
+      {
+        "group": "DetectabilityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1219,
+        "output_tokens": 305,
+        "total_tokens": 1524
+      },
+      {
+        "group": "GampClassification",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 814,
+        "output_tokens": 139,
+        "total_tokens": 953
+      },
+      {
+        "group": "TestScript",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 890,
+        "output_tokens": 1024,
+        "total_tokens": 1914
+      }
+    ],
+    "total": {
+      "input_tokens": 5649,
+      "output_tokens": 2366,
+      "total_tokens": 8015
+    }
+  }
+}

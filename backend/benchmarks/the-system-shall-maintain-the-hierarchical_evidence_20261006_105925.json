@@ -1,0 +1,251 @@
+{
+  "mode": "evidence",
+  "requirement": "The system shall maintain the hierarchical location of a stored sample, including facility, room, storage unit, shelf, rack, and position where applicable.",
+  "model_id": "us.anthropic.claude-opus-4-8",
+  "region": "us-east-1",
+  "timestamp_utc": "20261006_105925",
+  "evidence": {
+    "gamp_category": 4,
+    "gamp_reason": "The requirement describes configuring a commercial sample/inventory management system's hierarchical location data model (facility, room, storage unit, shelf, rack, position), which is a typical configurable off-the-shelf capability rather than custom-coded functionality.",
+    "severity": {
+      "patient_safety": {
+        "value": false,
+        "confidence": 0.7,
+        "evidence": "The requirement concerns tracking the hierarchical storage location of a sample and does not describe any direct patient-facing action, dosing, or diagnostic result that could harm a patient."
+      },
+      "product_quality": {
+        "value": true,
+        "confidence": 0.75,
+        "evidence": "Maintaining the accurate storage location (facility, room, unit, shelf, rack, position) prevents sample mix-ups or retrieval of the wrong sample, which could cause an incorrect result or sample error."
+      },
+      "batch_release": {
+        "value": false,
+        "confidence": 0.6,
+        "evidence": "The requirement addresses physical sample location tracking and does not mention batch disposition or release decisions."
+      },
+      "data_integrity": {
+        "value": true,
+        "confidence": 0.85,
+        "evidence": "The system must maintain the hierarchical location record, so if that record becomes inaccurate, incomplete, or lost the sample's location data loses integrity."
+      },
+      "regulatory_compliance": {
+        "value": true,
+        "confidence": 0.7,
+        "evidence": "Accurate sample location records support GMP/GLP chain-of-custody and electronic-record expectations, so failure to maintain them could breach GMP data-management requirements."
+      },
+      "business_continuity": {
+        "value": true,
+        "confidence": 0.65,
+        "evidence": "If the hierarchical location cannot be maintained or retrieved, samples cannot be located efficiently, which would slow or interrupt laboratory operations."
+      }
+    },
+    "probability": {
+      "functional_complexity": {
+        "value": "LOW",
+        "confidence": 0.75,
+        "evidence": "The requirement describes maintaining a hierarchical location structure (facility, room, storage unit, shelf, rack, position) which is primarily data storage with simple nested relationships rather than complex computation or logic."
+      },
+      "dependency_complexity": {
+        "value": "LOW",
+        "confidence": 0.7,
+        "evidence": "The text references only internal location attributes of a stored sample and names no external systems, modules, or data sources that the system must integrate with."
+      },
+      "workflow_complexity": {
+        "value": "LOW",
+        "confidence": 0.7,
+        "evidence": "The requirement specifies maintaining location data but mentions no user roles, multi-step processes, or state transitions involved in the sample's lifecycle."
+      }
+    },
+    "detectability": {
+      "detection_controls": {
+        "value": "LOW",
+        "confidence": 0.6,
+        "evidence": "The requirement specifies maintaining hierarchical location data but does not mention any automated checks, interlocks, or validations to detect incorrect or missing location entries."
+      },
+      "traceability": {
+        "value": "LOW",
+        "confidence": 0.55,
+        "evidence": "The requirement describes storing the current hierarchical location (facility, room, storage unit, shelf, rack, position) but is silent on audit trails, logs, or location history that would trace changes over time."
+      },
+      "failure_visibility": {
+        "value": "MEDIUM",
+        "confidence": 0.5,
+        "evidence": "An incorrect sample location could become apparent when a user cannot physically find the sample at the recorded position, but the text provides no explicit alerts or verification making a failure immediately obvious."
+      }
+    }
+  },
+  "assessment": {
+    "gamp_category": 4,
+    "gamp_reason": "The requirement describes configuring a commercial sample/inventory management system's hierarchical location data model (facility, room, storage unit, shelf, rack, position), which is a typical configurable off-the-shelf capability rather than custom-coded functionality.",
+    "gxp_impact": true,
+    "gxp_reason": "GxP impact via product_quality, data_integrity, regulatory_compliance. Supporting evidence: product_quality: Maintaining the accurate storage location (facility, room, unit, shelf, rack, position) prevents sample mix-ups or retrieval of the wrong sample, which could cause an incorrect result or sample error. | data_integrity: The system must maintain the hierarchical location record, so if that record becomes inaccurate, incomplete, or lost the sample's location data loses integrity. | regulatory_compliance: Accurate sample location records support GMP/GLP chain-of-custody and electronic-record expectations, so failure to maintain them could breach GMP data-management requirements.",
+    "severity": {
+      "score": 4,
+      "rule_id": "SEV-R3",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "patient_safety",
+          "result": false,
+          "evidence": "The requirement concerns tracking the hierarchical storage location of a sample and does not describe any direct patient-facing action, dosing, or diagnostic result that could harm a patient."
+        },
+        {
+          "check": "product_quality",
+          "result": true,
+          "evidence": "Maintaining the accurate storage location (facility, room, unit, shelf, rack, position) prevents sample mix-ups or retrieval of the wrong sample, which could cause an incorrect result or sample error."
+        },
+        {
+          "check": "batch_release",
+          "result": false,
+          "evidence": "The requirement addresses physical sample location tracking and does not mention batch disposition or release decisions."
+        }
+      ],
+      "reasoning": "Severity 4: failure affects product quality without direct batch release impact. Supporting evidence: product_quality: Maintaining the accurate storage location (facility, room, unit, shelf, rack, position) prevents sample mix-ups or retrieval of the wrong sample, which could cause an incorrect result or sample error."
+    },
+    "probability": {
+      "score": 1,
+      "rule_id": "PROB-S4",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "functional_complexity",
+          "result": "LOW",
+          "points": 1,
+          "weight": 2,
+          "weighted": 2,
+          "evidence": "The requirement describes maintaining a hierarchical location structure (facility, room, storage unit, shelf, rack, position) which is primarily data storage with simple nested relationships rather than complex computation or logic."
+        },
+        {
+          "check": "dependency_complexity",
+          "result": "LOW",
+          "points": 1,
+          "weight": 1,
+          "weighted": 1,
+          "evidence": "The text references only internal location attributes of a stored sample and names no external systems, modules, or data sources that the system must integrate with."
+        },
+        {
+          "check": "workflow_complexity",
+          "result": "LOW",
+          "points": 1,
+          "weight": 1,
+          "weighted": 1,
+          "evidence": "The requirement specifies maintaining location data but mentions no user roles, multi-step processes, or state transitions involved in the sample's lifecycle."
+        },
+        {
+          "check": "computation",
+          "sum": 4,
+          "mapped": 1,
+          "gamp_category": 4,
+          "gamp_modifier": 0,
+          "final_score": 1
+        }
+      ],
+      "reasoning": "Probability 1: functional complexity LOW, dependency complexity LOW, workflow complexity LOW give weighted sum 4 (formula: 2xF + D + W = 4), which maps to 1. Supporting evidence: functional_complexity: The requirement describes maintaining a hierarchical location structure (facility, room, storage unit, shelf, rack, position) which is primarily data storage with simple nested relationships rather than complex computation or logic. | dependency_complexity: The text references only internal location attributes of a stored sample and names no external systems, modules, or data sources that the system must integrate with. | workflow_complexity: The requirement specifies maintaining location data but mentions no user roles, multi-step processes, or state transitions involved in the sample's lifecycle."
+    },
+    "detectability": {
+      "score": 4,
+      "rule_id": "DET-S5",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "detection_controls",
+          "result": "LOW",
+          "points": 2,
+          "evidence": "The requirement specifies maintaining hierarchical location data but does not mention any automated checks, interlocks, or validations to detect incorrect or missing location entries."
+        },
+        {
+          "check": "traceability",
+          "result": "LOW",
+          "points": 2,
+          "evidence": "The requirement describes storing the current hierarchical location (facility, room, storage unit, shelf, rack, position) but is silent on audit trails, logs, or location history that would trace changes over time."
+        },
+        {
+          "check": "failure_visibility",
+          "result": "MEDIUM",
+          "points": 1,
+          "evidence": "An incorrect sample location could become apparent when a user cannot physically find the sample at the recorded position, but the text provides no explicit alerts or verification making a failure immediately obvious."
+        },
+        {
+          "check": "computation",
+          "sum": 5,
+          "mapped_score": 4,
+          "controls_floor": null,
+          "floor_applied": false,
+          "final_score": 4
+        }
+      ],
+      "reasoning": "Detectability 4: detection controls LOW, traceability LOW, failure visibility MEDIUM give point sum 5 (higher sum = harder to detect), which maps to 4 (1 = easily detected, 5 = hard to detect). Supporting evidence: detection_controls: The requirement specifies maintaining hierarchical location data but does not mention any automated checks, interlocks, or validations to detect incorrect or missing location entries. | traceability: The requirement describes storing the current hierarchical location (facility, room, storage unit, shelf, rack, position) but is silent on audit trails, logs, or location history that would trace changes over time. | failure_visibility: An incorrect sample location could become apparent when a user cannot physically find the sample at the recorded position, but the text provides no explicit alerts or verification making a failure immediately obvious."
+    },
+    "rpn": 3.25,
+    "rpn_points": 65,
+    "band": "Medium",
+    "assurance": {
+      "assurance_level": "scripted",
+      "generate_test": true,
+      "rule_id": "ASR-SEV-FLOOR",
+      "reason": "Severity 4 >= 4 forces scripted testing regardless of band (Medium)."
+    }
+  },
+  "test_script": {
+    "preconditions": "1. The LIMS/Sample Management application is installed, validated for test, and operational in the test environment.\n2. A test user account exists with privileges to register, store, and view sample location data.\n3. The location hierarchy master data is configured, including at least: one Facility (e.g., \"Facility-A / Building 1\"), one Room within that facility (e.g., \"Room 101 - Cryo Storage\"), one Storage Unit within the room (e.g., \"Freezer FRZ-001, -80\u00b0C\"), one Shelf within the storage unit (e.g., \"Shelf-02\"), one Rack on the shelf (e.g., \"Rack-05\"), and defined positions within the rack (e.g., grid A1 through H12).\n4. At least one test sample record is available or can be created (e.g., Sample ID \"SMP-0001\").\n5. The user is logged into the application with the test account.",
+    "steps": null
+  },
+  "prompt": {
+    "name": "test_script_generator",
+    "version": 1
+  },
+  "token_usage": {
+    "per_call": [
+      {
+        "group": "SeverityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1534,
+        "output_tokens": 601,
+        "total_tokens": 2135
+      },
+      {
+        "group": "ProbabilityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1192,
+        "output_tokens": 318,
+        "total_tokens": 1510
+      },
+      {
+        "group": "DetectabilityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1219,
+        "output_tokens": 333,
+        "total_tokens": 1552
+      },
+      {
+        "group": "GampClassification",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 814,
+        "output_tokens": 140,
+        "total_tokens": 954
+      },
+      {
+        "group": "TestScript",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 890,
+        "output_tokens": 1024,
+        "total_tokens": 1914
+      }
+    ],
+    "total": {
+      "input_tokens": 5649,
+      "output_tokens": 2416,
+      "total_tokens": 8065
+    }
+  }
+}
