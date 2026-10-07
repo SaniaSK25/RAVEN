@@ -1,0 +1,277 @@
+{
+  "mode": "evidence",
+  "requirement": "The system shall prevent disposal of a sample when an active testing request, investigation, or retention requirement exists for that sample.",
+  "model_id": "us.anthropic.claude-opus-4-8",
+  "region": "us-east-1",
+  "timestamp_utc": "20261006_103132",
+  "evidence": {
+    "gamp_category": 4,
+    "gamp_reason": "The requirement describes configurable business-rule logic (blocking sample disposal based on linked status conditions such as active tests, investigations, or retention holds) that is typically achieved by configuring a commercial LIMS/sample-management system rather than developing bespoke code, placing it in GAMP Category 4; confidence 0.6, as the text does not specify the underlying platform or whether custom development is involved.",
+    "severity": {
+      "patient_safety": {
+        "value": false,
+        "confidence": 0.55,
+        "evidence": "The requirement concerns preventing premature disposal of a sample during active testing, investigation, or retention, and does not directly describe a mechanism that would harm a patient; direct patient-safety linkage is not stated in the text."
+      },
+      "product_quality": {
+        "value": true,
+        "confidence": 0.8,
+        "evidence": "Preventing disposal of a sample that still has an active testing request or investigation protects against sample loss that could lead to incorrect or incomplete results and specification decisions."
+      },
+      "batch_release": {
+        "value": true,
+        "confidence": 0.7,
+        "evidence": "Because the sample may still be under an active testing request or investigation, premature disposal could compromise the data needed for batch disposition or release decisions."
+      },
+      "data_integrity": {
+        "value": true,
+        "confidence": 0.82,
+        "evidence": "Disposing of a sample tied to an active request, investigation, or retention requirement could render associated records incomplete or test data unavailable, so the control supports data integrity."
+      },
+      "regulatory_compliance": {
+        "value": true,
+        "confidence": 0.85,
+        "evidence": "Enforcing retention requirements and preventing disposal during open investigations directly supports GMP sample retention and record expectations, so failure would breach regulatory compliance."
+      },
+      "business_continuity": {
+        "value": true,
+        "confidence": 0.65,
+        "evidence": "Erroneous disposal of a sample under active testing or investigation would interrupt and delay laboratory operations by forcing resampling or halting ongoing analyses."
+      }
+    },
+    "probability": {
+      "functional_complexity": {
+        "value": "MEDIUM",
+        "confidence": 0.75,
+        "evidence": "The system must evaluate multiple conditions (active testing request, investigation, or retention requirement) before preventing disposal, requiring conditional logic across several criteria."
+      },
+      "dependency_complexity": {
+        "value": "MEDIUM",
+        "confidence": 0.6,
+        "evidence": "The rule references testing requests, investigations, and retention requirements, which imply dependencies on multiple data sources or modules, though the text does not explicitly name external systems."
+      },
+      "workflow_complexity": {
+        "value": "MEDIUM",
+        "confidence": 0.65,
+        "evidence": "The requirement involves a sample state transition (disposal) gated by multiple active states, but it does not describe roles or multi-step approval sequences."
+      }
+    },
+    "detectability": {
+      "detection_controls": {
+        "value": "HIGH",
+        "confidence": 0.85,
+        "evidence": "The requirement specifies an automated interlock that prevents disposal when an active testing request, investigation, or retention requirement exists, which is a strong preventive control."
+      },
+      "traceability": {
+        "value": "LOW",
+        "confidence": 0.6,
+        "evidence": "The text defines the prevention behavior but is silent on audit trails, logs, or history records capturing disposal attempts or the conditions that blocked them."
+      },
+      "failure_visibility": {
+        "value": "MEDIUM",
+        "confidence": 0.55,
+        "evidence": "A blocked disposal would likely surface to the user attempting the action, but the text does not describe any alert, error message, or notification making a control failure obvious to a QA reviewer."
+      }
+    }
+  },
+  "assessment": {
+    "gamp_category": 4,
+    "gamp_reason": "The requirement describes configurable business-rule logic (blocking sample disposal based on linked status conditions such as active tests, investigations, or retention holds) that is typically achieved by configuring a commercial LIMS/sample-management system rather than developing bespoke code, placing it in GAMP Category 4; confidence 0.6, as the text does not specify the underlying platform or whether custom development is involved.",
+    "gxp_impact": true,
+    "gxp_reason": "GxP impact via product_quality, batch_release, data_integrity, regulatory_compliance. Supporting evidence: product_quality: Preventing disposal of a sample that still has an active testing request or investigation protects against sample loss that could lead to incorrect or incomplete results and specification decisions. | batch_release: Because the sample may still be under an active testing request or investigation, premature disposal could compromise the data needed for batch disposition or release decisions. | data_integrity: Disposing of a sample tied to an active request, investigation, or retention requirement could render associated records incomplete or test data unavailable, so the control supports data integrity. | regulatory_compliance: Enforcing retention requirements and preventing disposal during open investigations directly supports GMP sample retention and record expectations, so failure would breach regulatory compliance.",
+    "severity": {
+      "score": 5,
+      "rule_id": "SEV-R2",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "patient_safety",
+          "result": false,
+          "evidence": "The requirement concerns preventing premature disposal of a sample during active testing, investigation, or retention, and does not directly describe a mechanism that would harm a patient; direct patient-safety linkage is not stated in the text."
+        },
+        {
+          "check": "product_quality",
+          "result": true,
+          "evidence": "Preventing disposal of a sample that still has an active testing request or investigation protects against sample loss that could lead to incorrect or incomplete results and specification decisions."
+        },
+        {
+          "check": "batch_release",
+          "result": true,
+          "evidence": "Because the sample may still be under an active testing request or investigation, premature disposal could compromise the data needed for batch disposition or release decisions."
+        }
+      ],
+      "reasoning": "Severity 5: failure affects product quality and participates in batch disposition or release decisions. Supporting evidence: product_quality: Preventing disposal of a sample that still has an active testing request or investigation protects against sample loss that could lead to incorrect or incomplete results and specification decisions. | batch_release: Because the sample may still be under an active testing request or investigation, premature disposal could compromise the data needed for batch disposition or release decisions."
+    },
+    "probability": {
+      "score": 3,
+      "rule_id": "PROB-S8",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "functional_complexity",
+          "result": "MEDIUM",
+          "points": 2,
+          "weight": 2,
+          "weighted": 4,
+          "evidence": "The system must evaluate multiple conditions (active testing request, investigation, or retention requirement) before preventing disposal, requiring conditional logic across several criteria."
+        },
+        {
+          "check": "dependency_complexity",
+          "result": "MEDIUM",
+          "points": 2,
+          "weight": 1,
+          "weighted": 2,
+          "evidence": "The rule references testing requests, investigations, and retention requirements, which imply dependencies on multiple data sources or modules, though the text does not explicitly name external systems."
+        },
+        {
+          "check": "workflow_complexity",
+          "result": "MEDIUM",
+          "points": 2,
+          "weight": 1,
+          "weighted": 2,
+          "evidence": "The requirement involves a sample state transition (disposal) gated by multiple active states, but it does not describe roles or multi-step approval sequences."
+        },
+        {
+          "check": "computation",
+          "sum": 8,
+          "mapped": 3,
+          "gamp_category": 4,
+          "gamp_modifier": 0,
+          "final_score": 3
+        }
+      ],
+      "reasoning": "Probability 3: functional complexity MEDIUM, dependency complexity MEDIUM, workflow complexity MEDIUM give weighted sum 8 (formula: 2xF + D + W = 8), which maps to 3. Supporting evidence: functional_complexity: The system must evaluate multiple conditions (active testing request, investigation, or retention requirement) before preventing disposal, requiring conditional logic across several criteria. | dependency_complexity: The rule references testing requests, investigations, and retention requirements, which imply dependencies on multiple data sources or modules, though the text does not explicitly name external systems. | workflow_complexity: The requirement involves a sample state transition (disposal) gated by multiple active states, but it does not describe roles or multi-step approval sequences."
+    },
+    "detectability": {
+      "score": 3,
+      "rule_id": "DET-S3",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "detection_controls",
+          "result": "HIGH",
+          "points": 0,
+          "evidence": "The requirement specifies an automated interlock that prevents disposal when an active testing request, investigation, or retention requirement exists, which is a strong preventive control."
+        },
+        {
+          "check": "traceability",
+          "result": "LOW",
+          "points": 2,
+          "evidence": "The text defines the prevention behavior but is silent on audit trails, logs, or history records capturing disposal attempts or the conditions that blocked them."
+        },
+        {
+          "check": "failure_visibility",
+          "result": "MEDIUM",
+          "points": 1,
+          "evidence": "A blocked disposal would likely surface to the user attempting the action, but the text does not describe any alert, error message, or notification making a control failure obvious to a QA reviewer."
+        },
+        {
+          "check": "computation",
+          "sum": 3,
+          "mapped_score": 3,
+          "controls_floor": null,
+          "floor_applied": false,
+          "final_score": 3
+        }
+      ],
+      "reasoning": "Detectability 3: detection controls HIGH, traceability LOW, failure visibility MEDIUM give point sum 3 (higher sum = harder to detect), which maps to 3 (1 = easily detected, 5 = hard to detect). Supporting evidence: detection_controls: The requirement specifies an automated interlock that prevents disposal when an active testing request, investigation, or retention requirement exists, which is a strong preventive control. | traceability: The text defines the prevention behavior but is silent on audit trails, logs, or history records capturing disposal attempts or the conditions that blocked them. | failure_visibility: A blocked disposal would likely surface to the user attempting the action, but the text does not describe any alert, error message, or notification making a control failure obvious to a QA reviewer."
+    },
+    "rpn": 4.2,
+    "rpn_points": 84,
+    "band": "High",
+    "assurance": {
+      "assurance_level": "scripted",
+      "generate_test": true,
+      "rule_id": "ASR-SEV-FLOOR",
+      "reason": "Severity 5 >= 4 forces scripted testing regardless of band (High)."
+    }
+  },
+  "test_script": {
+    "preconditions": "User is logged into the LIMS with privileges to initiate sample disposal. The following test samples exist in the system: (a) Sample SMP-ACTIVE-TEST with at least one active (not completed/cancelled) testing request linked to it; (b) Sample SMP-INVESTIGATION with an open investigation (deviation/OOS) linked to it; (c) Sample SMP-RETENTION with an active retention requirement whose retention period has not yet expired; and (d) Control sample SMP-CLEAR with no active testing requests, no open investigations, and no active/unexpired retention requirement. The sample disposal function is accessible and operational.",
+    "steps": [
+      {
+        "step_number": 1,
+        "action": "Navigate to the sample disposal function and select sample SMP-ACTIVE-TEST, which has an active testing request. Attempt to execute the disposal action for this sample.",
+        "expected_result": "The system prevents the disposal. The sample is not dispositioned to a disposed state and remains in its current status. A clear message is displayed indicating disposal is blocked because an active testing request exists for the sample (e.g., 'Sample cannot be disposed: an active testing request exists.')."
+      },
+      {
+        "step_number": 2,
+        "action": "Select sample SMP-INVESTIGATION, which has an open investigation linked to it, and attempt to execute the disposal action.",
+        "expected_result": "The system prevents the disposal. The sample remains in its current (non-disposed) status, and a clear message is displayed indicating disposal is blocked because an open investigation exists for the sample."
+      },
+      {
+        "step_number": 3,
+        "action": "Select sample SMP-RETENTION, which has an active, unexpired retention requirement, and attempt to execute the disposal action.",
+        "expected_result": "The system prevents the disposal. The sample remains in its current (non-disposed) status, and a clear message is displayed indicating disposal is blocked because an active retention requirement exists for the sample."
+      },
+      {
+        "step_number": 4,
+        "action": "Review the audit trail / system log for the disposal attempts performed in Steps 1 through 3.",
+        "expected_result": "The audit trail records each blocked disposal attempt with the user ID, timestamp, affected sample ID, and the reason disposal was prevented. No disposal transaction is recorded as completed for SMP-ACTIVE-TEST, SMP-INVESTIGATION, or SMP-RETENTION."
+      },
+      {
+        "step_number": 5,
+        "action": "Select the control sample SMP-CLEAR, which has no active testing request, no open investigation, and no active retention requirement, and execute the disposal action.",
+        "expected_result": "The system allows the disposal to proceed and successfully updates SMP-CLEAR to a disposed status, confirming that the preventive control blocks disposal only when an active testing request, investigation, or retention requirement exists. A disposal confirmation is displayed and recorded in the audit trail."
+      }
+    ]
+  },
+  "prompt": {
+    "name": "test_script_generator",
+    "version": 1
+  },
+  "token_usage": {
+    "per_call": [
+      {
+        "group": "SeverityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1526,
+        "output_tokens": 617,
+        "total_tokens": 2143
+      },
+      {
+        "group": "ProbabilityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1184,
+        "output_tokens": 324,
+        "total_tokens": 1508
+      },
+      {
+        "group": "DetectabilityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1211,
+        "output_tokens": 316,
+        "total_tokens": 1527
+      },
+      {
+        "group": "GampClassification",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 806,
+        "output_tokens": 189,
+        "total_tokens": 995
+      },
+      {
+        "group": "TestScript",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 828,
+        "output_tokens": 1006,
+        "total_tokens": 1834
+      }
+    ],
+    "total": {
+      "input_tokens": 5555,
+      "output_tokens": 2452,
+      "total_tokens": 8007
+    }
+  }
+}

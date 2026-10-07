@@ -1,0 +1,286 @@
+{
+  "mode": "evidence",
+  "requirement": "The system shall visually show graphs of different data points",
+  "model_id": "us.anthropic.claude-opus-4-8",
+  "region": "us-east-1",
+  "timestamp_utc": "20261006_115908",
+  "evidence": {
+    "gamp_category": 3,
+    "gamp_reason": "The requirement describes standard, out-of-the-box visualization/graphing functionality typical of commercial off-the-shelf software used as-is, with no indication of configuration or custom code, aligning with GAMP Category 3 (non-configured products); confidence 0.6, as the text is silent on whether the graphing is configured or custom-developed.",
+    "severity": {
+      "patient_safety": {
+        "value": false,
+        "confidence": 0.75,
+        "evidence": "The requirement only concerns visually displaying graphs of data points and says nothing about direct patient harm."
+      },
+      "product_quality": {
+        "value": true,
+        "confidence": 0.55,
+        "evidence": "A visual graph of data points could influence interpretation of results, so an incorrect display might contribute to an erroneous result or specification decision."
+      },
+      "batch_release": {
+        "value": false,
+        "confidence": 0.6,
+        "evidence": "The text describes graphical visualization only and does not mention batch disposition or release activities."
+      },
+      "data_integrity": {
+        "value": true,
+        "confidence": 0.6,
+        "evidence": "If the system misrenders graphs of data points, the displayed records could become inaccurate or incomplete relative to the underlying data."
+      },
+      "regulatory_compliance": {
+        "value": false,
+        "confidence": 0.5,
+        "evidence": "The requirement is silent on electronic-records controls or GMP expectations, mentioning only visual graphing of data points."
+      },
+      "business_continuity": {
+        "value": true,
+        "confidence": 0.5,
+        "evidence": "Failure of the graphing display could slow laboratory review and interpretation of data, though no critical operational dependency is stated."
+      }
+    },
+    "probability": {
+      "functional_complexity": {
+        "value": "LOW",
+        "confidence": 0.6,
+        "evidence": "The requirement only states the system shall visually show graphs of different data points, describing basic display logic without calculations, transformations, or conditional behavior."
+      },
+      "dependency_complexity": {
+        "value": "LOW",
+        "confidence": 0.5,
+        "evidence": "The text references 'different data points' but does not name any external systems, modules, or data sources, so no significant dependencies are evidenced."
+      },
+      "workflow_complexity": {
+        "value": "LOW",
+        "confidence": 0.65,
+        "evidence": "The requirement describes a single display action with no roles, multi-step processes, or state transitions mentioned."
+      }
+    },
+    "detectability": {
+      "detection_controls": {
+        "value": "LOW",
+        "confidence": 0.7,
+        "evidence": "The requirement only states the system shall visually show graphs of different data points, with no mention of automated checks, interlocks, or validations to confirm correct graphing."
+      },
+      "traceability": {
+        "value": "LOW",
+        "confidence": 0.7,
+        "evidence": "The requirement describes visual display of graphs but is silent on any audit trails, logs, or history tracking of the data points shown."
+      },
+      "failure_visibility": {
+        "value": "MEDIUM",
+        "confidence": 0.6,
+        "evidence": "Because graphs are visually shown to users, an obvious rendering failure may be noticed, but incorrect or subtly wrong data points on a graph could go unnoticed without a reference value stated in the text."
+      }
+    }
+  },
+  "assessment": {
+    "gamp_category": 3,
+    "gamp_reason": "The requirement describes standard, out-of-the-box visualization/graphing functionality typical of commercial off-the-shelf software used as-is, with no indication of configuration or custom code, aligning with GAMP Category 3 (non-configured products); confidence 0.6, as the text is silent on whether the graphing is configured or custom-developed.",
+    "gxp_impact": true,
+    "gxp_reason": "GxP impact via product_quality, data_integrity. Supporting evidence: product_quality: A visual graph of data points could influence interpretation of results, so an incorrect display might contribute to an erroneous result or specification decision. | data_integrity: If the system misrenders graphs of data points, the displayed records could become inaccurate or incomplete relative to the underlying data.",
+    "severity": {
+      "score": 4,
+      "rule_id": "SEV-R3",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "patient_safety",
+          "result": false,
+          "evidence": "The requirement only concerns visually displaying graphs of data points and says nothing about direct patient harm."
+        },
+        {
+          "check": "product_quality",
+          "result": true,
+          "evidence": "A visual graph of data points could influence interpretation of results, so an incorrect display might contribute to an erroneous result or specification decision."
+        },
+        {
+          "check": "batch_release",
+          "result": false,
+          "evidence": "The text describes graphical visualization only and does not mention batch disposition or release activities."
+        }
+      ],
+      "reasoning": "Severity 4: failure affects product quality without direct batch release impact. Supporting evidence: product_quality: A visual graph of data points could influence interpretation of results, so an incorrect display might contribute to an erroneous result or specification decision."
+    },
+    "probability": {
+      "score": 1,
+      "rule_id": "PROB-S4",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "functional_complexity",
+          "result": "LOW",
+          "points": 1,
+          "weight": 2,
+          "weighted": 2,
+          "evidence": "The requirement only states the system shall visually show graphs of different data points, describing basic display logic without calculations, transformations, or conditional behavior."
+        },
+        {
+          "check": "dependency_complexity",
+          "result": "LOW",
+          "points": 1,
+          "weight": 1,
+          "weighted": 1,
+          "evidence": "The text references 'different data points' but does not name any external systems, modules, or data sources, so no significant dependencies are evidenced."
+        },
+        {
+          "check": "workflow_complexity",
+          "result": "LOW",
+          "points": 1,
+          "weight": 1,
+          "weighted": 1,
+          "evidence": "The requirement describes a single display action with no roles, multi-step processes, or state transitions mentioned."
+        },
+        {
+          "check": "computation",
+          "sum": 4,
+          "mapped": 1,
+          "gamp_category": 3,
+          "gamp_modifier": 0,
+          "final_score": 1
+        }
+      ],
+      "reasoning": "Probability 1: functional complexity LOW, dependency complexity LOW, workflow complexity LOW give weighted sum 4 (formula: 2xF + D + W = 4), which maps to 1. Supporting evidence: functional_complexity: The requirement only states the system shall visually show graphs of different data points, describing basic display logic without calculations, transformations, or conditional behavior. | dependency_complexity: The text references 'different data points' but does not name any external systems, modules, or data sources, so no significant dependencies are evidenced. | workflow_complexity: The requirement describes a single display action with no roles, multi-step processes, or state transitions mentioned."
+    },
+    "detectability": {
+      "score": 4,
+      "rule_id": "DET-S5",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "detection_controls",
+          "result": "LOW",
+          "points": 2,
+          "evidence": "The requirement only states the system shall visually show graphs of different data points, with no mention of automated checks, interlocks, or validations to confirm correct graphing."
+        },
+        {
+          "check": "traceability",
+          "result": "LOW",
+          "points": 2,
+          "evidence": "The requirement describes visual display of graphs but is silent on any audit trails, logs, or history tracking of the data points shown."
+        },
+        {
+          "check": "failure_visibility",
+          "result": "MEDIUM",
+          "points": 1,
+          "evidence": "Because graphs are visually shown to users, an obvious rendering failure may be noticed, but incorrect or subtly wrong data points on a graph could go unnoticed without a reference value stated in the text."
+        },
+        {
+          "check": "computation",
+          "sum": 5,
+          "mapped_score": 4,
+          "controls_floor": null,
+          "floor_applied": false,
+          "final_score": 4
+        }
+      ],
+      "reasoning": "Detectability 4: detection controls LOW, traceability LOW, failure visibility MEDIUM give point sum 5 (higher sum = harder to detect), which maps to 4 (1 = easily detected, 5 = hard to detect). Supporting evidence: detection_controls: The requirement only states the system shall visually show graphs of different data points, with no mention of automated checks, interlocks, or validations to confirm correct graphing. | traceability: The requirement describes visual display of graphs but is silent on any audit trails, logs, or history tracking of the data points shown. | failure_visibility: Because graphs are visually shown to users, an obvious rendering failure may be noticed, but incorrect or subtly wrong data points on a graph could go unnoticed without a reference value stated in the text."
+    },
+    "rpn": 3.25,
+    "rpn_points": 65,
+    "band": "Medium",
+    "assurance": {
+      "assurance_level": "scripted",
+      "generate_test": true,
+      "rule_id": "ASR-SEV-FLOOR",
+      "reason": "Severity 4 >= 4 forces scripted testing regardless of band (Medium)."
+    }
+  },
+  "test_script": {
+    "preconditions": "1. System Environment & Access:\n- The validated test environment (QA/Validation instance) is deployed, operational, and matches the approved configuration specification.\n- The application is accessible via the supported/qualified web browser(s) or client as defined in the test plan.\n- A test user account is provisioned with the appropriate role and permissions required to access the graphing/visualization module (e.g., Analyst or Reviewer role).\n- The test user has successfully authenticated and is logged into the system.\n\n2. Test Data:\n- A representative, pre-loaded dataset exists containing multiple distinct data points sufficient to render a graph (e.g., at least one complete series with varying X/Y values).\n- Test data covers the different data types/parameters that the system is expected to visualize (e.g., numeric, time-series, categorical values).\n- Edge-case datasets are available where applicable: a single data point, a large volume of data points, and a dataset with no/empty data to confirm expected behavior.\n- Known expected values for each data point are documented to allow verification that the graph accurately reflects the underlying source data.\n\n3. System State & Configuration:\n- The visualization/graphing module is enabled, installed, and configured per the approved specification.\n- Any required reference/master data, units of measure, and chart configuration settings are correctly configured and approved.\n- The data source feeding the graph (database/table/dataset) is populated and in a stable, read-ready state (no in-progress data loads or locks).\n- Display/resolution settings meet the minimum qualified requirements so graphs render fully and legibly.\n\n4. Documentation & Prerequisites:\n- Approved requirement specification, design specification, and this test script are available and under version/change control.\n- Any dependent requirements or prerequisite test cases (e.g., successful login, data entry/import) have been executed and passed.\n- Expected results, acceptance criteria, and the mapping of data points to graph elements are defined and approved prior to execution.",
+    "steps": [
+      {
+        "step_number": 1,
+        "action": "Log in to the system with a valid user account and navigate to the data visualization/reporting module.",
+        "expected_result": "The data visualization module loads successfully and displays available data sets for graphing."
+      },
+      {
+        "step_number": 2,
+        "action": "Select a data set containing multiple data points and choose the option to generate a graph.",
+        "expected_result": "The system renders a graph visually displaying the selected data points with correctly plotted values, axes, and labels."
+      },
+      {
+        "step_number": 3,
+        "action": "Select a different data set with distinct data points and generate a graph.",
+        "expected_result": "The system renders a new graph that visually displays the different data points, accurately reflecting the new data set."
+      },
+      {
+        "step_number": 4,
+        "action": "Switch between the available graph types (e.g., line, bar) for the displayed data points, if supported.",
+        "expected_result": "The system updates the visual graph to the selected graph type while continuing to accurately represent the same data points."
+      },
+      {
+        "step_number": 5,
+        "action": "Verify the plotted graph values against the source data for each displayed data point.",
+        "expected_result": "Each plotted data point on the graph matches the corresponding value in the source data with no discrepancies."
+      }
+    ]
+  },
+  "prompt": {
+    "name": "test_script_generator",
+    "version": 3
+  },
+  "token_usage": {
+    "per_call": [
+      {
+        "group": "SeverityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1502,
+        "output_tokens": 509,
+        "total_tokens": 2011
+      },
+      {
+        "group": "ProbabilityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1160,
+        "output_tokens": 283,
+        "total_tokens": 1443
+      },
+      {
+        "group": "DetectabilityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1187,
+        "output_tokens": 315,
+        "total_tokens": 1502
+      },
+      {
+        "group": "GampClassification",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 782,
+        "output_tokens": 170,
+        "total_tokens": 952
+      },
+      {
+        "group": "ScriptPreconditions",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 649,
+        "output_tokens": 661,
+        "total_tokens": 1310
+      },
+      {
+        "group": "ScriptSteps",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 869,
+        "output_tokens": 420,
+        "total_tokens": 1289
+      }
+    ],
+    "total": {
+      "input_tokens": 6149,
+      "output_tokens": 2358,
+      "total_tokens": 8507
+    }
+  }
+}
