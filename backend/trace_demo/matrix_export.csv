@@ -1,0 +1,7 @@
+requirement_id,requirement_version,risk_id,severity,probability,detectability,rpn,band,assurance_level,assurance_label,reason_code,test_id,test_title,test_origin,coverage_status,stale,orphan_flags
+LIMS-001,1,RSK-2d645a40,4,4,4,64,High,scripted,Scripted testing,ASR-BAND-HIGH,TS-394e3f12,Verify duplicate ID rejected,generated,covered_by_tests,false,
+LIMS-001,1,RSK-2d645a40,4,4,4,64,High,scripted,Scripted testing,ASR-BAND-HIGH,TS-6dab3eaf,Verify unique user IDs,generated,covered_by_tests,false,
+LIMS-002,1,RSK-1940b05a,3,3,3,27,Medium,exploratory,Exploratory testing,ASR-BAND-MEDIUM,,,,covered_by_assurance,false,
+LIMS-003,1,RSK-af367d48,2,2,2,8,Low,unscripted,Unscripted testing,ASR-BAND-LOW,,,,covered_by_assurance,false,
+LIMS-004,1,,,,,,,,,,,,,uncovered,false,O1
+LIMS-005,1,RSK-3a26bce7,5,3,3,45,Medium,scripted,Scripted testing,ASR-SEV-FLOOR,TS-027d1e43,Verify barrier integrity,generated,covered_by_tests,false,

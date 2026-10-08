@@ -9,6 +9,9 @@ from app.models.evidence import (
     SeverityEvidence,
 )
 
+PROMPT_NAME = "evidence_extractor"
+PROMPT_VERSION = 1
+
 EVIDENCE_PREAMBLE = (
     "You are an FDA CSA evidence extractor. For EVERY field output three things: "
     "value, confidence (0.0-1.0), and exactly one evidence sentence grounded "
@@ -47,6 +50,15 @@ DETECTABILITY_INSTRUCTIONS = (
 GAMP_INSTRUCTIONS = (
     "Classify the requirement: gamp_category is an integer 1, 3, 4, or 5 "
     "with a one-sentence gamp_reason."
+)
+
+# Canonical prompt text recorded in PromptVersion rows (content-hashed).
+PROMPT_TEXT = (
+    EVIDENCE_PREAMBLE
+    + SEVERITY_INSTRUCTIONS
+    + PROBABILITY_INSTRUCTIONS
+    + DETECTABILITY_INSTRUCTIONS
+    + GAMP_INSTRUCTIONS
 )
 
 

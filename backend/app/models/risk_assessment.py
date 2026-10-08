@@ -144,7 +144,7 @@ class RiskAssessment(Base, MutableBaseModel):
         Integer,
         nullable=False,
     )
-    """Risk Priority Number: severity x probability x detectability [1, 125]."""
+    """Risk Priority Number: 12 x severity + 5 x probability + 3 x detectability [20, 100]."""
 
     band: Mapped[RiskBand] = mapped_column(
         SAEnum(RiskBand, name="risk_band"),
@@ -167,6 +167,19 @@ class RiskAssessment(Base, MutableBaseModel):
         index=True,
     )
     """True for the single active assessment of the requirement version."""
+
+    freshness: Mapped[str] = mapped_column(
+        String(12),
+        nullable=False,
+        default="fresh",
+        server_default="fresh",
+        index=True,
+    )
+    """Traceability freshness: ``fresh`` | ``stale`` | ``superseded``.
+
+    ``stale`` means the owning requirement changed after this analysis;
+    ``superseded`` means retired (excluded from link derivation).
+    """
 
     # --- Relationships ----------------------------------------------------
 

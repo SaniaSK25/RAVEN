@@ -1,0 +1,8 @@
+# RAVEN Layer 3 — RPN band thresholds (points scale).
+# Editable at runtime by a team leader; run POST /config/recompute
+# (dry-run supported) to re-apply to all frozen evidence.
+# points = 12 x Severity + 5 x Probability + 3 x Detectability (20-100).
+# Display RPN is points / 20 (1.0-5.0).
+low_max: 45
+medium_max: 67
+# High band is anything above medium_max (up to 100 points).

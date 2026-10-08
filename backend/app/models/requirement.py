@@ -43,6 +43,18 @@ class Requirement(Base, MutableBaseModel):
 
     # --- Identity / content -----------------------------------------
 
+    req_key: Mapped[str | None] = mapped_column(
+        String(32),
+        nullable=True,
+        unique=True,
+        index=True,
+    )
+    """Human-readable requirement key (e.g. ``LIMS-001``).
+
+    Nullable for rows created before traceability was introduced; the
+    traceability layer falls back to a ``REQ-<short-id>`` display code.
+    """
+
     title: Mapped[str] = mapped_column(
         String(255),
         nullable=False,

@@ -79,6 +79,11 @@ class AssuranceDecision(Base, ImmutableBaseModel):
     decision_path: Mapped[dict] = mapped_column(JSON, nullable=False)
     """Inputs behind the verdict (severity score, band, level)."""
 
+    freshness: Mapped[str] = mapped_column(String(12), nullable=False,
+                                           default="fresh", server_default="fresh",
+                                           index=True)
+    """Traceability freshness: ``fresh`` | ``stale`` | ``superseded``."""
+
     # --- Relationships -----------------------------------------------------
 
     risk_assessment: Mapped[RiskAssessment] = relationship(

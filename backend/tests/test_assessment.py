@@ -53,7 +53,10 @@ def test_sample_requirement_assesses_to_high_75_scripted():
     assert result["rpn"] == 3.75
     assert result["rpn_points"] == 75
     assert result["band"] == "High"
-    # Severity 4 forces scripted via the floor (band would too).
+    # GxP impact via the raised severity flags.
+    assert result["gxp_impact"] is True
+    assert len(result["gxp_reason"]) > 0
+    # Severity 4 forces scripted via the floor (band alone would not).
     assert result["assurance"]["assurance_level"] == "scripted"
     assert result["assurance"]["generate_test"] is True
     assert result["assurance"]["rule_id"] == "ASR-SEV-FLOOR"
