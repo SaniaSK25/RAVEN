@@ -15,6 +15,7 @@ from app.models.engine_results import (
     ProbabilityResult,
     SeverityResult,
 )
+from app.models.id_counter import IdCounter
 from app.models.prompt_version import PromptVersion
 
 # Core Models
@@ -33,6 +34,7 @@ __all__ = [
     "ConfigurationVersion",
     "DetectabilityResult",
     "Evidence",
+    "IdCounter",
     "ProbabilityResult",
     "PromptVersion",
     "Requirement",
