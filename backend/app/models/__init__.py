@@ -32,6 +32,7 @@ from app.models.enums import (
     TraceNodeType,
     TraceOrigin,
 )
+from app.models.id_counter import IdCounter
 from app.models.prompt_version import PromptVersion
 from app.models.requirement import Requirement
 from app.models.requirement_version import RequirementVersion
@@ -54,6 +55,7 @@ __all__ = [
     "DetectionLevel",
     "Evidence",
     "Freshness",
+    "IdCounter",
     "ImmutableBaseModel",
     "MutableBaseModel",
     "ProbabilityResult",

@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, text
+from sqlalchemy import Boolean, Float, ForeignKey, Index, Integer, String, text
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -65,7 +65,8 @@ class RiskAssessment(Base, MutableBaseModel):
             sqlite_where=text("is_current"),
             postgresql_where=text("is_current"),
         ),
-        range_check("rpn", 1, 125),
+        range_check("rpn", 1, 5),
+        range_check("rpn_points", 20, 100),
         non_empty_check("gxp_reason"),
         non_empty_check("gamp_reason"),
     )
@@ -140,11 +141,17 @@ class RiskAssessment(Base, MutableBaseModel):
 
     # --- Deterministic output --------------------------------------------
 
-    rpn: Mapped[int] = mapped_column(
+    rpn: Mapped[float] = mapped_column(
+        Float,
+        nullable=False,
+    )
+    """Weighted risk score on the 1.0-5.0 display scale (points / 20)."""
+
+    rpn_points: Mapped[int] = mapped_column(
         Integer,
         nullable=False,
     )
-    """Risk Priority Number: 12 x severity + 5 x probability + 3 x detectability [20, 100]."""
+    """Integer weighted points 20-100: 12 x severity + 5 x probability + 3 x detectability."""
 
     band: Mapped[RiskBand] = mapped_column(
         SAEnum(RiskBand, name="risk_band"),
