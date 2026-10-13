@@ -25,6 +25,7 @@ class ManualTestCreate(BaseModel):
 
 
 def _serialise(test: TestScript) -> dict:
+    requirement = test.requirement_version.requirement
     return {
         "id": str(test.id),
         "title": test.title,
@@ -37,6 +38,11 @@ def _serialise(test: TestScript) -> dict:
         else None,
         "status": getattr(test.status, "value", test.status),
         "version": test.version,
+        "script": test.script,
+        "created_at": test.created_at.isoformat() if test.created_at else None,
+        "requirement_id": str(requirement.id),
+        "requirement_key": requirement.req_key,
+        "requirement_title": requirement.title,
     }
 
 

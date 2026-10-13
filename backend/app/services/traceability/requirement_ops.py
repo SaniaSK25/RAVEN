@@ -13,6 +13,7 @@ import hashlib
 
 from app.models.requirement import Requirement
 from app.models.requirement_version import RequirementVersion
+from app.services.numbering import next_req_key
 from app.services.traceability.changeflow import empty_impact, mark_stale, record_change
 from app.services.traceability.ids import coerce_uuid
 from app.services.traceability.impact import compute_impact
@@ -37,7 +38,7 @@ def create_requirement(
     requirement = Requirement(
         title=title,
         description=description,
-        req_key=req_key,
+        req_key=req_key or next_req_key(session),
         status="DRAFT",
         created_by=created_by,
     )

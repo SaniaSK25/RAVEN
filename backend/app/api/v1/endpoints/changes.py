@@ -13,6 +13,8 @@ from pydantic import BaseModel
 from app.api.v1.endpoints.helpers import get_or_404, optional_uuid
 from app.db.dependencies import DBSession
 from app.models.change_event import ChangeEvent
+from app.models.requirement import Requirement
+from app.models.requirement_version import RequirementVersion
 from app.services.traceability.changediff import compute_diff
 from app.services.traceability.changeflow import (
     InvalidStateError,
@@ -39,8 +41,8 @@ class AcceptPayload(BaseModel):
     note: str | None = None
 
 
-def _serialise(event: ChangeEvent) -> dict:
-    return {
+def _serialise(event: ChangeEvent, db=None) -> dict:
+    result = {
         "id": str(event.id),
         "requirement_id": str(event.requirement_id),
         "kind": event.kind,
@@ -54,7 +56,25 @@ def _serialise(event: ChangeEvent) -> dict:
         "resolution_note": event.resolution_note,
         "resolved_at": event.resolved_at.isoformat() if event.resolved_at else None,
         "created_by": event.created_by,
+        "created_at": event.created_at.isoformat() if event.created_at else None,
     }
+    if db is not None:
+        requirement = db.get(Requirement, event.requirement_id)
+        if requirement is not None:
+            current = (
+                db.get(RequirementVersion, requirement.current_version_id)
+                if requirement.current_version_id
+                else None
+            )
+            result.update(
+                {
+                    "requirement_key": requirement.req_key,
+                    "requirement_title": requirement.title,
+                    "current_version": current.version_number if current else None,
+                    "current_text": current.text if current else requirement.description,
+                }
+            )
+    return result
 
 
 def _baseline_dict(snapshot, baseline_id: str | None) -> dict | None:
@@ -124,12 +144,12 @@ def list_events(
         query = query.filter(ChangeEvent.requirement_id == coerced)
     if status:
         query = query.filter(ChangeEvent.status == status)
-    return [_serialise(e) for e in query.all()]
+    return [_serialise(e, db) for e in query.all()]
 
 
 @router.get("/{event_id}")
 def get_event(event_id: str, db: DBSession):
-    return _serialise(get_or_404(db, ChangeEvent, event_id, "change event"))
+    return _serialise(get_or_404(db, ChangeEvent, event_id, "change event"), db)
 
 
 @router.post("/{event_id}/reanalyze")
@@ -158,7 +178,7 @@ def reanalyze(event_id: str, payload: ReanalyzePayload, db: DBSession):
     except Exception as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return _serialise(event)
+    return _serialise(event, db)
 
 
 @router.post("/{event_id}/confirm-valid")
@@ -200,7 +220,7 @@ def confirm_valid(event_id: str, payload: ConfirmPayload, db: DBSession):
     except Exception as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return _serialise(event)
+    return _serialise(event, db)
 
 
 @router.post("/{event_id}/accept")
@@ -216,4 +236,4 @@ def accept(event_id: str, payload: AcceptPayload, db: DBSession):
     except Exception as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return _serialise(event)
+    return _serialise(event, db)

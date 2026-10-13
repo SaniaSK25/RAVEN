@@ -26,6 +26,26 @@ from app.services.engine_result import RULE_VERSION
 
 BAND_MAP = {"Low": RiskBand.LOW, "Medium": RiskBand.MEDIUM, "High": RiskBand.HIGH}
 
+PRECONDITIONS_HEADER = "Preconditions:"
+STEPS_HEADER = "Test Steps:"
+
+
+def format_script_text(test_script) -> str:
+    """Flatten a structured script to labeled plain text.
+
+    Headers let readers (and the frontend) tell preconditions apart
+    from steps. Legacy rows stored without headers still display via
+    a single-block fallback.
+    """
+    step_lines = [
+        f"{s.step_number}. {s.action} Expected: {s.expected_result}"
+        for s in test_script.steps
+    ]
+    return "\n".join(
+        [PRECONDITIONS_HEADER, test_script.preconditions, "", STEPS_HEADER]
+        + step_lines
+    )
+
 
 def _sha(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
@@ -47,12 +67,24 @@ def ensure_configuration_version(session, version: str = RULE_VERSION):
 def ensure_prompt_version(session, agent_name: str, version: int, prompt_text: str):
     digest = _sha(f"{agent_name}:{version}:{prompt_text}")
     row = session.query(PromptVersion).filter_by(hash=digest).first()
-    if row is None:
-        row = PromptVersion(
-            agent_name=agent_name, version=version, prompt=prompt_text, hash=digest
+    if row is not None:
+        return row
+    existing = (
+        session.query(PromptVersion)
+        .filter_by(agent_name=agent_name, version=version)
+        .first()
+    )
+    if existing is not None:
+        raise ValueError(
+            f"Prompt text changed for {agent_name} v{version} "
+            f"(stored hash {existing.hash[:12]}… != new hash {digest[:12]}…). "
+            f"Bump PROMPT_VERSION to {version + 1} instead of reusing v{version}."
         )
-        session.add(row)
-        session.flush()
+    row = PromptVersion(
+        agent_name=agent_name, version=version, prompt=prompt_text, hash=digest
+    )
+    session.add(row)
+    session.flush()
     return row
 
 
@@ -126,6 +158,7 @@ def save_assessment(
     assessment: dict,
     test_script=None,
     prompts: dict | None = None,
+    allow_deferred_script: bool = False,
 ) -> RiskAssessment:
     """Persist one full assessment. Returns the RiskAssessment row.
 
@@ -134,7 +167,7 @@ def save_assessment(
     """
     prompts = prompts or {}
     wants_script = bool(assessment["assurance"]["generate_test"])
-    if wants_script and test_script is None:
+    if wants_script and test_script is None and not allow_deferred_script:
         raise ValueError("Assurance requires a test script but none was given.")
     if not wants_script and test_script is not None:
         raise ValueError("Refusing to store a test script for a non-scripted verdict.")
@@ -230,15 +263,12 @@ def save_assessment(
             prompts.get("writer_version", 1),
             prompts.get("writer_text", "test_script_generator"),
         )
-        lines = [test_script.preconditions] + [
-            f"{s.step_number}. {s.action} Expected: {s.expected_result}"
-            for s in test_script.steps
-        ]
+        lines = format_script_text(test_script)
         ts = TestScriptRow(
             requirement_version_id=version.id,
             assurance_decision_id=ad.id,
             prompt_version_id=pv.id,
-            script="\n".join(lines),
+            script=lines,
             status="DRAFT",
             version=1,
         )
@@ -246,3 +276,33 @@ def save_assessment(
         session.flush()
 
     return ra
+
+
+def save_generated_test_script(
+    session,
+    version: RequirementVersion,
+    assurance_decision: AssuranceDecisionRow,
+    test_script,
+    prompts: dict | None = None,
+) -> TestScriptRow:
+    """Persist a user-requested script for an existing scripted decision."""
+    prompts = prompts or {}
+    if not assurance_decision.generate_test:
+        raise ValueError("A test script is only valid for scripted assurance.")
+    prompt_version = ensure_prompt_version(
+        session,
+        prompts.get("writer_name", "test_script_generator"),
+        prompts.get("writer_version", 1),
+        prompts.get("writer_text", "test_script_generator"),
+    )
+    row = TestScriptRow(
+        requirement_version_id=version.id,
+        assurance_decision_id=assurance_decision.id,
+        prompt_version_id=prompt_version.id,
+        script=format_script_text(test_script),
+        status="DRAFT",
+        version=1,
+    )
+    session.add(row)
+    session.flush()
+    return row

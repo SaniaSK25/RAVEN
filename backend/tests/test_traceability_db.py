@@ -43,6 +43,7 @@ from app.services.traceability.matrix import (
 )
 from app.services.traceability.orphans import find_orphans
 from app.services.traceability.requirement_ops import (
+    create_requirement,
     delete_requirement,
     edit_requirement,
 )
@@ -60,6 +61,31 @@ def make_session():
     )
     Base.metadata.create_all(engine)
     return sessionmaker(bind=engine)()
+
+
+def test_create_requirement_assigns_sequential_keys():
+    session = make_session()
+    try:
+        first = create_requirement(
+            session,
+            title="First requirement",
+            description="First requirement",
+            text="First requirement",
+            req_key=None,
+            created_by="test",
+        )
+        second = create_requirement(
+            session,
+            title="Second requirement",
+            description="Second requirement",
+            text="Second requirement",
+            req_key=None,
+            created_by="test",
+        )
+        assert first.req_key == "REQ-0001"
+        assert second.req_key == "REQ-0002"
+    finally:
+        session.close()
 
 
 def seed_scripted(session, key="LIMS-001"):
@@ -419,10 +445,12 @@ class TestImport:
 
 
 class TestAppWiring:
-    def test_routers_register_expected_paths(self):
+    def test_routers_register_expected_paths(self, monkeypatch):
+        monkeypatch.setenv("SECRET_KEY", "test-secret-key-for-ci-only")
         from app.main import app
 
-        paths = set(app.openapi()["paths"])
+        openapi_paths = app.openapi()["paths"]
+        paths = set(openapi_paths)
         for expected in (
             "/api/v1/requirements",
             "/api/v1/traceability/matrix",
@@ -437,3 +465,43 @@ class TestAppWiring:
             "/api/v1/tests/manual",
         ):
             assert expected in paths, f"missing route {expected}"
+        assert "get" in openapi_paths["/api/v1/requirements"]
+
+    def test_requirement_list_and_detail_routes_return_persisted_records(
+        self, monkeypatch
+    ):
+        monkeypatch.setenv("SECRET_KEY", "test-secret-key-for-ci-only")
+        from fastapi.testclient import TestClient
+
+        from app.db.session import get_db
+        from app.main import app
+
+        session = make_session()
+        requirement = create_requirement(
+            session,
+            title="Backend requirement",
+            description="Persisted backend requirement.",
+            text="Persisted backend requirement.",
+            req_key=None,
+            created_by="test",
+        )
+        session.commit()
+
+        def override_db():
+            yield session
+
+        app.dependency_overrides[get_db] = override_db
+        try:
+            with TestClient(app) as client:
+                listed = client.get("/api/v1/requirements")
+                assert listed.status_code == 200
+                assert listed.json()["total"] == 1
+                assert listed.json()["items"][0]["req_key"] == "REQ-0001"
+
+                detail = client.get(f"/api/v1/requirements/{requirement.req_key}")
+                assert detail.status_code == 200
+                assert detail.json()["text"] == "Persisted backend requirement."
+                assert detail.json()["versions"][0]["is_current"] is True
+        finally:
+            app.dependency_overrides.pop(get_db, None)
+            session.close()

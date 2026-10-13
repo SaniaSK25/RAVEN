@@ -18,9 +18,22 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # --- Additive columns (nullable/server-defaulted: safe on existing rows) ---
-    op.add_column("requirements", sa.Column("req_key", sa.String(32), nullable=True))
-    op.create_unique_constraint("uq_requirements_req_key", "requirements", ["req_key"])
+    # --- Additive columns (nullable/server-defaulted: safe on existing rows)
+    inspector = sa.inspect(op.get_bind())
+    requirement_columns = {
+        column["name"] for column in inspector.get_columns("requirements")
+    }
+    requirement_constraints = {
+        constraint["name"]
+        for constraint in inspector.get_unique_constraints("requirements")
+    }
+    with op.batch_alter_table("requirements") as batch_op:
+        if "req_key" not in requirement_columns:
+            batch_op.add_column(sa.Column("req_key", sa.String(32), nullable=True))
+        if "uq_requirements_req_key" not in requirement_constraints:
+            batch_op.create_unique_constraint(
+                "uq_requirements_req_key", ["req_key"]
+            )
     op.create_index("ix_requirements_req_key", "requirements", ["req_key"])
 
     op.add_column(

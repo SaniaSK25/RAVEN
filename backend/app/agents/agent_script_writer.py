@@ -4,13 +4,15 @@ from app.agents.bedrock_config import TokenCollector, get_llm
 from app.models.models import ScriptPreconditions, ScriptSteps, TestScript
 
 PROMPT_NAME = "test_script_generator"
-PROMPT_VERSION = 3
+PROMPT_VERSION = 4
 
 PRECONDITIONS_SYSTEM = (
     "You are an expert Pharmaceutical Software Validation (CSV) Engineer. "
     "Given a software requirement, write ONLY the preconditions: what must "
     "be set up or true before the test begins (system state, test data, "
-    "access). Return the preconditions text and nothing else."
+    "access). Write plain paragraphs or bullet lines starting with '-'. "
+    "Do NOT use numbered steps — numbering is reserved for the test-steps "
+    "section. Return the preconditions text and nothing else."
 )
 
 STEPS_SYSTEM = (

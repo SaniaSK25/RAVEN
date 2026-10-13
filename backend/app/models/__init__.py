@@ -39,6 +39,7 @@ from app.models.requirement_version import RequirementVersion
 from app.models.risk_assessment import RiskAssessment
 from app.models.stored_evidence import Evidence
 from app.models.test_script import TestScript
+from app.models.token_usage import TokenUsage
 from app.models.trace_link import TraceLink
 
 __all__ = [
@@ -69,6 +70,7 @@ __all__ = [
     "TestOrigin",
     "TestScript",
     "TestScriptStatus",
+    "TokenUsage",
     "TraceLink",
     "TraceLinkType",
     "TraceNodeType",

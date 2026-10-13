@@ -62,7 +62,7 @@ class Evidence(Base, ImmutableBaseModel):
     Immutable frozen Agent 1 extraction.
 
     Relationships:
-        requirement_version: version this extraction describes (1 -> 1).
+        requirement_version: version this extraction describes (many -> 1).
         risk_assessments: Layer 3 analyses consuming it (1 -> many).
     """
 
@@ -96,9 +96,8 @@ class Evidence(Base, ImmutableBaseModel):
     requirement_version_id: Mapped[UUID] = mapped_column(
         ForeignKey("requirement_versions.id", ondelete="CASCADE"),
         nullable=False,
-        unique=True,
     )
-    """Version described; evidence dies with its version (1 -> 1)."""
+    """Version described; each analysis run retains its own frozen evidence."""
 
     # --- Severity booleans (6 triples) -----------------------------------
 
@@ -191,7 +190,7 @@ class Evidence(Base, ImmutableBaseModel):
     requirement_version: Mapped[RequirementVersion] = relationship(
         back_populates="evidence",
     )
-    """Described version (1 -> 1)."""
+    """Described version (many -> 1)."""
 
     risk_assessments: Mapped[list[RiskAssessment]] = relationship(
         back_populates="evidence",
