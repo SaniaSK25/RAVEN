@@ -51,6 +51,8 @@ export function AssuranceBadge({ value }: { value: AssuranceOutcome }) {
           "border-zinc-300 bg-zinc-100 text-zinc-800 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100",
         value === "exploratory" &&
           "border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-200",
+        value === "unscripted" &&
+          "border-zinc-200 bg-white text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300",
         value === "unscripted-supplier" &&
           "border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-900 dark:bg-violet-950 dark:text-violet-200",
         value === "unscripted-adhoc" &&

@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7f7f7;
+  --background: #f5f5f4;
   --foreground: #171717;
 }
 
@@ -18,7 +18,7 @@
   --color-brand: #070708;
   --color-accent: #ef781a;
   --color-accent-dark: #d1660f;
-  --color-canvas: #f7f7f7;
+  --color-canvas: #f5f5f4;
   --color-surface: #ffffff;
   --color-subtle: #f0f0f0;
   --color-line: #d9d9d9;
@@ -41,8 +41,60 @@
   }
 }
 
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 body {
-  background: var(--background);
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(239, 120, 26, 0.08), transparent 20%),
+    linear-gradient(180deg, #f8f7f5 0%, #f3f4f6 100%);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+}
+
+::selection {
+  background: rgba(239, 120, 26, 0.18);
+}
+
+@layer components {
+  .page-header-shell {
+    @apply rounded-2xl border border-orange-200/80 bg-gradient-to-r from-orange-50 via-white to-zinc-50 p-5 shadow-[0_10px_30px_rgba(15,23,42,0.04)] dark:border-zinc-800 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900;
+  }
+
+  .page-panel {
+    @apply rounded-2xl border border-zinc-200 bg-white/90 p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-950/90;
+  }
+
+  .page-table-shell {
+    @apply overflow-hidden rounded-2xl border border-zinc-200 bg-white/90 shadow-[0_1px_2px_rgba(0,0,0,0.04)] backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-950/90;
+  }
+}
+
+/*
+ * Sidebar nav scrollbar: thin and tinted to match the dark brand
+ * sidebar so it doesn't read as a second page scrollbar.
+ */
+.sidebar-nav {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+.sidebar-nav::-webkit-scrollbar {
+  width: 6px;
+}
+.sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 9999px;
+}
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35);
 }

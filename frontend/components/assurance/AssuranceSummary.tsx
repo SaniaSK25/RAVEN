@@ -11,19 +11,15 @@ export default function AssuranceSummary({ decisions }: AssuranceSummaryProps) {
     { label: "Scripted", value: decisions.filter((d) => d.outcome === "scripted").length },
     { label: "Exploratory", value: decisions.filter((d) => d.outcome === "exploratory").length },
     {
-      label: "Supplier Assurance",
-      value: decisions.filter((d) => d.outcome === "unscripted-supplier").length,
-    },
-    {
       label: "Unscripted",
-      value: decisions.filter((d) => d.outcome === "unscripted-adhoc").length,
+      value: decisions.filter((d) => d.outcome.startsWith("unscripted")).length,
     },
   ];
 
   return (
     <dl
       aria-label="Assurance summary"
-      className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 sm:grid-cols-5 dark:border-zinc-800 dark:bg-zinc-800"
+      className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 sm:grid-cols-4 dark:border-zinc-800 dark:bg-zinc-800"
     >
       {stats.map((stat) => (
         <div key={stat.label} className="bg-white px-4 py-3.5 dark:bg-zinc-950">

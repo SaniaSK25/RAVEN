@@ -1,7 +1,7 @@
 import { Unlink } from "lucide-react";
 import type { OrphanArtifact } from "@/lib/traceability-data";
 
-/** Compact orphan inspection — demo cases with no linked counterpart. */
+/** Compact orphan inspection — backend records with no linked counterpart. */
 export default function OrphanList({ orphans }: { orphans: OrphanArtifact[] }) {
   if (orphans.length === 0) return null;
 
@@ -15,7 +15,7 @@ export default function OrphanList({ orphans }: { orphans: OrphanArtifact[] }) {
       </h2>
       <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
         {orphans.length} artifact{orphans.length === 1 ? "" : "s"} with no linked counterpart.
-        Demo cases so the state can be inspected.
+        Backend-detected artifacts without the expected active links.
       </p>
       <ul className="mt-4 space-y-2.5">
         {orphans.map((orphan) => (

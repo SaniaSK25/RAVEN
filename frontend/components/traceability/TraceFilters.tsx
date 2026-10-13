@@ -22,8 +22,7 @@ const RISK_OPTIONS: RiskBand[] = ["LOW", "MEDIUM", "HIGH"];
 const ASSURANCE_OPTIONS: AssuranceOutcome[] = [
   "scripted",
   "exploratory",
-  "unscripted-supplier",
-  "unscripted-adhoc",
+  "unscripted",
 ];
 
 function toggle<T>(list: T[], value: T): T[] {

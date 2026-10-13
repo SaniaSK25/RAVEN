@@ -80,7 +80,7 @@ export default function AssessmentsTable({
               <SortButton label="Detectability" column="detectability" sortKey={sortKey} sortDir={sortDir} onSortChange={onSortChange} />
             </th>
             <th scope="col" aria-sort={sortKey === "rpn" ? (sortDir === "asc" ? "ascending" : "descending") : "none"} className="px-4 py-3 font-medium whitespace-nowrap">
-              <SortButton label="RPN" column="rpn" sortKey={sortKey} sortDir={sortDir} onSortChange={onSortChange} />
+              <SortButton label="RPN score (1–5)" column="rpn" sortKey={sortKey} sortDir={sortDir} onSortChange={onSortChange} />
             </th>
             <th scope="col" className="px-4 py-3 font-medium">
               Risk
@@ -96,7 +96,7 @@ export default function AssessmentsTable({
             const needsAttention = item.status === "needs-review" || item.status === "stale";
             return (
               <tr
-                key={item.requirementId}
+                key={item.assessmentId}
                 className={`border-b border-zinc-100 transition-colors last:border-0 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900 ${
                   needsAttention ? "border-l-2 border-l-amber-400" : ""
                 }`}
@@ -119,25 +119,25 @@ export default function AssessmentsTable({
                   </Link>
                 </td>
                 <td className="px-4 py-3 align-top text-zinc-900 tabular-nums dark:text-zinc-50">
-                  {item.severity}
+                  {item.severity ?? "—"}
                 </td>
                 <td className="px-4 py-3 align-top text-zinc-900 tabular-nums dark:text-zinc-50">
-                  {item.probability}
+                  {item.probability ?? "—"}
                 </td>
                 <td className="px-4 py-3 align-top text-zinc-900 tabular-nums dark:text-zinc-50">
-                  {item.detectability}
+                  {item.detectability ?? "—"}
                 </td>
                 <td
                   className={`px-4 py-3 align-top tabular-nums ${
-                    item.rpn >= 51
+                    item.band === "HIGH"
                       ? "font-bold text-zinc-900 dark:text-zinc-50"
                       : "text-zinc-600 dark:text-zinc-300"
                   }`}
                 >
-                  {item.rpn}
+                  {item.rpn ?? "—"}
                 </td>
                 <td className="px-4 py-3 align-top">
-                  <RiskBadge value={item.band} />
+                  {item.band ? <RiskBadge value={item.band} /> : "—"}
                 </td>
                 <td className="px-4 py-3 align-top">
                   <StatusBadge value={item.status} />

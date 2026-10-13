@@ -24,7 +24,7 @@ export default function DistributionSection({
   return (
     <section
       aria-label={title}
-      className="rounded-lg border border-zinc-200 bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-zinc-800 dark:bg-zinc-950"
+      className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-[0_8px_20px_rgba(15,23,42,0.06)] dark:border-zinc-800 dark:bg-zinc-950"
     >
       <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
         {title}

@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RAVEN frontend
 
-## Getting Started
+Next.js App Router frontend for the RAVEN regulated-software QA workspace.
 
-First, run the development server:
+UI route pages are organized under `app/(pages)`. The parenthesized route group
+keeps the existing URL paths unchanged; API route handlers remain under
+`app/api`.
+
+## Run locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Set `RAVEN_BACKEND_URL` in the frontend server environment when the backend is
+not at `http://127.0.0.1:8000`. The variable is server-only; requests to the
+FastAPI `/api/v1` routes go through a same-origin Next.js proxy, avoiding
+browser CORS configuration.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Requirement ingestion
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Open **Ingestion** from the primary navigation. The page accepts CSV files with
+a `text` header and JSON arrays of strings or objects with a string `text`
+property. It previews rows, marks empty rows and within-file duplicates, then
+creates valid requirements through `POST /api/v1/requirements`.
 
-## Learn More
+Each row is sent separately. The result can therefore be partial if a request
+fails. This path creates requirement records and REQ keys only; it does not run
+the analysis, assurance, or test-generation pipeline. Duplicate text already
+stored in the backend is not checked by the current API.
 
-To learn more about Next.js, take a look at the following resources:
+## Live backend workspaces
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Requirements list and detail, persisted assessments and assurance decisions,
+traceability matrix/graph/orphans, change-event list, and test-script list read
+actual backend records. Their API calls show loading, empty, and error states
+rather than substituting sample records. Assessment and assurance lists use
+`GET /api/v1/assessments` and `GET /api/v1/assurance`; those screens display
+saved decisions and their rule context but do not recalculate scores. A
+requirement detail can start backend analysis with
+`POST /api/v1/assessments/{requirement_id}/run`. If the saved assurance decision
+is scripted, the page offers a separate `Generate test script` action backed by
+`POST /api/v1/assessments/{requirement_id}/generate-script`. Token usage is
+stored per analysis/script-generation run and summarized for the current
+requirement version. Ingestion creates requirements using the same backend.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Compliance, exports, and dashboard summary views still use demo data. The
+backend does not yet expose complete read/write workflows for those areas. Test
+execution, change-event review actions, and analysis generation are also not
+initiated by the frontend.

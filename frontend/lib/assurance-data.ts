@@ -1,30 +1,4 @@
-/**
- * Assurance demo-data service.
- *
- * No assurance endpoint exists in the backend yet, so this module derives
- * typed assurance records from the existing demo sources:
- * - requirement id/title/version/status from lib/requirements-data.ts
- * - outcome/rationale/ruleId/decisionPath from the per-ID assuranceDetail,
- *   severity/band/RPN from riskDetail, gampCategory/gxpImpact from the
- *   per-ID record in lib/requirement-detail-data.ts
- *
- * This introduces no new numbers or outcomes, so list ↔ assessments ↔
- * assurance ↔ detail stay consistent by construction.
- *
- * Reuses the stable domain unions from lib/domain.ts — no duplicate
- * status/assurance unions are defined here. Decision status uses only
- * `current` (CURRENT), `needs-review` (NEEDS REVIEW), and `stale` (STALE):
- * a `warning` (changed-since-assessment) requirement maps to `stale`
- * because its decision relates to an outdated requirement version.
- *
- * IMPORTANT: the values below are DISPLAYED as supplied decisions from
- * RAVEN's deterministic engine. The concise `reason` is a display template
- * phrasing the RECORDED outcome — it must never decide an outcome. The UI
- * implements no assurance engine.
- *
- * To integrate the real API later, replace `getAssuranceDemoData()` with a
- * fetch to e.g. GET /api/assurance returning `AssuranceRecord[]`.
- */
+/** Assurance workspace record type and retained legacy sample-data adapter. */
 
 import type {
   AssuranceOutcome,
@@ -37,15 +11,16 @@ import { getRequirementsDemoData } from "@/lib/requirements-data";
 export type { AssuranceOutcome, RequirementStatus, RiskBand };
 
 export interface AssuranceRecord {
+  decisionId: string;
   requirementId: string;
   /** Requirement text/title — the main visual focus in the table. */
   title: string;
-  band: RiskBand;
-  rpn: number;
-  severity: number;
-  gxpImpact: boolean;
+  band: RiskBand | null;
+  rpn: number | null;
+  severity: number | null;
+  gxpImpact: boolean | null;
   /** As recorded, e.g. "Category 5". */
-  gampCategory: string;
+  gampCategory: string | null;
   outcome: AssuranceOutcome;
   /** Concise display phrasing of the recorded outcome (not a decision). */
   reason: string;
@@ -70,8 +45,9 @@ export type AssuranceSortDir = "asc" | "desc";
 const OUTCOME_RANK: Record<AssuranceOutcome, number> = {
   scripted: 0,
   exploratory: 1,
-  "unscripted-supplier": 2,
-  "unscripted-adhoc": 3,
+  unscripted: 2,
+  "unscripted-supplier": 3,
+  "unscripted-adhoc": 4,
 };
 
 export function compareAssurance(a: AssuranceOutcome, b: AssuranceOutcome): number {
@@ -110,6 +86,9 @@ function conciseReason(
 
 /** Reassurance copy for valid non-scripted outcomes (not missing work). */
 export function nonScriptedNote(outcome: AssuranceOutcome): string | null {
+  if (outcome === "unscripted") {
+    return "No formally scripted test generation is required by this decision.";
+  }
   if (outcome === "unscripted-supplier") {
     return "No formal scripted test required; assurance is provided through supplier evidence.";
   }
@@ -129,6 +108,7 @@ export function getAssuranceDemoData(): AssuranceRecord[] {
     const gampCategory = detail?.gampCategory ?? "Category 3";
     const stale = item.status === "stale" || item.status === "warning";
     return {
+      decisionId: item.id,
       requirementId: item.id,
       title: item.title,
       band: item.risk,
