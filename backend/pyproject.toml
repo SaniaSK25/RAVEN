@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "raven-backend"
 version = "0.1.0"
@@ -27,7 +31,18 @@ dev = [
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
     "ruff>=0.16.9",
+    "taskipy>=1.14.1",
 ]
+
+[tool.setuptools.packages.find]
+include = ["app*", "config*", "trace_demo*"]
+exclude = ["alembic*"]
+
+[tool.uv]
+package = false
+
+[tool.taskipy.tasks]
+start = "uvicorn app.main:app --reload --port 8000"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
