@@ -1,3 +1,5 @@
+name: raven-backend
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -28,7 +30,7 @@ services:
       SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY to a random value of at least 16 characters}
       DATABASE_URL: "postgresql+psycopg://raven:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD to a random value}@postgres:5432/raven"
     ports:
-      - "${BACKEND_PORT:-8000}:8000"
+      - "${BACKEND_PORT:-8001}:8000"
 
 volumes:
   postgres_data:
