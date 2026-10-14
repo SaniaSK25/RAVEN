@@ -1,5 +1,9 @@
 version: "3.8"
 
+# STANDALONE ONLY: frontend against a separately deployed backend.
+# Do NOT run alongside the root docker-compose.yml — both need frontend
+# host port 3001 unless you override FRONTEND_PORT.
+
 services:
   frontend:
     build:

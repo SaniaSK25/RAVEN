@@ -1,27 +1,31 @@
 version: "3.8"
 
+# STANDALONE ONLY: backend + postgres without the frontend.
+# Do NOT run alongside the root docker-compose.yml — both need the same
+# default host ports (8001/5433). Prefer the root stack for EC2 deploys.
+
 services:
   db:
     image: postgres:16
     container_name: raven_standalone_postgres
     restart: always
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-raven}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in backend/.env}
-      POSTGRES_DB: ${POSTGRES_DB:-raven}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-raven_db}
     ports:
       - "${POSTGRES_PORT:-5433}:5432"
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "pg_isready -U ${POSTGRES_USER:-raven} -d ${POSTGRES_DB:-raven}",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-raven_db}",
         ]
       interval: 5s
       timeout: 5s
       retries: 10
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - raven_standalone_postgres_data:/var/lib/postgresql/data
     networks:
       - raven
 
@@ -35,15 +39,16 @@ services:
       ENVIRONMENT: production
       DEBUG: "false"
       SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in backend/.env}
-      POSTGRES_USER: ${POSTGRES_USER:-raven}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in backend/.env}
-      POSTGRES_DB: ${POSTGRES_DB:-raven}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-raven_db}
       POSTGRES_SERVER: db
-      DATABASE_URL: "postgresql+psycopg://${POSTGRES_USER:-raven}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in backend/.env}@db:5432/${POSTGRES_DB:-raven}"
+      DATABASE_URL: "postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-raven_db}"
       AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
       AWS_REGION: ${AWS_REGION:-us-east-1}
       BEDROCK_MODEL_ID: ${BEDROCK_MODEL_ID:-global.anthropic.claude-opus-4-8}
       AWS_EC2_METADATA_DISABLED: "false"
+      BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS:-http://localhost:3001,http://127.0.0.1:3001}
     ports:
       - "${BACKEND_PORT:-8001}:8000"
     depends_on:
@@ -63,7 +68,7 @@ services:
       - raven
 
 volumes:
-  postgres_data:
+  raven_standalone_postgres_data:
 
 networks:
   raven:

@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Served behind EC2 nginx at path /raven/ (existing app keeps /).
+  // Keeps pages, assets, and the /api/v1 backend proxy under /raven.
+  basePath: "/raven",
 };
 
 export default nextConfig;

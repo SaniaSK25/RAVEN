@@ -64,6 +64,19 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # ==========================================================
+    # CORS
+    #
+    # Comma-separated list of origins allowed to call the API
+    # directly. Browser traffic normally goes through the Next.js
+    # same-origin proxy, so this only matters for direct API calls.
+    # Production default covers local loopback; override on EC2 via
+    # BACKEND_CORS_ORIGINS, e.g.:
+    #   BACKEND_CORS_ORIGINS=http://52.204.215.223,http://52.204.215.223/raven
+    # ==========================================================
+
+    BACKEND_CORS_ORIGINS: str = "http://localhost:3001,http://127.0.0.1:3001"
+
+    # ==========================================================
     # Pydantic Settings
     # ==========================================================
 

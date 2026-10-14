@@ -17,12 +17,17 @@ app = FastAPI(
     debug=settings.DEBUG,
 )
 
-# Local dev: allow the Next.js frontend (default http://localhost:3000)
-# to call the API directly. Browser traffic normally goes through the
-# Next proxy, so this is permissive by design for development.
+# Browser traffic normally goes through the Next.js same-origin proxy
+# (now under /raven), so this list only matters for direct API calls.
+# Origins come from BACKEND_CORS_ORIGINS env (comma-separated).
+allow_origins = [
+    origin.strip()
+    for origin in settings.BACKEND_CORS_ORIGINS.split(",")
+    if origin.strip()
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=allow_origins,
     allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["Content-Type"],
 )

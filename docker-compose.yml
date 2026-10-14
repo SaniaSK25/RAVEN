@@ -1,29 +1,51 @@
 version: "3.8"
 
+# Explicit project name: isolates RAVEN volumes/networks/containers from
+# application 1 on the same EC2. `docker compose down` in this directory
+# only touches the `raven-stack` project — it can never stop app1's
+# containers. Never run `docker stop $(docker ps -q)` or
+# `docker system prune -a` on the shared host.
+
+# RAVEN full stack (frontend + backend + postgres).
+# Deploy on shared EC2 alongside the existing app on port 80:
+#   - Only the frontend host port is published (bound to 127.0.0.1 so
+#     the EC2 nginx reverse proxy on the same host can reach it).
+#   - Backend and postgres are internal-only (expose, no ports) and are
+#     reached over the `raven` Docker network.
+#   - Public URL is path-based: http://<ec2-host>/raven/ via nginx.
+# Do NOT run backend/docker-compose.yml or frontend/docker-compose.yml
+# alongside this file — they are standalone alternatives.
+
+name: raven-stack
+
 services:
   db:
     image: postgres:16
     container_name: raven_postgres
     restart: always
+    # Cap memory so RAVEN can never starve application 1 on the shared EC2.
+    # Tune down further if the instance is small (check `free -h` first).
+    mem_limit: 1g
+    mem_reservation: 512m
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-raven}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env file}
-      POSTGRES_DB: ${POSTGRES_DB:-raven}
-    ports:
-      - "${POSTGRES_PORT:-5433}:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-raven_db}
+    expose:
+      - "5432"
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "pg_isready -U ${POSTGRES_USER:-raven} -d ${POSTGRES_DB:-raven}",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-raven_db}",
         ]
       interval: 5s
       timeout: 5s
       retries: 10
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - raven_net_postgres_data:/var/lib/postgresql/data
     networks:
-      - raven
+      - raven_net
 
   backend:
     build:
@@ -31,21 +53,24 @@ services:
       dockerfile: Dockerfile
     container_name: raven_backend
     restart: always
+    mem_limit: 2g
+    mem_reservation: 1g
     environment:
       ENVIRONMENT: production
       DEBUG: "false"
       SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in the root .env file}
-      POSTGRES_USER: ${POSTGRES_USER:-raven}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env file}
-      POSTGRES_DB: ${POSTGRES_DB:-raven}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-raven_db}
       POSTGRES_SERVER: db
-      DATABASE_URL: "postgresql+psycopg://${POSTGRES_USER:-raven}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env file}@db:5432/${POSTGRES_DB:-raven}"
+      DATABASE_URL: "postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-raven_db}"
       AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
       AWS_REGION: ${AWS_REGION:-us-east-1}
       BEDROCK_MODEL_ID: ${BEDROCK_MODEL_ID:-global.anthropic.claude-opus-4-8}
       AWS_EC2_METADATA_DISABLED: "false"
-    ports:
-      - "${BACKEND_PORT:-8001}:8000"
+      BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS:-http://localhost:3001,http://127.0.0.1:3001}
+    expose:
+      - "8000"
     depends_on:
       db:
         condition: service_healthy
@@ -60,7 +85,7 @@ services:
       retries: 3
       start_period: 15s
     networks:
-      - raven
+      - raven_net
 
   frontend:
     build:
@@ -68,19 +93,21 @@ services:
       dockerfile: Dockerfile
     container_name: raven_frontend
     restart: always
+    mem_limit: 1g
+    mem_reservation: 512m
     environment:
       RAVEN_BACKEND_URL: http://backend:8000
     ports:
-      - "${FRONTEND_PORT:-3001}:3000"
+      - "127.0.0.1:${FRONTEND_PORT:-3001}:3000"
     depends_on:
       backend:
         condition: service_healthy
     networks:
-      - raven
+      - raven_net
 
 volumes:
-  postgres_data:
+  raven_postgres_data:
 
 networks:
-  raven:
+  raven_net:
     driver: bridge
