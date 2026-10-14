@@ -1,12 +1,13 @@
-name: raven-frontend
+version: "3.8"
 
 services:
   frontend:
     build:
       context: .
       dockerfile: Dockerfile
-    restart: unless-stopped
+    container_name: raven_standalone_frontend
+    restart: always
     environment:
-      RAVEN_BACKEND_URL: ${RAVEN_BACKEND_URL:?Set RAVEN_BACKEND_URL to the backend URL}
+      RAVEN_BACKEND_URL: ${RAVEN_BACKEND_URL:?Set RAVEN_BACKEND_URL in frontend/.env}
     ports:
       - "${FRONTEND_PORT:-3001}:3000"
