@@ -8,11 +8,10 @@
 # Local startup needs no .env file. The SECRET_KEY fallback is for local
 # development only; set a strong, persistent SECRET_KEY for deployments.
 # Deploy on shared EC2 alongside the existing app on port 80:
-#   - Only the frontend host port is published (bound to 127.0.0.1 so
-#     the EC2 nginx reverse proxy on the same host can reach it).
-# - Backend and postgres are internal-only (expose, no ports) and are
+#   - The frontend is published on host port 3001; visit
+#     http://<ec2-host>:3001/raven/ without changing the other app.
+#   - Backend and postgres are internal-only (expose, no ports) and are
 #   reached over the `raven_net` Docker network.
-# - Public URL is path-based: http://<ec2-host>/raven/ via nginx.
 # This is the only Compose file for the RAVEN stack.
 
 name: raven-stack
@@ -97,7 +96,7 @@ services:
     environment:
       RAVEN_BACKEND_URL: http://backend:8000
     ports:
-      - "127.0.0.1:${FRONTEND_PORT:-3001}:3000"
+      - "${FRONTEND_PORT:-3001}:3000"
     depends_on:
       backend:
         condition: service_healthy

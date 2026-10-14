@@ -29,8 +29,11 @@ docker compose up -d --build
 
 No `.env` file is required for local startup. The frontend reaches the backend
 over the Compose network and is available at `http://localhost:3001/raven/` by
-default. Set `FRONTEND_PORT` in the root `.env` or environment to choose
-another available host port. For production deployment, follow the
+default. On EC2, it is available at
+`http://<ec2-public-ip>:3001/raven/`, without changing another project's
+port-80 routing. Allow inbound TCP port 3001 in the EC2 security group,
+preferably only from trusted client IPs. Set `FRONTEND_PORT` in the root
+`.env` or environment to choose another available host port. For production deployment, follow the
 [backend Docker deployment instructions](../backend/README.md#docker-deployment)
 to configure a persistent secret and secure database credentials.
 
