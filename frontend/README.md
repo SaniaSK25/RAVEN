@@ -37,9 +37,10 @@ proxy or load balancer for public access.
 
 The frontend-folder `docker-compose.yml` is for running only the frontend
 against a separately deployed backend. Run it from this directory with
-`RAVEN_BACKEND_URL` set in `frontend/.env`; its default host port is also
-`3001`. Do not run it alongside the root stack unless you change one of their
-frontend host ports.
+`RAVEN_BACKEND_URL` set in `frontend/.env` to a backend URL reachable from
+this container, such as `http://<ec2-private-ip>:8001`; its default host port
+is also `3001`. Do not run it alongside the root stack unless you change one
+of their frontend host ports.
 
 ## Requirement ingestion
 
