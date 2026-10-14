@@ -5,7 +5,7 @@ deployment-specific secrets:
 
 ```bash
 umask 077
-printf 'SECRET_KEY=%s\nPOSTGRES_PASSWORD=%s\n' \
+printf 'SECRET_KEY=%s\nPOSTGRES_PASSWORD=%s\nPOSTGRES_USER=raven\nPOSTGRES_DB=raven\n' \
   "$(openssl rand -hex 32)" \
   "$(openssl rand -hex 32)" > .env
 docker compose up -d --build
@@ -26,14 +26,15 @@ Use the same values when restarting an existing deployment so authentication
 tokens remain valid and PostgreSQL can unlock its data volume. The secrets are
 not committed to source control.
 
-RAVEN uses Compose project name `raven` and listens on host port `3001` for the
-frontend and `8001` for the API by default, avoiding the other application's
-ports `80` and `8000`. Set `FRONTEND_PORT` or `BACKEND_PORT` in the root `.env`
-to choose different available host ports. PostgreSQL is reachable only inside
-RAVEN's Docker network and does not publish port `5432`. Do not expose the
-backend port to the public internet unless required; restrict its EC2
-security-group ingress to trusted sources.
+RAVEN listens on host port `3001` for the frontend, `8001` for the API, and
+`5433` for PostgreSQL by default, avoiding the other application's ports
+`80`, `8000`, and `5432`. Set `FRONTEND_PORT`, `BACKEND_PORT`, or
+`POSTGRES_PORT` in the root `.env` to choose different available host ports.
+Do not expose the backend or PostgreSQL ports to the public internet unless
+required; restrict their EC2 security-group ingress to trusted sources.
 
 When using the standalone backend Compose file, run it from this directory and
-provide `SECRET_KEY` and `POSTGRES_PASSWORD` in `backend/.env`. It uses project
-name `raven-backend` and host port `8001` by default.
+provide `SECRET_KEY` and `POSTGRES_PASSWORD` in `backend/.env`. It uses the
+same default host ports as the root Compose file. Do not run the root and
+standalone backend Compose files at the same time, as they would conflict on
+those ports.
