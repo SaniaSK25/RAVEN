@@ -1,0 +1,10 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      RAVEN_BACKEND_URL: ${RAVEN_BACKEND_URL:?Set RAVEN_BACKEND_URL to the backend URL}
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
