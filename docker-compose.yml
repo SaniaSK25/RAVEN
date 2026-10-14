@@ -1,3 +1,5 @@
+name: raven
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -30,7 +32,7 @@ services:
       SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in the root .env file}
       DATABASE_URL: "postgresql+psycopg://raven:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env file}@postgres:5432/raven"
     ports:
-      - "${BACKEND_PORT:-8000}:8000"
+      - "${BACKEND_PORT:-8001}:8000"
     healthcheck:
       test:
         - CMD
@@ -55,7 +57,7 @@ services:
     environment:
       RAVEN_BACKEND_URL: http://backend:8000
     ports:
-      - "${FRONTEND_PORT:-3000}:3000"
+      - "${FRONTEND_PORT:-3001}:3000"
     networks:
       - raven
 
