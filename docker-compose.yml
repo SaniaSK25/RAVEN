@@ -1,0 +1,67 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: raven
+      POSTGRES_USER: raven
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env file}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U raven -d raven"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - raven
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: production
+      DEBUG: "false"
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in the root .env file}
+      DATABASE_URL: "postgresql+psycopg://raven:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env file}@postgres:5432/raven"
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - raven
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      RAVEN_BACKEND_URL: http://backend:8000
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    networks:
+      - raven
+
+volumes:
+  postgres_data:
+
+networks:
+  raven:
+    driver: bridge
