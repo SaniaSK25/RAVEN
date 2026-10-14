@@ -10,7 +10,6 @@ instance instead of reading environment variables directly.
 """
 
 from functools import lru_cache
-from typing import Literal
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -36,11 +35,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "RAVEN Backend"
     APP_VERSION: str = "0.1.0"
 
-    ENVIRONMENT: Literal[
-        "development",
-        "testing",
-        "production",
-    ] = "development"
+    ENVIRONMENT: str = "development"
 
     DEBUG: bool = True
 
@@ -57,7 +52,7 @@ class Settings(BaseSettings):
     # Security
     # ==========================================================
 
-    SECRET_KEY: str
+    SECRET_KEY: str = "dev-secret-key-change-me-in-production"
 
     JWT_ALGORITHM: str = "HS256"
 
@@ -90,6 +85,27 @@ class Settings(BaseSettings):
     # ==========================================================
     # Validators
     # ==========================================================
+
+    @field_validator("ENVIRONMENT", mode="before")
+    @classmethod
+    def normalize_environment(cls, value: str | None) -> str:
+        """Normalize common environment aliases used by CI and hosting."""
+
+        if value is None:
+            return "development"
+
+        normalized = str(value).strip().lower()
+        aliases = {
+            "dev": "development",
+            "development": "development",
+            "test": "testing",
+            "testing": "testing",
+            "prod": "production",
+            "production": "production",
+            "pr": "production",
+            "preview": "production",
+        }
+        return aliases.get(normalized, normalized)
 
     @field_validator("DATABASE_URL")
     @classmethod

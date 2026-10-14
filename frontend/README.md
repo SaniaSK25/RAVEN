@@ -20,27 +20,19 @@ browser CORS configuration.
 
 ## Docker deployment
 
-The root Compose file builds and starts the frontend, backend, and PostgreSQL
-containers together. Follow the [backend Docker deployment
-instructions](../backend/README.md#docker-deployment) to configure secrets,
-then run this command from the repository root:
+The single root Compose file builds and starts the frontend, backend, and
+PostgreSQL containers together. From the repository root, run:
 
 ```bash
 docker compose up -d --build
 ```
 
-The frontend reaches the backend over the Compose network. It is available on
-host port `3001` by default; set `FRONTEND_PORT` in the root `.env` to choose
-another available port. Configure the EC2 security group to allow inbound
-traffic only on the ports you intend to serve, and use HTTPS through a reverse
-proxy or load balancer for public access.
-
-The frontend-folder `docker-compose.yml` is for running only the frontend
-against a separately deployed backend. Run it from this directory with
-`RAVEN_BACKEND_URL` set in `frontend/.env` to a backend URL reachable from
-this container, such as `http://<ec2-private-ip>:8001`; its default host port
-is also `3001`. Do not run it alongside the root stack unless you change one
-of their frontend host ports.
+No `.env` file is required for local startup. The frontend reaches the backend
+over the Compose network and is available at `http://localhost:3001/raven/` by
+default. Set `FRONTEND_PORT` in the root `.env` or environment to choose
+another available host port. For production deployment, follow the
+[backend Docker deployment instructions](../backend/README.md#docker-deployment)
+to configure a persistent secret and secure database credentials.
 
 ## Requirement ingestion
 

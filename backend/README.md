@@ -1,41 +1,35 @@
 ## Docker deployment
 
-From the repository root, create a `.env` file for the backend's persistent
-secret:
+From the repository root, build and start the complete stack:
 
-```bash
-umask 077
-printf 'SECRET_KEY=%s\n' "$(openssl rand -hex 32)" > .env
+```sh
 docker compose up -d --build
 ```
 
-The root `docker-compose.yml` starts the frontend, FastAPI backend, and
-PostgreSQL 16 containers on a shared network. The backend waits for PostgreSQL
+No `.env` file is needed for local startup. The root `docker-compose.yml`
+builds the frontend and backend from their respective Dockerfiles and starts
+them with PostgreSQL 16 on a shared network. The backend waits for PostgreSQL
 to become healthy, then runs Alembic migrations before starting the API. The
-frontend waits for the backend health check. PostgreSQL data persists in a
-named Docker volume.
+frontend waits for the backend health check. PostgreSQL data persists in the
+`raven_postgres_data` named volume.
 
-Use the root Compose file for the complete application. The backend-folder
-`docker-compose.yml` is a standalone backend-plus-PostgreSQL option; do not
-start it alongside the root stack, since both need host port `8001`.
+The frontend is available at `http://localhost:3001/raven/` by default. The
+backend and database are only reachable inside the Docker network; the
+frontend's Next.js proxy forwards API requests to the backend.
 
 PostgreSQL uses inline defaults (`POSTGRES_USER=postgres`,
 `POSTGRES_PASSWORD=postgres`, and `POSTGRES_DB=raven_db`), so no PostgreSQL
-`.env` values are required. Override them with secure credentials for
-production, and keep the same values when restarting so PostgreSQL can access
-its existing data volume. Keep `SECRET_KEY` unchanged as well so authentication
-tokens remain valid.
+environment values are required for local startup. For deployment, provide a
+strong, persistent `SECRET_KEY` and unique PostgreSQL credentials through the
+root `.env` file (based on `.env.example`) or exported environment variables.
+Do not use the local fallback secret in production. Keep the database
+credentials and `SECRET_KEY` unchanged across restarts so the database can use
+its existing volume and authentication tokens remain valid.
 
-RAVEN listens on host port `3001` for the frontend, `8001` for the API, and
-`5433` for PostgreSQL by default, avoiding the other application's ports
-`80`, `8000`, and `5432`. Set `FRONTEND_PORT`, `BACKEND_PORT`, or
-`POSTGRES_PORT` in the root `.env` to choose different available host ports.
-Do not expose the backend or PostgreSQL ports to the public internet unless
-required; restrict their EC2 security-group ingress to trusted sources.
+Set `FRONTEND_PORT` in the root `.env` or environment to change the frontend's
+host port from `3001`. The frontend port is bound to loopback by default for
+the EC2 nginx reverse proxy; backend and PostgreSQL ports are not published to
+the host.
 
-When using the standalone backend Compose file, run it from this directory and
-provide `SECRET_KEY` in `backend/.env`. PostgreSQL uses the same inline defaults
-and can be overridden with environment variables or entries in `backend/.env`.
-The standalone file uses the same default host ports as the root Compose file.
-Do not run the root and standalone backend Compose files at the same time, as
-they would conflict on those ports.
+Stop the stack with `docker compose down`. This keeps the database volume; do
+not use `docker compose down --volumes` unless you intend to delete its data.

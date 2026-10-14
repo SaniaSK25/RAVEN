@@ -38,6 +38,10 @@ docker compose ps      # expect raven_frontend / raven_backend / raven_postgres 
 docker compose logs --tail=50 backend frontend
 ```
 
+The local-development defaults are not suitable for production. Keep the
+root `.env` file configured with a strong, persistent `SECRET_KEY` and unique
+PostgreSQL credentials before deploying; never commit `.env`.
+
 Forbidden on the shared host (would affect app1):
 
 ```bash

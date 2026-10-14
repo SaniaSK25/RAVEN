@@ -7,14 +7,15 @@ version: "3.8"
 # `docker system prune -a` on the shared host.
 
 # RAVEN full stack (frontend + backend + postgres).
+# Local startup needs no .env file. The SECRET_KEY fallback is for local
+# development only; set a strong, persistent SECRET_KEY for deployments.
 # Deploy on shared EC2 alongside the existing app on port 80:
 #   - Only the frontend host port is published (bound to 127.0.0.1 so
 #     the EC2 nginx reverse proxy on the same host can reach it).
-#   - Backend and postgres are internal-only (expose, no ports) and are
-#     reached over the `raven` Docker network.
-#   - Public URL is path-based: http://<ec2-host>/raven/ via nginx.
-# Do NOT run backend/docker-compose.yml or frontend/docker-compose.yml
-# alongside this file — they are standalone alternatives.
+# - Backend and postgres are internal-only (expose, no ports) and are
+#   reached over the `raven_net` Docker network.
+# - Public URL is path-based: http://<ec2-host>/raven/ via nginx.
+# This is the only Compose file for the RAVEN stack.
 
 name: raven-stack
 
@@ -43,7 +44,7 @@ services:
       timeout: 5s
       retries: 10
     volumes:
-      - raven_net_postgres_data:/var/lib/postgresql/data
+      - raven_postgres_data:/var/lib/postgresql/data
     networks:
       - raven_net
 
@@ -56,9 +57,9 @@ services:
     mem_limit: 2g
     mem_reservation: 1g
     environment:
-      ENVIRONMENT: production
-      DEBUG: "false"
-      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in the root .env file}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      DEBUG: "${DEBUG:-false}"
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-me-in-production}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-raven_db}
