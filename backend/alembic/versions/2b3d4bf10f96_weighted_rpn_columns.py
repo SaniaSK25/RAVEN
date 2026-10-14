@@ -25,16 +25,25 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
+    columns = {
+        column["name"]: column
+        for column in sa.inspect(bind).get_columns("risk_assessments")
+    }
     with op.batch_alter_table("risk_assessments") as batch_op:
-        batch_op.add_column(
-            sa.Column("rpn_points", sa.Integer(), nullable=False, server_default="20")
-        )
-        batch_op.alter_column(
-            "rpn",
-            existing_type=sa.Integer(),
-            type_=sa.Float(),
-            existing_nullable=False,
-        )
+        if "rpn_points" not in columns:
+            batch_op.add_column(
+                sa.Column(
+                    "rpn_points", sa.Integer(), nullable=False, server_default="20"
+                )
+            )
+        if isinstance(columns["rpn"]["type"], sa.Integer):
+            batch_op.alter_column(
+                "rpn",
+                existing_type=columns["rpn"]["type"],
+                type_=sa.Float(),
+                existing_nullable=False,
+            )
 
 
 def downgrade() -> None:

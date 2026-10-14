@@ -18,6 +18,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    if "token_usage" in sa.inspect(op.get_bind()).get_table_names():
+        return
+
     op.create_table(
         "token_usage",
         sa.Column("requirement_version_id", sa.Uuid(), nullable=False),

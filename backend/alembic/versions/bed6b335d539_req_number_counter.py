@@ -18,23 +18,29 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.create_table(
-        "id_counters",
-        sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("name", sa.String(64), nullable=False),
-        sa.Column("next_value", sa.Integer(), nullable=False),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.func.now(),
-            nullable=False,
-        ),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("name", name="uq_id_counters_name"),
-    )
-    op.create_index("ix_id_counters_name", "id_counters", ["name"])
-
     conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    if "id_counters" not in inspector.get_table_names():
+        op.create_table(
+            "id_counters",
+            sa.Column("id", sa.Uuid(), nullable=False),
+            sa.Column("name", sa.String(64), nullable=False),
+            sa.Column("next_value", sa.Integer(), nullable=False),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+                nullable=False,
+            ),
+            sa.PrimaryKeyConstraint("id"),
+            sa.UniqueConstraint("name", name="uq_id_counters_name"),
+        )
+    if not any(
+        index["name"] == "ix_id_counters_name"
+        for index in sa.inspect(conn).get_indexes("id_counters")
+    ):
+        op.create_index("ix_id_counters_name", "id_counters", ["name"])
+
     existing = [
         row[0]
         for row in conn.execute(
@@ -52,16 +58,29 @@ def upgrade() -> None:
             {"key": f"REQ-{number:04d}", "id": row_id},
         )
         number += 1
-    # Hex without dashes: matches what the Uuid column type stores on
-    # SQLite (CHAR(32)) and casts cleanly to uuid on PostgreSQL. A raw
-    # uuid.UUID object cannot be bound through plain text() SQL on SQLite.
-    conn.execute(
-        sa.text(
-            "INSERT INTO id_counters (id, name, next_value) "
-            "VALUES (:id, 'requirement', :next)"
-        ),
-        {"id": uuid4().hex, "next": number},
+    counter = sa.table(
+        "id_counters",
+        sa.column("id", sa.Uuid()),
+        sa.column("name", sa.String(64)),
+        sa.column("next_value", sa.Integer()),
     )
+    current_counter = conn.execute(
+        sa.select(counter.c.next_value).where(counter.c.name == "requirement")
+    ).scalar_one_or_none()
+    if current_counter is None:
+        conn.execute(
+            counter.insert().values(
+                id=uuid4(),
+                name="requirement",
+                next_value=number,
+            )
+        )
+    elif current_counter < number:
+        conn.execute(
+            counter.update()
+            .where(counter.c.name == "requirement")
+            .values(next_value=number)
+        )
 
 
 def downgrade() -> None:

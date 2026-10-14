@@ -17,6 +17,10 @@ The frontend is available at `http://localhost:3001/raven/` by default. The
 backend and database are only reachable inside the Docker network; the
 frontend's Next.js proxy forwards API requests to the backend.
 
+The startup migration creates the schema expected by the current backend and
+converts rows from the earlier requirements-only schema into versioned
+requirements. Back up an existing database before deploying schema changes.
+
 PostgreSQL uses inline defaults (`POSTGRES_USER=postgres`,
 `POSTGRES_PASSWORD=postgres`, and `POSTGRES_DB=raven_db`), so no PostgreSQL
 environment values are required for local startup. For deployment, provide a
