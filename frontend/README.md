@@ -29,11 +29,17 @@ then run this command from the repository root:
 docker compose up -d --build
 ```
 
-The frontend reaches the backend over the Compose network. It listens on port
-`3000` by default; set `FRONTEND_PORT` in the root `.env` to change the host
-port. Configure the EC2 security group to allow inbound traffic only on the
-ports you intend to serve, and use HTTPS through a reverse proxy or load
-balancer for public access.
+The frontend reaches the backend over the Compose network. It is available on
+host port `3001` by default; set `FRONTEND_PORT` in the root `.env` to choose
+another available port. Configure the EC2 security group to allow inbound
+traffic only on the ports you intend to serve, and use HTTPS through a reverse
+proxy or load balancer for public access.
+
+The frontend-folder `docker-compose.yml` is for running only the frontend
+against a separately deployed backend. Run it from this directory with
+`RAVEN_BACKEND_URL` set in `frontend/.env`; its default host port is also
+`3001`. Do not run it alongside the root stack unless you change one of their
+frontend host ports.
 
 ## Requirement ingestion
 
