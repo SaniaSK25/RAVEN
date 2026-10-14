@@ -501,7 +501,22 @@ class TestAppWiring:
                 detail = client.get(f"/api/v1/requirements/{requirement.req_key}")
                 assert detail.status_code == 200
                 assert detail.json()["text"] == "Persisted backend requirement."
+                assert detail.json()["title"] == detail.json()["description"]
                 assert detail.json()["versions"][0]["is_current"] is True
+
+                created = client.post(
+                    "/api/v1/requirements",
+                    json={
+                        "description": "A complete requirement description.",
+                        "text": "A complete requirement description.",
+                        "created_by": "test",
+                    },
+                )
+                assert created.status_code == 201
+                assert created.json()["description"] == (
+                    "A complete requirement description."
+                )
+                assert created.json()["title"] == created.json()["description"]
         finally:
             app.dependency_overrides.pop(get_db, None)
             session.close()

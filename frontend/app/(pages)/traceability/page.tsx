@@ -1,13 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { AlertCircle, FileSearch, LoaderCircle, Network, RefreshCw } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import GraphErrorBoundary from "@/components/traceability/GraphErrorBoundary";
 import TraceFilters, { type TraceFilterState } from "@/components/traceability/TraceFilters";
 import TraceGraph from "@/components/traceability/TraceGraph";
 import TraceMatrix from "@/components/traceability/TraceMatrix";
-import TraceSummary from "@/components/traceability/TraceSummary";
 import OrphanList from "@/components/traceability/OrphanList";
 import RequirementSearch from "@/components/requirements/RequirementSearch";
 import type { OrphanArtifact, TraceMatrixRow } from "@/lib/traceability-data";
@@ -22,8 +21,6 @@ import {
 } from "@/lib/backend-api";
 
 const EMPTY_FILTERS: TraceFilterState = { coverage: [], risks: [], assurances: [] };
-
-type TraceView = "matrix" | "graph";
 
 function toCoverage(value: unknown): TraceMatrixRow["coverage"] {
   if (value === "covered_by_tests" || value === "covered_by_assurance") return "Covered";
@@ -84,6 +81,7 @@ function adaptGraph(data: BackendTraceGraph): Traceability {
 async function fetchTraceabilityData(): Promise<{
   items: TraceMatrixRow[];
   orphans: OrphanArtifact[];
+  requirementAliases: Record<string, string>;
 }> {
   const [matrix, requirementPage, orphanData] = await Promise.all([
     backendFetch<BackendTraceMatrix>("traceability/matrix"),
@@ -95,6 +93,12 @@ async function fetchTraceabilityData(): Promise<{
       requirement.req_key ?? requirement.id,
       requirement,
     ]),
+  );
+  const requirementAliases = Object.fromEntries(
+    requirementPage.items.flatMap((requirement) => {
+      const key = requirement.req_key ?? requirement.id;
+      return [[requirement.id, key], [key, key]];
+    }),
   );
   const aggregated = new Map<string, TraceMatrixRow>();
   for (const row of matrix.rows) {
@@ -110,7 +114,7 @@ async function fetchTraceabilityData(): Promise<{
     const assurance = toAssurance(row.assurance_level);
     aggregated.set(requirementId, {
       requirementId,
-      title: requirement?.title ?? requirementId,
+      title: requirement?.description ?? requirementId,
       band: toBand(row.band),
       rpn: typeof row.rpn === "number" ? row.rpn : null,
       assurance,
@@ -125,6 +129,7 @@ async function fetchTraceabilityData(): Promise<{
   }
   return {
     items: [...aggregated.values()],
+    requirementAliases,
     orphans: orphanData.orphans.map((orphan) => ({
       id: orphan.entity_key || orphan.entity_id,
       kind:
@@ -135,7 +140,7 @@ async function fetchTraceabilityData(): Promise<{
             : orphan.entity_type === "risk"
               ? "Risk"
               : "Assurance",
-      reason: orphan.reason,
+      reason: orphan.detail,
     })),
   };
 }
@@ -143,27 +148,43 @@ async function fetchTraceabilityData(): Promise<{
 export default function TraceabilityPage() {
   const [all, setAll] = useState<TraceMatrixRow[]>([]);
   const [orphans, setOrphans] = useState<OrphanArtifact[]>([]);
+  const [requirementAliases, setRequirementAliases] = useState<Record<string, string>>({});
   const [graph, setGraph] = useState<{ key: string; data: Traceability } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<TraceFilterState>(EMPTY_FILTERS);
-  const [view, setView] = useState<TraceView>("matrix");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [graphRefresh, setGraphRefresh] = useState(0);
+  const [routeSelectionDismissed, setRouteSelectionDismissed] = useState(false);
+  const routeRequirement = useSyncExternalStore(
+    (notify) => {
+      window.addEventListener("popstate", notify);
+      return () => window.removeEventListener("popstate", notify);
+    },
+    () => new URLSearchParams(window.location.search).get("requirement"),
+    () => null,
+  );
+  const routedRequirementId = routeRequirement
+    ? requirementAliases[routeRequirement] ?? routeRequirement
+    : null;
+  const activeQuery = query || (routeSelectionDismissed ? "" : routedRequirementId ?? "");
 
   const loadTraceability = useCallback(async () => {
-    setLoading(true);
+    if (all.length === 0) setLoading(true);
     setError("");
     try {
       const result = await fetchTraceabilityData();
       setAll(result.items);
       setOrphans(result.orphans);
+      setRequirementAliases(result.requirementAliases);
+      setGraphRefresh((refresh) => refresh + 1);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not load traceability.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [all.length]);
 
   useEffect(() => {
     let active = true;
@@ -172,6 +193,7 @@ export default function TraceabilityPage() {
         if (active) {
           setAll(result.items);
           setOrphans(result.orphans);
+          setRequirementAliases(result.requirementAliases);
         }
       })
       .catch((cause: unknown) => {
@@ -187,9 +209,9 @@ export default function TraceabilityPage() {
     };
   }, []);
 
-  const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return all.filter((row) => {
+  const matches = useMemo(() => {
+    const q = activeQuery.trim().toLowerCase();
+    const filtered = all.filter((row) => {
       if (filters.coverage.length > 0 && !filters.coverage.includes(row.coverage)) {
         return false;
       }
@@ -208,14 +230,29 @@ export default function TraceabilityPage() {
       }
       return true;
     });
-  }, [all, query, filters]);
+    if (!q) return filtered;
+    return filtered.sort((left, right) => {
+      const score = (row: TraceMatrixRow) => {
+        const key = row.requirementId.toLowerCase();
+        const text = row.title.toLowerCase();
+        if (key === q) return 0;
+        if (key.startsWith(q)) return 1;
+        if (key.includes(q)) return 2;
+        if (text.startsWith(q)) return 3;
+        return 4;
+      };
+      return score(left) - score(right);
+    });
+  }, [all, activeQuery, filters]);
 
-  const graphId = selectedId && visible.some((r) => r.requirementId === selectedId)
-    ? selectedId
-    : (visible[0]?.requirementId ?? null);
-  const graphRow = visible.find((r) => r.requirementId === graphId) ?? null;
+  const suggestions = matches.slice(0, 5);
+  const effectiveSelectedId = selectedId ?? (routeSelectionDismissed ? null : routedRequirementId);
+  const graphRow = matches.find((row) => row.requirementId === effectiveSelectedId) ?? null;
+  const graphId = graphRow?.requirementId ?? null;
+  const currentGraph = graph?.key === graphId ? graph.data : null;
+  const graphLoading = Boolean(graphId && currentGraph === null && !error);
   useEffect(() => {
-    if (view !== "graph" || !graphId) return;
+    if (!graphId) return;
     let active = true;
     backendFetch<BackendTraceGraph>(
       `traceability/graph?requirement_key=${encodeURIComponent(graphId)}`,
@@ -233,24 +270,12 @@ export default function TraceabilityPage() {
     return () => {
       active = false;
     };
-  }, [graphId, view]);
+  }, [graphId, graphRefresh]);
 
-  const currentGraph = graph?.key === graphId ? graph.data : null;
-
-  const hasActiveSearchOrFilters =
-    query.trim() !== "" ||
-    filters.coverage.length > 0 ||
-    filters.risks.length > 0 ||
-    filters.assurances.length > 0;
-
-  function handleClearAll() {
-    setQuery("");
-    setFilters(EMPTY_FILTERS);
-  }
-
-  function handleViewChain(requirementId: string) {
+  function handleSelectRequirement(requirementId: string) {
+    setRouteSelectionDismissed(true);
     setSelectedId(requirementId);
-    setView("graph");
+    setQuery(requirementId);
   }
 
   return (
@@ -278,127 +303,139 @@ export default function TraceabilityPage() {
 
       {!loading && !error ? (
         <>
-          <div className="mt-6">
-            <TraceSummary rows={all} orphans={orphans} />
-          </div>
-
-          <section
-            aria-label="Search and filter"
-            className="page-panel mt-4"
-          >
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <RequirementSearch value={query} onChange={setQuery} />
-            <div role="group" aria-label="View selection" className="flex rounded-md border border-zinc-300 dark:border-zinc-700">
-              {(["matrix", "graph"] as TraceView[]).map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => setView(option)}
-                  aria-pressed={view === option}
-                  className={`px-4 py-2 text-sm font-medium capitalize first:rounded-l-md last:rounded-r-md focus-visible:outline-2 focus-visible:outline-zinc-900 ${
-                    view === option
-                      ? "bg-accent text-brand dark:bg-accent dark:text-brand"
-                      : "bg-white text-zinc-600 hover:bg-zinc-50 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-900"
-                  }`}
-                >
-                  {option}
-                </button>
-              ))}
+        <section
+          aria-label="Find a requirement"
+          className="page-panel mt-6"
+        >
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="min-w-0 flex-1">
+              <RequirementSearch
+                value={activeQuery}
+                onChange={(value) => {
+                  setRouteSelectionDismissed(true);
+                  setQuery(value);
+                  setSelectedId(null);
+                }}
+              />
             </div>
+            <button
+              type="button"
+              onClick={() => void loadTraceability()}
+              disabled={loading}
+              className="inline-flex min-h-10 items-center gap-2 rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+            >
+              <RefreshCw aria-hidden="true" className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+              Refresh
+            </button>
           </div>
-          <TraceFilters
-            filters={filters}
-            onChange={setFilters}
-            onClear={() => setFilters(EMPTY_FILTERS)}
-          />
-        </div>
-          </section>
+          <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+            Search by requirement ID or description. Choose a result to view only its matrix and relationship graph.
+          </p>
+          {activeQuery.trim() ? (
+            <div className="mt-4">
+              <TraceFilters
+                filters={filters}
+                onChange={setFilters}
+                onClear={() => setFilters(EMPTY_FILTERS)}
+              />
+            </div>
+          ) : null}
+          {activeQuery.trim() && suggestions.length > 0 ? (
+            <ul className="mt-4 space-y-2" aria-label="Matching requirements">
+              {suggestions.map((row) => (
+                <li key={row.requirementId}>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectRequirement(row.requirementId)}
+                    aria-pressed={selectedId === row.requirementId}
+                    className={`w-full rounded-lg border px-4 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-accent ${
+                      selectedId === row.requirementId
+                        ? "border-accent bg-orange-50 dark:bg-orange-950/30"
+                        : "border-zinc-200 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
+                    }`}
+                  >
+                    <span className="block font-mono text-xs font-semibold text-accent">
+                      {row.requirementId}
+                    </span>
+                    <span className="mt-1 block line-clamp-2 text-sm text-zinc-800 dark:text-zinc-100">
+                      {row.title}
+                    </span>
+                  </button>
+                </li>
+              ))}
+              {matches.length > suggestions.length ? (
+                <li className="px-1 text-xs text-zinc-500 dark:text-zinc-400">
+                  Showing the 5 most relevant of {matches.length} matches.
+                </li>
+              ) : null}
+            </ul>
+          ) : activeQuery.trim() ? (
+            <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+              No requirements match that search.
+            </p>
+          ) : null}
+        </section>
 
-          {view === "matrix" ? (
+        {graphRow ? (
+          <>
         <section
           aria-label="Traceability matrix"
-          className="mt-4 rounded-lg border border-zinc-200 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-zinc-800 dark:bg-zinc-950"
+          className="mt-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-zinc-800 dark:bg-zinc-950"
         >
-          {all.length === 0 ? (
-            <EmptyState
-              title="No traceability data yet"
-              description="Links appear here once requirements are assessed."
-              actionLabel={null}
-              onAction={null}
+            <div className="mb-4">
+              <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+                Requirement matrix
+              </h2>
+              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                Recorded risk, assurance, test coverage, and freshness for {graphRow.requirementId}.
+              </p>
+            </div>
+            <TraceMatrix
+              items={[graphRow]}
+              onViewChain={() =>
+                document.getElementById("trace-graph")?.scrollIntoView({ behavior: "smooth" })
+              }
             />
-          ) : visible.length > 0 ? (
-            <TraceMatrix items={visible} onViewChain={handleViewChain} />
-              ) : (
-            <EmptyState
-              title={query.trim() !== "" ? "No links match your search" : "No links match these filters"}
-              description="Try a different ID or keyword, or remove some filters to see more of the matrix."
-              actionLabel={hasActiveSearchOrFilters ? "Clear search and filters" : null}
-              onAction={hasActiveSearchOrFilters ? handleClearAll : null}
-            />
-          )}
-        </section>
-      ) : (
+          </section>
+
         <section
-          aria-label="Traceability graph"
-          className="mt-4 rounded-lg border border-zinc-200 bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-zinc-800 dark:bg-zinc-950"
+          id="trace-graph"
+          aria-label="Requirement relationship graph"
+          className="mt-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-zinc-800 dark:bg-zinc-950"
         >
-          <div className="flex flex-wrap items-center gap-3">
-            <label
-              htmlFor="trace-graph-select"
-              className="text-[13px] font-medium text-zinc-700 dark:text-zinc-300"
-            >
-              Requirement chain
-            </label>
-            <select
-              id="trace-graph-select"
-              value={graphId ?? ""}
-              onChange={(e) => setSelectedId(e.target.value || null)}
-              disabled={visible.length === 0}
-              className="max-w-full rounded-md border border-zinc-300 bg-white px-3 py-2 font-mono text-[13px] text-zinc-900 focus-visible:outline-2 focus-visible:outline-zinc-900 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
-            >
-              {visible.map((row) => (
-                <option key={row.requirementId} value={row.requirementId}>
-                  {row.requirementId}
-                </option>
-              ))}
-            </select>
-            <span className="text-[13px] text-zinc-500 dark:text-zinc-400">
-              Exploration view — zoom, pan, select, and click a node to navigate. The matrix
-              remains the audit view.
-            </span>
-          </div>
+          <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+            Relationship graph
+          </h2>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            Scroll normally over the graph. Click its empty background to enable panning; click again to turn panning off.
+          </p>
           <div className="mt-4">
-            {currentGraph && graphRow ? (
-              <GraphErrorBoundary requirementId={graphRow.requirementId} trace={currentGraph}>
-                <TraceGraph trace={currentGraph} requirementId={graphRow.requirementId} canOpenDetail={graphRow.inList} />
+          {currentGraph && graphRow ? (
+            <GraphErrorBoundary requirementId={graphRow.requirementId} trace={currentGraph}>
+              <TraceGraph trace={currentGraph} />
               </GraphErrorBoundary>
-            ) : loading || (graphId && !currentGraph && !error) ? (
+            ) : graphLoading ? (
               <div role="status" className="flex h-[420px] items-center justify-center gap-2 text-sm text-zinc-500"><LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" />Loading requirement chain…</div>
             ) : (
               <EmptyState
-                title="No chain to show"
-                description="Adjust the search or filters to include at least one requirement."
-                actionLabel={hasActiveSearchOrFilters ? "Clear search and filters" : null}
-                onAction={hasActiveSearchOrFilters ? handleClearAll : null}
+                title="Graph unavailable"
+                description="Refresh the traceability data and try again."
+                actionLabel={null}
+                onAction={null}
               />
             )}
-          </div>
-        </section>
+            </div>
+          </section>
+            </>
+          ) : (
+            <section className="mt-4 rounded-lg border border-zinc-200 bg-white p-5 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
+              {activeQuery.trim()
+                ? "Choose one of the matching requirements above to load its matrix and graph."
+                : "Search for a requirement to view its matrix and graph."}
+            </section>
           )}
 
-          {view === "matrix" && visible.length > 0 ? (
-        <p className="mt-4 text-[13px] text-zinc-500 dark:text-zinc-400">
-          Showing {visible.length} of {all.length} requirements. Select a row to open its detail
-          view, or use the chain action for the exploration graph.
-        </p>
-          ) : null}
-
           <OrphanList orphans={orphans} />
-
-          <p className="mt-4 text-[13px] text-zinc-500 dark:text-zinc-400">
-            Live traceability records. This page displays backend links and does not create or modify edges.
-          </p>
         </>
       ) : null}
     </DashboardLayout>

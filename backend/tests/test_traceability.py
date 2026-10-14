@@ -591,6 +591,17 @@ class TestMatrix:
         assert row["coverage_status"] == "covered_by_tests"
         assert row["stale"] is False
 
+    def test_test_without_code_or_title_uses_readable_matrix_label(self):
+        snap = TraceSnapshot(
+            requirements={"R1": make_req()},
+            tests={"T1": make_test("T1", title="", external=None)},
+            links=[make_link("L1", "test", "T1", "requirement", "R1", "verifies")],
+        )
+
+        rows = build_matrix(snap, [])
+
+        assert rows[0]["test_id"] == "Test script · LIMS-001"
+
     def test_covered_requirement_two_tests_two_rows(self):
         rows = build_matrix(scripted_snapshot(), [])
         assert len(rows) == 2

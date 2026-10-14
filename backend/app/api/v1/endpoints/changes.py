@@ -69,7 +69,7 @@ def _serialise(event: ChangeEvent, db=None) -> dict:
             result.update(
                 {
                     "requirement_key": requirement.req_key,
-                    "requirement_title": requirement.title,
+                    "requirement_title": requirement.description,
                     "current_version": current.version_number if current else None,
                     "current_text": current.text if current else requirement.description,
                 }

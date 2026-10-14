@@ -9,7 +9,6 @@ import {
   FileSpreadsheet,
   FileUp,
   LoaderCircle,
-  ShieldAlert,
   Upload,
   X,
 } from "lucide-react";
@@ -102,7 +101,6 @@ export default function IngestionPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            title: row.text.slice(0, 100),
             description: row.text,
             text: row.text,
             created_by: "ingestion-ui",
@@ -433,20 +431,6 @@ export default function IngestionPage() {
                     Use an array of strings or objects with a string <code className="rounded bg-zinc-100 px-1 py-0.5 dark:bg-zinc-800">text</code> property.
                   </p>
                 </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="rounded-xl border border-amber-200 bg-amber-50/70 p-5 dark:border-amber-900 dark:bg-amber-950/30">
-            <div className="flex items-start gap-2.5">
-              <ShieldAlert aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-amber-800 dark:text-amber-300" />
-              <div>
-                <h2 className="text-sm font-semibold text-amber-950 dark:text-amber-100">
-                  What this import does
-                </h2>
-                <p className="mt-1.5 text-xs leading-5 text-amber-900 dark:text-amber-200">
-                  It creates requirement records through the RAVEN API and assigns REQ keys. It does not run risk assessment, assurance, or test generation. Duplicates are checked within this file only. Rows are saved one at a time, so a partial import is possible.
-                </p>
               </div>
             </div>
           </section>

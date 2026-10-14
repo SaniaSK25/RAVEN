@@ -17,7 +17,7 @@ export default function RequirementsPage() {
     setLoading(true);
     setError("");
     try {
-      setData(await backendFetch<BackendPage<BackendRequirement>>("requirements"));
+      setData(await backendFetch<BackendPage<BackendRequirement>>("requirements?limit=500"));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not load requirements.");
     } finally {
@@ -27,7 +27,7 @@ export default function RequirementsPage() {
 
   useEffect(() => {
     let active = true;
-    backendFetch<BackendPage<BackendRequirement>>("requirements")
+    backendFetch<BackendPage<BackendRequirement>>("requirements?limit=500")
       .then((result) => {
         if (active) setData(result);
       })
@@ -44,15 +44,27 @@ export default function RequirementsPage() {
     };
   }, []);
 
-  const items = (data?.items ?? []).filter((item) => {
-    const search = query.trim().toLowerCase();
-    return (
+  const search = query.trim().toLowerCase();
+  const matches = (data?.items ?? [])
+    .filter((item) =>
       !search ||
-      `${item.req_key ?? ""} ${item.title} ${item.description} ${item.text}`
-        .toLowerCase()
-        .includes(search)
-    );
-  });
+      `${item.req_key ?? ""} ${item.description}`.toLowerCase().includes(search),
+    )
+    .sort((left, right) => {
+      if (!search) return 0;
+      const leftKey = (left.req_key ?? "").toLowerCase();
+      const rightKey = (right.req_key ?? "").toLowerCase();
+      const score = (item: BackendRequirement, key: string) => {
+        const text = item.description.toLowerCase();
+        if (key === search) return 0;
+        if (key.startsWith(search)) return 1;
+        if (key.includes(search)) return 2;
+        if (text.startsWith(search)) return 3;
+        return 4;
+      };
+      return score(left, leftKey) - score(right, rightKey);
+    });
+  const items = search ? matches.slice(0, 5) : matches;
 
   return (
     <DashboardLayout>
@@ -64,7 +76,7 @@ export default function RequirementsPage() {
           Requirements
         </h1>
         <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-          {data ? `${items.length} shown · ${data.total} total` : "Loading requirements"}
+          {data ? `${data.total} requirements` : "Loading requirements"}
         </p>
       </div>
 
@@ -73,6 +85,11 @@ export default function RequirementsPage() {
         className="page-panel mt-6"
       >
         <RequirementSearch value={query} onChange={setQuery} />
+        {search && matches.length > 0 ? (
+          <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+            Showing the {items.length} most relevant of {matches.length} matches.
+          </p>
+        ) : null}
       </section>
 
       <section
@@ -119,7 +136,6 @@ export default function RequirementsPage() {
                 <tr>
                   <th scope="col" className="px-5 py-3">Requirement</th>
                   <th scope="col" className="px-5 py-3">Version</th>
-                  <th scope="col" className="px-5 py-3">Lifecycle</th>
                   <th scope="col" className="px-5 py-3">Created</th>
                 </tr>
               </thead>
@@ -131,7 +147,7 @@ export default function RequirementsPage() {
                         href={`/requirements/${encodeURIComponent(item.req_key ?? item.id)}`}
                         className="whitespace-pre-wrap break-words rounded font-medium text-zinc-900 hover:underline focus-visible:outline-2 focus-visible:outline-accent dark:text-zinc-100"
                       >
-                        {item.description || item.text || item.title}
+                        {item.description || item.text}
                       </Link>
                       <span className="mt-1 block font-mono text-xs text-zinc-500">
                         {item.req_key ?? item.id}
@@ -139,9 +155,6 @@ export default function RequirementsPage() {
                     </td>
                     <td className="whitespace-nowrap px-5 py-4 font-mono text-xs text-zinc-600 dark:text-zinc-300">
                       {item.version ? `v${item.version}` : "—"}
-                    </td>
-                    <td className="whitespace-nowrap px-5 py-4 text-xs text-zinc-600 dark:text-zinc-300">
-                      {item.status}
                     </td>
                     <td className="whitespace-nowrap px-5 py-4 text-xs text-zinc-500">
                       {item.created_at

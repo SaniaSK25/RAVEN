@@ -44,8 +44,13 @@ is scripted, the page offers a separate `Generate test script` action backed by
 `POST /api/v1/assessments/{requirement_id}/generate-script`. Token usage is
 stored per analysis/script-generation run and summarized for the current
 requirement version. Ingestion creates requirements using the same backend.
+In the traceability graph, scrolling over the canvas scrolls the page; use the
+graph controls to zoom and fit the chain, or drag the canvas to pan.
 
 Compliance, exports, and dashboard summary views still use demo data. The
 backend does not yet expose complete read/write workflows for those areas. Test
-execution, change-event review actions, and analysis generation are also not
-initiated by the frontend.
+execution and change-event resolution actions are not initiated by the
+frontend. The Changes page can edit or retire an existing requirement through
+the backend and shows the exact impacted artifact IDs recorded for each event;
+the traceability matrix is the live view for reviewing stale links and
+artifacts.

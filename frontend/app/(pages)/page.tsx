@@ -224,43 +224,43 @@ export default function Home() {
             <SummaryCard
               label="Requirements"
               value={data.totalRequirements}
-              subtext="In scope for this release"
+              subtext="Requirements currently in the system."
               tone="brand"
             />
             <SummaryCard
-              label="Scripted"
+              label="Scripted testing"
               value={data.scripted}
-              subtext="Full scripted assurance"
+              subtext="Documented test procedures for higher-risk requirements."
               tone="success"
             />
             <SummaryCard
-              label="Exploratory"
+              label="Exploratory testing"
               value={data.exploratory}
-              subtext="Exploratory assurance"
+              subtext="Focused testing with recorded observations and results."
               tone="sky"
             />
             <SummaryCard
-              label="Unscripted"
+              label="Unscripted testing"
               value={data.unscripted}
-              subtext="Low-risk unscripted assurance"
+              subtext="Low-risk requirements with unscripted testing."
               tone="slate"
             />
             <SummaryCard
-              label="Needs Review"
+              label="Needs review"
               value={data.needsReview}
-              subtext="Stale or draft assessments"
+              subtext="Draft or outdated assessments awaiting review."
               tone="warning"
             />
             <SummaryCard
-              label="Changed"
+              label="Open changes"
               value={data.changed}
-              subtext="Open change events"
+              subtext="Requirement changes awaiting follow-up."
               tone="brand"
             />
             <SummaryCard
-              label="Uncovered"
+              label="Uncovered requirements"
               value={data.uncovered}
-              subtext="Requirements without coverage"
+              subtext="Requirements with no linked test coverage."
               tone="danger"
             />
           </section>
@@ -269,29 +269,30 @@ export default function Home() {
           <div className="mt-6 grid gap-4 lg:grid-cols-2">
             <DistributionSection
               title="Risk Distribution"
-              description="Current-version assessments grouped by risk band."
+              description="Current assessments grouped by their risk rating."
+              totalLabel="assessments"
               rows={[
                 {
                   key: "low",
-                  label: "LOW",
+                  label: "Low risk",
                   value: data.riskLow,
-                  barClassName: "bg-emerald-500",
+                  color: "#10b981",
                   badgeClassName:
                     "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200",
                 },
                 {
                   key: "medium",
-                  label: "MEDIUM",
+                  label: "Medium risk",
                   value: data.riskMedium,
-                  barClassName: "bg-amber-400",
+                  color: "#f59e0b",
                   badgeClassName:
                     "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200",
                 },
                 {
                   key: "high",
-                  label: "HIGH",
+                  label: "High risk",
                   value: data.riskHigh,
-                  barClassName: "bg-red-500",
+                  color: "#ef4444",
                   badgeClassName:
                     "border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200",
                 },
@@ -299,29 +300,30 @@ export default function Home() {
             />
             <DistributionSection
               title="Assurance Distribution"
-              description="Current-version decisions grouped by assurance outcome."
+              description="Current decisions grouped by the level of testing required."
+              totalLabel="assurance decisions"
               rows={[
                 {
                   key: "scripted",
-                  label: "SCRIPTED",
+                  label: "Scripted testing",
                   value: data.scripted,
-                  barClassName: "bg-zinc-900 dark:bg-zinc-100",
+                  color: "#52525b",
                   badgeClassName:
                     "border-zinc-300 bg-zinc-100 text-zinc-800 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100",
                 },
                 {
                   key: "exploratory",
-                  label: "EXPLORATORY",
+                  label: "Exploratory testing",
                   value: data.exploratory,
-                  barClassName: "bg-sky-500",
+                  color: "#0ea5e9",
                   badgeClassName:
                     "border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-200",
                 },
                 {
                   key: "unscripted",
-                  label: "UNSCRIPTED",
+                  label: "Unscripted testing",
                   value: data.unscripted,
-                  barClassName: "bg-violet-400",
+                  color: "#8b5cf6",
                   badgeClassName:
                     "border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-900 dark:bg-violet-950 dark:text-violet-200",
                 },

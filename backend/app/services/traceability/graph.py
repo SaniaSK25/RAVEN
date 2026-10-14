@@ -14,6 +14,7 @@ def build_graph(
     orphan_nodes = {(o.entity_type, o.entity_id) for o in orphans}
 
     nodes: dict[str, dict] = {}
+    risk_requirements = {}
     for req in snapshot.requirements.values():
         if requirement_key and req.req_key != requirement_key:
             continue
@@ -30,10 +31,13 @@ def build_graph(
             },
         }
     for risk in snapshot.risks.values():
+        requirement = snapshot.requirements.get(risk.requirement_id)
+        requirement_label = requirement.req_key if requirement else "Unknown requirement"
+        risk_requirements[risk.id] = requirement_label
         nodes[f"risk:{risk.id}"] = {
             "id": f"risk:{risk.id}",
             "type": "risk",
-            "label": f"RSK-{risk.id[:8]}",
+            "label": f"Risk assessment · {requirement_label}",
             "stale": risk.freshness == "stale",
             "orphan": ("risk", risk.id) in orphan_nodes,
             "meta": {
@@ -49,7 +53,10 @@ def build_graph(
         nodes[f"assurance:{decision.id}"] = {
             "id": f"assurance:{decision.id}",
             "type": "assurance",
-            "label": f"{decision.level}:{decision.reason_code or decision.id[:8]}",
+            "label": (
+                f"{decision.level.title()} assurance · "
+                f"{risk_requirements.get(decision.risk_id, 'Requirement')}"
+            ),
             "stale": decision.freshness == "stale",
             "orphan": ("assurance", decision.id) in orphan_nodes,
             "meta": {
@@ -59,7 +66,16 @@ def build_graph(
             },
         }
     for test in snapshot.tests.values():
-        label = test.external_code or f"TS-{test.id[:8]}"
+        requirement_label = risk_requirements.get(test.risk_id or "")
+        label = (
+            test.external_code
+            or test.title
+            or (
+                f"Test script · {requirement_label}"
+                if requirement_label
+                else "Test script"
+            )
+        )
         nodes[f"test:{test.id}"] = {
             "id": f"test:{test.id}",
             "type": "test",

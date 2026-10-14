@@ -59,7 +59,7 @@ class Requirement(Base, MutableBaseModel):
         String(255),
         nullable=False,
     )
-    """Short human-readable requirement title."""
+    """Legacy compatibility label; user-facing content comes from description."""
 
     description: Mapped[str] = mapped_column(
         Text,

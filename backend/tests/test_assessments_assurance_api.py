@@ -182,7 +182,7 @@ class TestAssessmentList:
                 assert body["total"] == 1
                 item = body["items"][0]
                 assert item["requirement_key"] == "LIMS-001"
-                assert item["requirement_title"] == "Assessed requirement"
+                assert item["requirement_title"] == "original text LIMS-001"
                 assert item["version"] == 1
                 assert item["current_requirement_version"] == 1
                 assert item["is_current_version"] is True
@@ -248,7 +248,7 @@ class TestAssuranceList:
                 assert body["total"] == 1
                 item = body["items"][0]
                 assert item["requirement_key"] == "LIMS-001"
-                assert item["requirement_title"] == "Assessed requirement"
+                assert item["requirement_title"] == "original text LIMS-001"
                 assert item["version"] == 1
                 assert item["current_requirement_version"] == 1
                 assert item["is_current_version"] is True

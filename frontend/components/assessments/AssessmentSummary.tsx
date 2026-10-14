@@ -11,17 +11,18 @@ export default function AssessmentSummary({ assessments }: AssessmentSummaryProp
     { label: "High risk", value: assessments.filter((a) => a.band === "HIGH").length },
     { label: "Medium risk", value: assessments.filter((a) => a.band === "MEDIUM").length },
     { label: "Low risk", value: assessments.filter((a) => a.band === "LOW").length },
-    { label: "Needs review", value: assessments.filter((a) => a.status === "needs-review").length },
+    { label: "Fresh", value: assessments.filter((a) => a.status === "fresh").length },
+    { label: "Stale", value: assessments.filter((a) => a.status === "stale").length },
   ];
 
   return (
     <dl
       aria-label="Assessment summary"
-      className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 sm:grid-cols-5 dark:border-zinc-800 dark:bg-zinc-800"
+      className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 sm:grid-cols-3 lg:grid-cols-6 dark:border-zinc-800 dark:bg-zinc-800"
     >
       {stats.map((stat) => (
-        <div key={stat.label} className="bg-white px-4 py-3.5 dark:bg-zinc-950">
-          <dt className="text-[13px] font-medium text-zinc-500 dark:text-zinc-400">{stat.label}</dt>
+        <div key={stat.label} className="bg-white px-4 py-4 dark:bg-zinc-950">
+          <dt className="text-sm font-medium text-zinc-500 dark:text-zinc-400">{stat.label}</dt>
           <dd className="mt-0.5 text-2xl font-semibold text-zinc-900 tabular-nums dark:text-zinc-50">
             {stat.value}
           </dd>

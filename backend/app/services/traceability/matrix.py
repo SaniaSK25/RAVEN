@@ -61,14 +61,35 @@ def guard_cell(value: str) -> str:
     return value
 
 
-def _test_display(test) -> str:
+def _test_display(snapshot, test) -> str:
     if test.external_code:
         return test.external_code
-    return f"TS-{test.id[:8]}"
+    if test.title:
+        return test.title
+    risk = snapshot.risks.get(test.risk_id or "")
+    requirement = snapshot.requirements.get(risk.requirement_id) if risk else None
+    if requirement is None:
+        requirement_id = next(
+            (
+                link.dst_id
+                for link in snapshot.links
+                if link.link_type == "verifies"
+                and link.active
+                and link.src_id == test.id
+            ),
+            None,
+        )
+        requirement = snapshot.requirements.get(requirement_id or "")
+    if requirement:
+        return f"Test script · {requirement.req_key}"
+    return "Unlabelled test script"
 
 
-def _risk_display(risk_id: str) -> str:
-    return f"RSK-{risk_id[:8]}"
+def _risk_display(snapshot, risk) -> str:
+    requirement = snapshot.requirements.get(risk.requirement_id)
+    if requirement is None:
+        return "Risk assessment"
+    return f"Risk assessment · {requirement.req_key}"
 
 
 def build_matrix(snapshot, orphans: list | None = None) -> list[dict]:
@@ -100,7 +121,9 @@ def build_matrix(snapshot, orphans: list | None = None) -> list[dict]:
         test_ids = sorted(
             tests_by_req.get(req.id, []),
             key=lambda t_id: (
-                _test_display(snapshot.tests[t_id]) if t_id in snapshot.tests else t_id
+                _test_display(snapshot, snapshot.tests[t_id])
+                if t_id in snapshot.tests
+                else t_id
             ),
         )
         coverage = _coverage_status(snapshot, req.id)
@@ -122,7 +145,7 @@ def build_matrix(snapshot, orphans: list | None = None) -> list[dict]:
         for test_id, test in snapshot.tests.items()
         if test_id not in linked_test_ids
     ]
-    for test in sorted(orphan_tests, key=_test_display):
+    for test in sorted(orphan_tests, key=lambda item: _test_display(snapshot, item)):
         rows.append(_orphan_test_row(snapshot, test, flags_by_test))
     return rows
 
@@ -160,7 +183,7 @@ def _requirement_cells(snapshot, req, coverage: str, orphan_flags: str) -> dict:
     return {
         "requirement_id": req.req_key,
         "requirement_version": req.version,
-        "risk_id": _risk_display(risk.id) if risk else "",
+        "risk_id": _risk_display(snapshot, risk) if risk else "",
         "severity": risk.severity if risk and risk.severity is not None else "",
         "probability": risk.probability
         if risk and risk.probability is not None
@@ -231,7 +254,7 @@ def _test_cells(snapshot, req, test, coverage: str, orphan_flags: str) -> dict:
     # requirement; test flags attach to rows carrying that test.
     _ = coverage
     return {
-        "test_id": _test_display(test),
+        "test_id": _test_display(snapshot, test),
         "test_title": test.title,
         "test_origin": test.origin,
         "stale": _row_stale(snapshot, req, test),
@@ -251,7 +274,6 @@ def _blank_test_cells(req, coverage: str, orphan_flags: str) -> dict:
 
 
 def _orphan_test_row(snapshot, test, flags_by_test: dict) -> dict:
-    _ = snapshot
     return {
         "requirement_id": "",
         "requirement_version": "",
@@ -264,7 +286,7 @@ def _orphan_test_row(snapshot, test, flags_by_test: dict) -> dict:
         "assurance_level": "",
         "assurance_label": "",
         "reason_code": "",
-        "test_id": _test_display(test),
+        "test_id": _test_display(snapshot, test),
         "test_title": test.title,
         "test_origin": test.origin,
         "coverage_status": "",

@@ -1,12 +1,12 @@
 "use client";
 
 import { X } from "lucide-react";
-import { statusLabel } from "@/lib/requirements-data";
-import type { RequirementStatus, RiskBand } from "@/lib/domain";
+import type { RiskBand } from "@/lib/domain";
+import type { AssessmentFreshness } from "@/lib/assessments-data";
 
 export interface AssessmentFilterState {
   risks: RiskBand[];
-  statuses: RequirementStatus[];
+  statuses: AssessmentFreshness[];
 }
 
 interface AssessmentFiltersProps {
@@ -16,14 +16,18 @@ interface AssessmentFiltersProps {
 }
 
 const RISK_OPTIONS: RiskBand[] = ["LOW", "MEDIUM", "HIGH"];
-const STATUS_OPTIONS: RequirementStatus[] = ["current", "needs-review", "stale"];
+const STATUS_OPTIONS: AssessmentFreshness[] = ["fresh", "stale"];
+
+function freshnessLabel(status: AssessmentFreshness): string {
+  return status === "fresh" ? "Fresh" : "Stale";
+}
 
 function toggle<T>(list: T[], value: T): T[] {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 }
 
 function pillClass(checked: boolean): string {
-  return `inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-semibold tracking-wide ${
+  return `inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-2 text-sm font-semibold tracking-wide ${
     checked
       ? "border-accent bg-accent text-brand dark:border-accent dark:bg-accent dark:text-brand"
       : "border-zinc-300 bg-white text-zinc-600 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300"
@@ -39,7 +43,7 @@ export default function AssessmentFilters({ filters, onChange, onClear }: Assess
       onRemove: () => onChange({ ...filters, risks: toggle(filters.risks, r) }),
     })),
     ...filters.statuses.map((s) => ({
-      label: `Status: ${statusLabel(s)}`,
+      label: `Freshness: ${freshnessLabel(s)}`,
       onRemove: () => onChange({ ...filters, statuses: toggle(filters.statuses, s) }),
     })),
   ];
@@ -48,7 +52,7 @@ export default function AssessmentFilters({ filters, onChange, onClear }: Assess
     <div>
       <div className="grid gap-4 sm:grid-cols-2">
         <fieldset>
-          <legend className="mb-1.5 text-[13px] font-medium text-zinc-700 dark:text-zinc-300">
+          <legend className="mb-1.5 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
             Risk
           </legend>
           <div className="flex flex-wrap gap-2">
@@ -70,8 +74,8 @@ export default function AssessmentFilters({ filters, onChange, onClear }: Assess
         </fieldset>
 
         <fieldset>
-          <legend className="mb-1.5 text-[13px] font-medium text-zinc-700 dark:text-zinc-300">
-            Status
+          <legend className="mb-1.5 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+            Freshness
           </legend>
           <div className="flex flex-wrap gap-2">
             {STATUS_OPTIONS.map((option) => {
@@ -86,7 +90,7 @@ export default function AssessmentFilters({ filters, onChange, onClear }: Assess
                       onChange({ ...filters, statuses: toggle(filters.statuses, option) })
                     }
                   />
-                  {statusLabel(option)}
+                  {freshnessLabel(option)}
                 </label>
               );
             })}

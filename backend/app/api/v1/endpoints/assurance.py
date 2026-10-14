@@ -34,7 +34,7 @@ def _serialise(decision: AssuranceDecision) -> dict:
         "risk_assessment_id": str(decision.risk_assessment_id),
         "requirement_id": str(requirement.id) if requirement is not None else None,
         "requirement_key": requirement.req_key if requirement is not None else None,
-        "requirement_title": requirement.title if requirement is not None else None,
+        "requirement_title": requirement.description if requirement is not None else None,
         "requirement_version_id": (
             str(assessment.requirement_version_id) if assessment is not None else None
         ),

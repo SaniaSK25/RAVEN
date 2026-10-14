@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowUpDown } from "lucide-react";
-import { RiskBadge, StatusBadge } from "@/components/requirements/RequirementBadges";
+import { RiskBadge } from "@/components/requirements/RequirementBadges";
 import type {
   AssessmentRecord,
   AssessmentSortDir,
@@ -66,46 +66,45 @@ export default function AssessmentsTable({
           open the requirement risk section.
         </caption>
         <thead>
-          <tr className="border-b border-zinc-200 text-[13px] text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-            <th scope="col" aria-sort={sortKey === "id" ? (sortDir === "asc" ? "ascending" : "descending") : "none"} className="px-4 py-3 font-medium">
+          <tr className="border-b border-zinc-200 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+            <th scope="col" aria-sort={sortKey === "id" ? (sortDir === "asc" ? "ascending" : "descending") : "none"} className="px-5 py-4 font-semibold">
               <SortButton label="Requirement" column="id" sortKey={sortKey} sortDir={sortDir} onSortChange={onSortChange} />
             </th>
-            <th scope="col" aria-sort={sortKey === "severity" ? (sortDir === "asc" ? "ascending" : "descending") : "none"} className="px-4 py-3 font-medium whitespace-nowrap">
+            <th scope="col" aria-sort={sortKey === "severity" ? (sortDir === "asc" ? "ascending" : "descending") : "none"} className="px-5 py-4 font-semibold whitespace-nowrap">
               <SortButton label="Severity" column="severity" sortKey={sortKey} sortDir={sortDir} onSortChange={onSortChange} />
             </th>
-            <th scope="col" aria-sort={sortKey === "probability" ? (sortDir === "asc" ? "ascending" : "descending") : "none"} className="px-4 py-3 font-medium whitespace-nowrap">
+            <th scope="col" aria-sort={sortKey === "probability" ? (sortDir === "asc" ? "ascending" : "descending") : "none"} className="px-5 py-4 font-semibold whitespace-nowrap">
               <SortButton label="Probability" column="probability" sortKey={sortKey} sortDir={sortDir} onSortChange={onSortChange} />
             </th>
-            <th scope="col" aria-sort={sortKey === "detectability" ? (sortDir === "asc" ? "ascending" : "descending") : "none"} className="px-4 py-3 font-medium whitespace-nowrap">
+            <th scope="col" aria-sort={sortKey === "detectability" ? (sortDir === "asc" ? "ascending" : "descending") : "none"} className="px-5 py-4 font-semibold whitespace-nowrap">
               <SortButton label="Detectability" column="detectability" sortKey={sortKey} sortDir={sortDir} onSortChange={onSortChange} />
             </th>
-            <th scope="col" aria-sort={sortKey === "rpn" ? (sortDir === "asc" ? "ascending" : "descending") : "none"} className="px-4 py-3 font-medium whitespace-nowrap">
-              <SortButton label="RPN score (1–5)" column="rpn" sortKey={sortKey} sortDir={sortDir} onSortChange={onSortChange} />
+            <th scope="col" aria-sort={sortKey === "rpn" ? (sortDir === "asc" ? "ascending" : "descending") : "none"} className="px-5 py-4 font-semibold whitespace-nowrap">
+              <SortButton label="RPN score" column="rpn" sortKey={sortKey} sortDir={sortDir} onSortChange={onSortChange} />
             </th>
-            <th scope="col" className="px-4 py-3 font-medium">
-              Risk
+            <th scope="col" className="px-5 py-4 font-semibold">
+              Risk level
             </th>
-            <th scope="col" className="px-4 py-3 font-medium">
-              Status
+            <th scope="col" className="px-5 py-4 font-semibold">
+              Freshness
             </th>
           </tr>
         </thead>
         <tbody>
           {items.map((item) => {
-            const outdated = item.assessedVersion !== item.currentVersion;
-            const needsAttention = item.status === "needs-review" || item.status === "stale";
+            const isStale = item.status === "stale";
             return (
               <tr
                 key={item.assessmentId}
                 className={`border-b border-zinc-100 transition-colors last:border-0 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900 ${
-                  needsAttention ? "border-l-2 border-l-amber-400" : ""
+                  isStale ? "border-l-2 border-l-amber-400" : ""
                 }`}
               >
-                <td className="max-w-md px-4 py-3 align-top">
+                <td className="max-w-md px-5 py-4 align-top">
                   <Link
                     href={detailHref(item.requirementId)}
                     aria-label={`Open risk section for ${item.requirementId}`}
-                    className="block rounded font-medium text-zinc-900 focus-visible:outline-2 focus-visible:outline-zinc-900 dark:text-zinc-50"
+                    className="block rounded text-[15px] font-medium text-zinc-900 focus-visible:outline-2 focus-visible:outline-zinc-900 dark:text-zinc-50"
                   >
                     {item.title}
                   </Link>
@@ -113,22 +112,22 @@ export default function AssessmentsTable({
                     href={detailHref(item.requirementId)}
                     tabIndex={-1}
                     aria-hidden="true"
-                    className="mt-0.5 block font-mono text-[13px] text-zinc-500 dark:text-zinc-400"
+                    className="mt-0.5 block font-mono text-xs text-zinc-500 dark:text-zinc-400"
                   >
                     {item.requirementId}
                   </Link>
                 </td>
-                <td className="px-4 py-3 align-top text-zinc-900 tabular-nums dark:text-zinc-50">
+                <td className="px-5 py-4 align-top text-sm text-zinc-900 tabular-nums dark:text-zinc-50">
                   {item.severity ?? "—"}
                 </td>
-                <td className="px-4 py-3 align-top text-zinc-900 tabular-nums dark:text-zinc-50">
+                <td className="px-5 py-4 align-top text-sm text-zinc-900 tabular-nums dark:text-zinc-50">
                   {item.probability ?? "—"}
                 </td>
-                <td className="px-4 py-3 align-top text-zinc-900 tabular-nums dark:text-zinc-50">
+                <td className="px-5 py-4 align-top text-sm text-zinc-900 tabular-nums dark:text-zinc-50">
                   {item.detectability ?? "—"}
                 </td>
                 <td
-                  className={`px-4 py-3 align-top tabular-nums ${
+                  className={`px-5 py-4 align-top text-sm tabular-nums ${
                     item.band === "HIGH"
                       ? "font-bold text-zinc-900 dark:text-zinc-50"
                       : "text-zinc-600 dark:text-zinc-300"
@@ -136,16 +135,24 @@ export default function AssessmentsTable({
                 >
                   {item.rpn ?? "—"}
                 </td>
-                <td className="px-4 py-3 align-top">
+                <td className="px-5 py-4 align-top">
                   {item.band ? <RiskBadge value={item.band} /> : "—"}
                 </td>
-                <td className="px-4 py-3 align-top">
-                  <StatusBadge value={item.status} />
-                  {outdated ? (
-                    <span className="mt-1 block text-[12px] text-zinc-500 dark:text-zinc-400">
-                      Assessed {item.assessedVersion} · current {item.currentVersion}
-                    </span>
-                  ) : null}
+                <td className="px-5 py-4 align-top">
+                  <span
+                    title={
+                      isStale
+                        ? "This assessment is outdated — the requirement changed since it was assessed."
+                        : "This assessment matches the current requirement version."
+                    }
+                    className={`inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                      isStale
+                        ? "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200"
+                        : "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200"
+                    }`}
+                  >
+                    {isStale ? "Stale" : "Fresh"}
+                  </span>
                 </td>
               </tr>
             );

@@ -28,7 +28,6 @@ router = APIRouter(prefix="/requirements", tags=["Requirements"])
 
 
 class RequirementCreate(BaseModel):
-    title: str
     description: str
     text: str | None = None
     req_key: str | None = None
@@ -38,7 +37,6 @@ class RequirementCreate(BaseModel):
 class RequirementEdit(BaseModel):
     text: str
     edited_by: str = "api"
-
 
 def _serialise(requirement: Requirement) -> dict:
     current = (
@@ -54,7 +52,7 @@ def _serialise(requirement: Requirement) -> dict:
     return {
         "id": str(requirement.id),
         "req_key": requirement.req_key,
-        "title": requirement.title,
+        "title": requirement.description,
         "description": requirement.description,
         "status": getattr(requirement.status, "value", requirement.status),
         "current_version_id": str(requirement.current_version_id)
@@ -101,7 +99,7 @@ def create(payload: RequirementCreate, db: DBSession):
     try:
         requirement = create_requirement(
             db,
-            title=payload.title,
+            title=payload.req_key or "Requirement",
             description=payload.description,
             text=payload.text,
             req_key=payload.req_key,
@@ -218,7 +216,12 @@ def get_one(requirement_id: str, db: DBSession):
 @router.patch("/{requirement_id}")
 def edit(requirement_id: str, payload: RequirementEdit, db: DBSession):
     try:
-        outcome = edit_requirement(db, requirement_id, payload.text, payload.edited_by)
+        outcome = edit_requirement(
+            db,
+            requirement_id,
+            payload.text,
+            payload.edited_by,
+        )
         db.commit()
     except KeyError as exc:
         db.rollback()

@@ -1,5 +1,4 @@
 interface RequirementPayload {
-  title: string;
   description: string;
   text: string;
   created_by: string;
@@ -9,9 +8,6 @@ function isRequirementPayload(value: unknown): value is RequirementPayload {
   if (typeof value !== "object" || value === null) return false;
   const payload = value as Record<string, unknown>;
   return (
-    typeof payload.title === "string" &&
-    payload.title.trim().length > 0 &&
-    payload.title.length <= 255 &&
     typeof payload.description === "string" &&
     payload.description.trim().length > 0 &&
     typeof payload.text === "string" &&
@@ -31,7 +27,7 @@ export async function POST(request: Request) {
 
   if (!isRequirementPayload(payload)) {
     return Response.json(
-      { detail: "A title, description, text, and created_by value are required." },
+      { detail: "A description, text, and created_by value are required." },
       { status: 400 },
     );
   }
