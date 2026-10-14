@@ -1,0 +1,272 @@
+{
+  "mode": "evidence",
+  "requirement": "The system shall prevent selection of an expired reagent lot for a test requiring an approved reagent.",
+  "model_id": "us.anthropic.claude-opus-4-8",
+  "region": "us-east-1",
+  "timestamp_utc": "20261006_103841",
+  "evidence": {
+    "gamp_category": 5,
+    "gamp_reason": "The requirement specifies custom business logic to enforce reagent lot expiry and approval rules for test eligibility, which represents bespoke/configured functionality typically implemented as a custom-developed application component (confidence 0.6; the text does not state whether this is achieved via standard configurable software or custom code, so Category 5 is chosen conservatively given the specialized rule, though Category 4 is possible if delivered via vendor configuration).",
+    "severity": {
+      "patient_safety": {
+        "value": true,
+        "confidence": 0.75,
+        "evidence": "Preventing selection of an expired reagent lot guards against erroneous test outcomes that could propagate to clinical decisions affecting a patient, though the text does not explicitly describe a patient-facing use."
+      },
+      "product_quality": {
+        "value": true,
+        "confidence": 0.95,
+        "evidence": "Using an expired reagent lot could cause an incorrect result or sample error, so preventing its selection directly protects product quality."
+      },
+      "batch_release": {
+        "value": true,
+        "confidence": 0.6,
+        "evidence": "A test requiring an approved reagent may feed batch disposition decisions, so controlling reagent lot validity can participate in release, though release is not explicitly stated."
+      },
+      "data_integrity": {
+        "value": true,
+        "confidence": 0.7,
+        "evidence": "Allowing an expired lot would record an invalid test condition, rendering the result record inaccurate or unreliable."
+      },
+      "regulatory_compliance": {
+        "value": true,
+        "confidence": 0.9,
+        "evidence": "Enforcing use of approved, non-expired reagents is a core GMP expectation, so failure would breach GMP controls over materials used in testing."
+      },
+      "business_continuity": {
+        "value": false,
+        "confidence": 0.6,
+        "evidence": "The requirement is a preventive control on reagent selection and the text gives no indication that its failure would interrupt or slow overall laboratory operations."
+      }
+    },
+    "probability": {
+      "functional_complexity": {
+        "value": "MEDIUM",
+        "confidence": 0.7,
+        "evidence": "The system shall prevent selection of an expired reagent lot for a test requiring an approved reagent, which involves conditional validation logic checking both lot expiration status and reagent approval status."
+      },
+      "dependency_complexity": {
+        "value": "MEDIUM",
+        "confidence": 0.6,
+        "evidence": "The requirement implies reliance on reagent lot data and approval status data sources, though no specific external systems or interfaces are named in the text."
+      },
+      "workflow_complexity": {
+        "value": "LOW",
+        "confidence": 0.65,
+        "evidence": "The text describes a single preventive validation step during reagent selection with no mention of multiple roles, approval chains, or state transitions."
+      }
+    },
+    "detectability": {
+      "detection_controls": {
+        "value": "HIGH",
+        "confidence": 0.9,
+        "evidence": "The system shall prevent selection of an expired reagent lot, which describes an automated interlock/validation that blocks the invalid action at the point of selection."
+      },
+      "traceability": {
+        "value": "LOW",
+        "confidence": 0.6,
+        "evidence": "The requirement specifies prevention of expired reagent lot selection but is silent on any audit trail, logging, or history of attempts, so traceability cannot be confirmed."
+      },
+      "failure_visibility": {
+        "value": "MEDIUM",
+        "confidence": 0.6,
+        "evidence": "Because the system prevents selection of an expired reagent lot, a blocked action would likely surface to the user, but the text does not describe an explicit error message or alert so obviousness is uncertain."
+      }
+    }
+  },
+  "assessment": {
+    "gamp_category": 5,
+    "gamp_reason": "The requirement specifies custom business logic to enforce reagent lot expiry and approval rules for test eligibility, which represents bespoke/configured functionality typically implemented as a custom-developed application component (confidence 0.6; the text does not state whether this is achieved via standard configurable software or custom code, so Category 5 is chosen conservatively given the specialized rule, though Category 4 is possible if delivered via vendor configuration).",
+    "gxp_impact": true,
+    "gxp_reason": "GxP impact via patient_safety, product_quality, batch_release, data_integrity, regulatory_compliance. Supporting evidence: patient_safety: Preventing selection of an expired reagent lot guards against erroneous test outcomes that could propagate to clinical decisions affecting a patient, though the text does not explicitly describe a patient-facing use. | product_quality: Using an expired reagent lot could cause an incorrect result or sample error, so preventing its selection directly protects product quality. | batch_release: A test requiring an approved reagent may feed batch disposition decisions, so controlling reagent lot validity can participate in release, though release is not explicitly stated. | data_integrity: Allowing an expired lot would record an invalid test condition, rendering the result record inaccurate or unreliable. | regulatory_compliance: Enforcing use of approved, non-expired reagents is a core GMP expectation, so failure would breach GMP controls over materials used in testing.",
+    "severity": {
+      "score": 5,
+      "rule_id": "SEV-R1",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "patient_safety",
+          "result": true,
+          "evidence": "Preventing selection of an expired reagent lot guards against erroneous test outcomes that could propagate to clinical decisions affecting a patient, though the text does not explicitly describe a patient-facing use."
+        }
+      ],
+      "reasoning": "Severity 5: failure may directly affect patient safety. Supporting evidence: patient_safety: Preventing selection of an expired reagent lot guards against erroneous test outcomes that could propagate to clinical decisions affecting a patient, though the text does not explicitly describe a patient-facing use."
+    },
+    "probability": {
+      "score": 3,
+      "rule_id": "PROB-S7",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "functional_complexity",
+          "result": "MEDIUM",
+          "points": 2,
+          "weight": 2,
+          "weighted": 4,
+          "evidence": "The system shall prevent selection of an expired reagent lot for a test requiring an approved reagent, which involves conditional validation logic checking both lot expiration status and reagent approval status."
+        },
+        {
+          "check": "dependency_complexity",
+          "result": "MEDIUM",
+          "points": 2,
+          "weight": 1,
+          "weighted": 2,
+          "evidence": "The requirement implies reliance on reagent lot data and approval status data sources, though no specific external systems or interfaces are named in the text."
+        },
+        {
+          "check": "workflow_complexity",
+          "result": "LOW",
+          "points": 1,
+          "weight": 1,
+          "weighted": 1,
+          "evidence": "The text describes a single preventive validation step during reagent selection with no mention of multiple roles, approval chains, or state transitions."
+        },
+        {
+          "check": "computation",
+          "sum": 7,
+          "mapped": 3,
+          "gamp_category": 5,
+          "gamp_modifier": 0,
+          "final_score": 3
+        }
+      ],
+      "reasoning": "Probability 3: functional complexity MEDIUM, dependency complexity MEDIUM, workflow complexity LOW give weighted sum 7 (formula: 2xF + D + W = 7), which maps to 3. Supporting evidence: functional_complexity: The system shall prevent selection of an expired reagent lot for a test requiring an approved reagent, which involves conditional validation logic checking both lot expiration status and reagent approval status. | dependency_complexity: The requirement implies reliance on reagent lot data and approval status data sources, though no specific external systems or interfaces are named in the text. | workflow_complexity: The text describes a single preventive validation step during reagent selection with no mention of multiple roles, approval chains, or state transitions."
+    },
+    "detectability": {
+      "score": 3,
+      "rule_id": "DET-S3",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "detection_controls",
+          "result": "HIGH",
+          "points": 0,
+          "evidence": "The system shall prevent selection of an expired reagent lot, which describes an automated interlock/validation that blocks the invalid action at the point of selection."
+        },
+        {
+          "check": "traceability",
+          "result": "LOW",
+          "points": 2,
+          "evidence": "The requirement specifies prevention of expired reagent lot selection but is silent on any audit trail, logging, or history of attempts, so traceability cannot be confirmed."
+        },
+        {
+          "check": "failure_visibility",
+          "result": "MEDIUM",
+          "points": 1,
+          "evidence": "Because the system prevents selection of an expired reagent lot, a blocked action would likely surface to the user, but the text does not describe an explicit error message or alert so obviousness is uncertain."
+        },
+        {
+          "check": "computation",
+          "sum": 3,
+          "mapped_score": 3,
+          "controls_floor": null,
+          "floor_applied": false,
+          "final_score": 3
+        }
+      ],
+      "reasoning": "Detectability 3: detection controls HIGH, traceability LOW, failure visibility MEDIUM give point sum 3 (higher sum = harder to detect), which maps to 3 (1 = easily detected, 5 = hard to detect). Supporting evidence: detection_controls: The system shall prevent selection of an expired reagent lot, which describes an automated interlock/validation that blocks the invalid action at the point of selection. | traceability: The requirement specifies prevention of expired reagent lot selection but is silent on any audit trail, logging, or history of attempts, so traceability cannot be confirmed. | failure_visibility: Because the system prevents selection of an expired reagent lot, a blocked action would likely surface to the user, but the text does not describe an explicit error message or alert so obviousness is uncertain."
+    },
+    "rpn": 4.2,
+    "rpn_points": 84,
+    "band": "High",
+    "assurance": {
+      "assurance_level": "scripted",
+      "generate_test": true,
+      "rule_id": "ASR-SEV-FLOOR",
+      "reason": "Severity 5 >= 4 forces scripted testing regardless of band (High)."
+    }
+  },
+  "test_script": {
+    "preconditions": "1. The user is logged into the Laboratory system with privileges to initiate a test and select reagents. 2. At least one test type exists in the system that is configured to require an approved reagent lot. 3. Two reagent lots exist in inventory for the required reagent: (a) Lot \"RGT-EXP-001\" with an expiration date set to a date in the past (e.g., yesterday), and (b) Lot \"RGT-VALID-001\" with an expiration date set to a date in the future and a status of Approved. 4. The system date/time is correctly set and verified. 5. The audit trail is enabled.",
+    "steps": [
+      {
+        "step_number": 1,
+        "action": "Navigate to the Test Setup / Create New Test screen and select a test type that is configured to require an approved reagent lot.",
+        "expected_result": "The Test Setup screen displays, showing a reagent selection field (e.g., drop-down or lookup) associated with the selected test type."
+      },
+      {
+        "step_number": 2,
+        "action": "Open the reagent lot selection control for the required reagent and review the list of available lots.",
+        "expected_result": "The reagent lot selection list displays available lots. The expired lot 'RGT-EXP-001' is either not displayed as a selectable option or is visibly disabled/greyed-out, while the valid approved lot 'RGT-VALID-001' is available for selection."
+      },
+      {
+        "step_number": 3,
+        "action": "Attempt to select the expired reagent lot 'RGT-EXP-001' for the test.",
+        "expected_result": "The system prevents the selection. A clear error/validation message is displayed indicating the reagent lot is expired and cannot be used (e.g., 'Reagent lot RGT-EXP-001 is expired and cannot be selected.'). The expired lot is not assigned to the test."
+      },
+      {
+        "step_number": 4,
+        "action": "Attempt to save or proceed with the test while no valid reagent lot is selected (or with the expired lot still attempted).",
+        "expected_result": "The system does not allow the test to proceed/save. A validation message requires selection of an approved, non-expired reagent lot before continuing."
+      },
+      {
+        "step_number": 5,
+        "action": "Select the valid approved reagent lot 'RGT-VALID-001' and save/proceed with the test.",
+        "expected_result": "The system accepts the valid approved lot, allows the test to be saved/initiated successfully, and confirms the reagent lot assignment."
+      },
+      {
+        "step_number": 6,
+        "action": "Open the audit trail and review entries related to the reagent selection activity performed in the preceding steps.",
+        "expected_result": "The audit trail contains a time-stamped, attributable record of the rejected attempt to select the expired lot and the successful selection of the valid approved lot, including user ID, date/time, and the action details."
+      }
+    ]
+  },
+  "prompt": {
+    "name": "test_script_generator",
+    "version": 1
+  },
+  "token_usage": {
+    "per_call": [
+      {
+        "group": "SeverityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1519,
+        "output_tokens": 576,
+        "total_tokens": 2095
+      },
+      {
+        "group": "ProbabilityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1177,
+        "output_tokens": 312,
+        "total_tokens": 1489
+      },
+      {
+        "group": "DetectabilityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1204,
+        "output_tokens": 325,
+        "total_tokens": 1529
+      },
+      {
+        "group": "GampClassification",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 799,
+        "output_tokens": 200,
+        "total_tokens": 999
+      },
+      {
+        "group": "TestScript",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 821,
+        "output_tokens": 1003,
+        "total_tokens": 1824
+      }
+    ],
+    "total": {
+      "input_tokens": 5520,
+      "output_tokens": 2416,
+      "total_tokens": 7936
+    }
+  }
+}

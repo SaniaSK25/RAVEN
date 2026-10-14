@@ -20,7 +20,7 @@
  *
  * To integrate the real API later, replace `getRequirementDetail()` with a
  * fetch to e.g. GET /api/requirements/[id] returning this same
- * `RequirementDetail` shape (via the api-types adapters).
+ * `RequirementDetail` shape.
  */
 
 import type {

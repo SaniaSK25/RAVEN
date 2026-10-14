@@ -22,6 +22,7 @@ const STATUS_OPTIONS: TestDisplayStatus[] = ["READY", "NEEDS REVIEW", "STALE", "
 const ASSURANCE_OPTIONS: AssuranceOutcome[] = [
   "scripted",
   "exploratory",
+  "unscripted",
   "unscripted-supplier",
   "unscripted-adhoc",
 ];

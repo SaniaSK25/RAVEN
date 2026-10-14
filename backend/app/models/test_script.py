@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import ForeignKey, Index, Integer, Text
+from sqlalchemy import ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base_class import Base
@@ -95,6 +95,29 @@ class TestScript(Base, ImmutableBaseModel):
         default=1,
     )
     """Script revision number for this requirement version."""
+
+    freshness: Mapped[str] = mapped_column(
+        String(12), nullable=False, default="fresh",
+        server_default="fresh", index=True,
+    )
+    """Traceability freshness: ``fresh`` | ``stale`` | ``superseded``."""
+
+    origin: Mapped[str] = mapped_column(
+        String(12), nullable=False, default="generated",
+        server_default="generated", index=True,
+    )
+    """Test origin: ``generated`` | ``manual`` | ``imported``."""
+
+    title: Mapped[str | None] = mapped_column(
+        Text, nullable=True, default=None,
+    )
+    """Short human-readable title (manual/imported tests; generated ones
+    may leave this NULL and fall back to a ``TS-<id>`` display code)."""
+
+    external_code: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, default=None, index=True,
+    )
+    """External test-case code from a CSV import (matched on re-import)."""
 
     # --- Relationships ---------------------------------------------------
 

@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from app.models.risk_assessment import RiskAssessment
     from app.models.stored_evidence import Evidence
     from app.models.test_script import TestScript
+    from app.models.token_usage import TokenUsage
 
 
 class RequirementVersion(Base, ImmutableBaseModel):
@@ -114,12 +115,11 @@ class RequirementVersion(Base, ImmutableBaseModel):
     )
     """Owning master record (many -> 1)."""
 
-    evidence: Mapped[Evidence | None] = relationship(
+    evidence: Mapped[list[Evidence]] = relationship(
         back_populates="requirement_version",
         cascade="all, delete-orphan",
-        uselist=False,
     )
-    """Agent 1 extraction for this version (1 -> 1)."""
+    """Frozen Agent 1 extractions for this version, one per analysis run."""
 
     risk_assessments: Mapped[list[RiskAssessment]] = relationship(
         back_populates="requirement_version",
@@ -132,6 +132,12 @@ class RequirementVersion(Base, ImmutableBaseModel):
         cascade="all, delete-orphan",
     )
     """Validation scripts generated for this version (1 -> many)."""
+
+    token_usage_records: Mapped[list[TokenUsage]] = relationship(
+        back_populates="requirement_version",
+        cascade="all, delete-orphan",
+    )
+    """Token totals from analysis runs against this version (1 -> many)."""
 
     compliance_results: Mapped[list[ComplianceResult]] = relationship(
         back_populates="requirement_version",

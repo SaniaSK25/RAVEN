@@ -81,7 +81,7 @@ export default function AssuranceTable({ items, sortKey, sortDir, onSortChange }
               Risk
             </th>
             <th scope="col" aria-sort={sortKey === "rpn" ? (sortDir === "asc" ? "ascending" : "descending") : "none"} className="px-4 py-3 font-medium whitespace-nowrap">
-              <SortButton label="RPN" column="rpn" sortKey={sortKey} sortDir={sortDir} onSortChange={onSortChange} />
+              <SortButton label="RPN score (1–5)" column="rpn" sortKey={sortKey} sortDir={sortDir} onSortChange={onSortChange} />
             </th>
             <th scope="col" className="px-4 py-3 font-medium whitespace-nowrap">
               GxP
@@ -104,11 +104,11 @@ export default function AssuranceTable({ items, sortKey, sortDir, onSortChange }
           {items.map((item) => {
             const outdated = item.assessedVersion !== item.currentVersion;
             const needsAttention = item.status === "needs-review" || item.status === "stale";
-            const expanded = expandedId === item.requirementId;
+            const expanded = expandedId === item.decisionId;
             const note = nonScriptedNote(item.outcome);
-            const rowId = `assurance-row-${item.requirementId}`;
+            const rowId = `assurance-row-${item.decisionId}`;
             return (
-              <Fragment key={item.requirementId}>
+              <Fragment key={item.decisionId}>
                 <tr
                   className={`border-b border-zinc-100 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900 ${
                     expanded ? "border-b-0" : "last:border-0"
@@ -117,7 +117,7 @@ export default function AssuranceTable({ items, sortKey, sortDir, onSortChange }
                   <td className="px-2 py-3 align-top">
                     <button
                       type="button"
-                      onClick={() => setExpandedId(expanded ? null : item.requirementId)}
+                      onClick={() => setExpandedId(expanded ? null : item.decisionId)}
                       aria-expanded={expanded}
                       aria-controls={`${rowId}-detail`}
                       aria-label={`${expanded ? "Collapse" : "Expand"} reasoning for ${item.requirementId}`}
@@ -147,22 +147,22 @@ export default function AssuranceTable({ items, sortKey, sortDir, onSortChange }
                     </Link>
                   </td>
                   <td className="px-4 py-3 align-top">
-                    <RiskBadge value={item.band} />
+                    {item.band ? <RiskBadge value={item.band} /> : "—"}
                   </td>
                   <td
                     className={`px-4 py-3 align-top tabular-nums ${
-                      item.rpn >= 51
+                      item.band === "HIGH"
                         ? "font-bold text-zinc-900 dark:text-zinc-50"
                         : "text-zinc-600 dark:text-zinc-300"
                     }`}
                   >
-                    {item.rpn}
+                    {item.rpn ?? "—"}
                   </td>
                   <td className="px-4 py-3 align-top whitespace-nowrap text-zinc-600 dark:text-zinc-300">
-                    {item.gxpImpact ? "Yes" : "No"}
+                    {item.gxpImpact === null ? "—" : item.gxpImpact ? "Yes" : "No"}
                   </td>
                   <td className="px-4 py-3 align-top whitespace-nowrap text-zinc-600 dark:text-zinc-300">
-                    {item.gampCategory}
+                    {item.gampCategory ?? "—"}
                   </td>
                   <td className="px-4 py-3 align-top">
                     <AssuranceBadge value={item.outcome} />

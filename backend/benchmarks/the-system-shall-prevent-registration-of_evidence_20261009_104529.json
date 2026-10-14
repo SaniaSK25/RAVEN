@@ -1,0 +1,286 @@
+{
+  "mode": "evidence",
+  "requirement": "The system shall prevent registration of a sample when the entered batch or lot identifier does not conform to the configured format for the associated material.",
+  "model_id": "us.anthropic.claude-opus-4-8",
+  "region": "us-east-1",
+  "timestamp_utc": "20261009_104529",
+  "evidence": {
+    "gamp_category": 4,
+    "gamp_reason": "The requirement describes configured format validation rules applied to a commercial LIMS/sample-management system, which is characteristic of a GAMP Category 4 configured product rather than custom-coded functionality, with confidence 0.75 since the text does not explicitly confirm whether the format check is a standard configurable feature or requires custom development.",
+    "severity": {
+      "patient_safety": {
+        "value": false,
+        "confidence": 0.6,
+        "evidence": "The requirement concerns format validation of batch or lot identifiers at sample registration and does not describe any direct link to patient harm."
+      },
+      "product_quality": {
+        "value": true,
+        "confidence": 0.8,
+        "evidence": "Preventing registration when a batch or lot identifier does not conform to the configured format guards against sample misidentification that could lead to an incorrect result or specification decision."
+      },
+      "batch_release": {
+        "value": true,
+        "confidence": 0.7,
+        "evidence": "By enforcing correct batch or lot identifiers, the requirement participates in correctly associating samples with batches used for disposition and release decisions."
+      },
+      "data_integrity": {
+        "value": true,
+        "confidence": 0.9,
+        "evidence": "Preventing registration of samples with non-conforming identifiers ensures records remain accurate and complete rather than carrying malformed or mismatched identifiers."
+      },
+      "regulatory_compliance": {
+        "value": true,
+        "confidence": 0.75,
+        "evidence": "Enforcing configured identifier formats supports GMP data-accuracy and traceability expectations for laboratory records."
+      },
+      "business_continuity": {
+        "value": true,
+        "confidence": 0.55,
+        "evidence": "A failure of this validation control could block or slow sample registration workflows, though the text does not explicitly describe operational interruption."
+      }
+    },
+    "probability": {
+      "functional_complexity": {
+        "value": "MEDIUM",
+        "confidence": 0.75,
+        "evidence": "The system must validate the batch/lot identifier against a configured format and conditionally prevent registration, which is conditional validation logic beyond a simple field check."
+      },
+      "dependency_complexity": {
+        "value": "MEDIUM",
+        "confidence": 0.6,
+        "evidence": "The validation depends on a configured format associated with a specific material, implying reliance on configuration data and material-related reference data."
+      },
+      "workflow_complexity": {
+        "value": "LOW",
+        "confidence": 0.7,
+        "evidence": "The requirement describes a single sample registration step with no roles, approvals, or multi-stage state transitions mentioned."
+      }
+    },
+    "detectability": {
+      "detection_controls": {
+        "value": "HIGH",
+        "confidence": 0.9,
+        "evidence": "The system shall prevent registration of a sample when the entered batch or lot identifier does not conform to the configured format, which is an automated format validation/interlock that blocks nonconforming input."
+      },
+      "traceability": {
+        "value": "LOW",
+        "confidence": 0.6,
+        "evidence": "The requirement specifies prevention of nonconforming registration but is silent on any audit trail, log, or history of rejected or attempted entries, so traceability cannot be confirmed."
+      },
+      "failure_visibility": {
+        "value": "MEDIUM",
+        "confidence": 0.65,
+        "evidence": "Because registration is actively prevented when the identifier does not conform, a user attempting registration would notice the blocked action, though the text does not describe an explicit error message or QA-facing notification."
+      }
+    }
+  },
+  "assessment": {
+    "gamp_category": 4,
+    "gamp_reason": "The requirement describes configured format validation rules applied to a commercial LIMS/sample-management system, which is characteristic of a GAMP Category 4 configured product rather than custom-coded functionality, with confidence 0.75 since the text does not explicitly confirm whether the format check is a standard configurable feature or requires custom development.",
+    "gxp_impact": true,
+    "gxp_reason": "GxP impact via product_quality, batch_release, data_integrity, regulatory_compliance. Supporting evidence: product_quality: Preventing registration when a batch or lot identifier does not conform to the configured format guards against sample misidentification that could lead to an incorrect result or specification decision. | batch_release: By enforcing correct batch or lot identifiers, the requirement participates in correctly associating samples with batches used for disposition and release decisions. | data_integrity: Preventing registration of samples with non-conforming identifiers ensures records remain accurate and complete rather than carrying malformed or mismatched identifiers. | regulatory_compliance: Enforcing configured identifier formats supports GMP data-accuracy and traceability expectations for laboratory records.",
+    "severity": {
+      "score": 5,
+      "rule_id": "SEV-R2",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "patient_safety",
+          "result": false,
+          "evidence": "The requirement concerns format validation of batch or lot identifiers at sample registration and does not describe any direct link to patient harm."
+        },
+        {
+          "check": "product_quality",
+          "result": true,
+          "evidence": "Preventing registration when a batch or lot identifier does not conform to the configured format guards against sample misidentification that could lead to an incorrect result or specification decision."
+        },
+        {
+          "check": "batch_release",
+          "result": true,
+          "evidence": "By enforcing correct batch or lot identifiers, the requirement participates in correctly associating samples with batches used for disposition and release decisions."
+        }
+      ],
+      "reasoning": "Severity 5: failure affects product quality and participates in batch disposition or release decisions. Supporting evidence: product_quality: Preventing registration when a batch or lot identifier does not conform to the configured format guards against sample misidentification that could lead to an incorrect result or specification decision. | batch_release: By enforcing correct batch or lot identifiers, the requirement participates in correctly associating samples with batches used for disposition and release decisions."
+    },
+    "probability": {
+      "score": 3,
+      "rule_id": "PROB-S7",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "functional_complexity",
+          "result": "MEDIUM",
+          "points": 2,
+          "weight": 2,
+          "weighted": 4,
+          "evidence": "The system must validate the batch/lot identifier against a configured format and conditionally prevent registration, which is conditional validation logic beyond a simple field check."
+        },
+        {
+          "check": "dependency_complexity",
+          "result": "MEDIUM",
+          "points": 2,
+          "weight": 1,
+          "weighted": 2,
+          "evidence": "The validation depends on a configured format associated with a specific material, implying reliance on configuration data and material-related reference data."
+        },
+        {
+          "check": "workflow_complexity",
+          "result": "LOW",
+          "points": 1,
+          "weight": 1,
+          "weighted": 1,
+          "evidence": "The requirement describes a single sample registration step with no roles, approvals, or multi-stage state transitions mentioned."
+        },
+        {
+          "check": "computation",
+          "sum": 7,
+          "mapped": 3,
+          "gamp_category": 4,
+          "gamp_modifier": 0,
+          "final_score": 3
+        }
+      ],
+      "reasoning": "Probability 3: functional complexity MEDIUM, dependency complexity MEDIUM, workflow complexity LOW give weighted sum 7 (formula: 2xF + D + W = 7), which maps to 3. Supporting evidence: functional_complexity: The system must validate the batch/lot identifier against a configured format and conditionally prevent registration, which is conditional validation logic beyond a simple field check. | dependency_complexity: The validation depends on a configured format associated with a specific material, implying reliance on configuration data and material-related reference data. | workflow_complexity: The requirement describes a single sample registration step with no roles, approvals, or multi-stage state transitions mentioned."
+    },
+    "detectability": {
+      "score": 3,
+      "rule_id": "DET-S3",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "detection_controls",
+          "result": "HIGH",
+          "points": 0,
+          "evidence": "The system shall prevent registration of a sample when the entered batch or lot identifier does not conform to the configured format, which is an automated format validation/interlock that blocks nonconforming input."
+        },
+        {
+          "check": "traceability",
+          "result": "LOW",
+          "points": 2,
+          "evidence": "The requirement specifies prevention of nonconforming registration but is silent on any audit trail, log, or history of rejected or attempted entries, so traceability cannot be confirmed."
+        },
+        {
+          "check": "failure_visibility",
+          "result": "MEDIUM",
+          "points": 1,
+          "evidence": "Because registration is actively prevented when the identifier does not conform, a user attempting registration would notice the blocked action, though the text does not describe an explicit error message or QA-facing notification."
+        },
+        {
+          "check": "computation",
+          "sum": 3,
+          "mapped_score": 3,
+          "controls_floor": null,
+          "floor_applied": false,
+          "final_score": 3
+        }
+      ],
+      "reasoning": "Detectability 3: detection controls HIGH, traceability LOW, failure visibility MEDIUM give point sum 3 (higher sum = harder to detect), which maps to 3 (1 = easily detected, 5 = hard to detect). Supporting evidence: detection_controls: The system shall prevent registration of a sample when the entered batch or lot identifier does not conform to the configured format, which is an automated format validation/interlock that blocks nonconforming input. | traceability: The requirement specifies prevention of nonconforming registration but is silent on any audit trail, log, or history of rejected or attempted entries, so traceability cannot be confirmed. | failure_visibility: Because registration is actively prevented when the identifier does not conform, a user attempting registration would notice the blocked action, though the text does not describe an explicit error message or QA-facing notification."
+    },
+    "rpn": 4.2,
+    "rpn_points": 84,
+    "band": "High",
+    "assurance": {
+      "assurance_level": "scripted",
+      "generate_test": true,
+      "rule_id": "ASR-SEV-FLOOR",
+      "reason": "Severity 5 >= 4 forces scripted testing regardless of band (High)."
+    }
+  },
+  "test_script": {
+    "preconditions": "1. The LIMS/sample management application is installed, validated, and running in the qualified test environment at the version under test.\n\n2. The database and application servers are available and operating normally, with network connectivity between the client and server verified.\n\n3. A test user account exists with valid, active credentials and the role/privileges required to access the Sample Registration module and create/register samples.\n\n4. The test user is successfully logged in and has navigated to the Sample Registration screen.\n\n5. Master data is configured and approved:\n   a. At least one active material/product record exists in the system to associate with the sample.\n   b. A batch/lot identifier format mask (format rule) is configured and enabled for the selected material (e.g., defined pattern such as alphanumeric length, prefix, allowed characters, delimiters). The exact configured format/mask value is documented and known to the tester.\n   c. Any other mandatory sample registration fields (sample type, material/product link, etc.) have valid reference/master data available for selection.\n\n6. Format validation (batch/lot identifier conformance check) functionality is enabled/active in the system configuration.\n\n7. Prepared test data is available and documented prior to execution:\n   a. A valid batch/lot identifier that conforms to the configured format for the selected material (expected to be accepted).\n   b. One or more invalid batch/lot identifiers that do NOT conform to the configured format (e.g., wrong length, invalid characters, missing prefix/delimiter, blank where format expected) (expected to be rejected/prevented).\n\n8. No duplicate or conflicting sample record exists that would interfere with registration using the test identifiers.\n\n9. The system date/time, time zone, and audit trail (if applicable) are correctly configured and the audit trail is enabled to capture the registration attempt and rejection event.\n\n10. Expected results, the configured format rule, and acceptance criteria are defined and documented in the approved test case prior to execution.",
+    "steps": [
+      {
+        "step_number": 1,
+        "action": "Navigate to the sample registration screen and select a material that has a configured batch/lot identifier format (e.g., exactly 8 alphanumeric characters).",
+        "expected_result": "The sample registration form is displayed with the batch/lot identifier field enabled and the material correctly associated."
+      },
+      {
+        "step_number": 2,
+        "action": "Enter a batch/lot identifier that does NOT conform to the configured format for the material (e.g., 'ABC-12' instead of the required 8 alphanumeric characters) and complete all other mandatory fields with valid data.",
+        "expected_result": "The system flags the batch/lot identifier field as invalid and displays a validation message indicating the value does not conform to the configured format for the associated material."
+      },
+      {
+        "step_number": 3,
+        "action": "Attempt to submit/save the sample registration with the non-conforming batch/lot identifier.",
+        "expected_result": "The system prevents registration; no sample record is created and the entered data is retained for correction."
+      },
+      {
+        "step_number": 4,
+        "action": "Correct the batch/lot identifier so that it conforms to the configured format (e.g., 'AB12CD34') and submit/save the sample registration.",
+        "expected_result": "The validation error clears and the system accepts the entry, successfully registering the sample and assigning a unique sample identifier."
+      },
+      {
+        "step_number": 5,
+        "action": "Query the audit trail / sample records for the registration attempts performed in steps 3 and 4.",
+        "expected_result": "The audit trail shows the rejected registration attempt with the non-conforming identifier was not committed, and the successful registration with the conforming identifier is recorded with user, date, and time."
+      }
+    ]
+  },
+  "prompt": {
+    "name": "test_script_generator",
+    "version": 3
+  },
+  "token_usage": {
+    "per_call": [
+      {
+        "group": "SeverityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1528,
+        "output_tokens": 555,
+        "total_tokens": 2083
+      },
+      {
+        "group": "ProbabilityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1186,
+        "output_tokens": 293,
+        "total_tokens": 1479
+      },
+      {
+        "group": "DetectabilityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1213,
+        "output_tokens": 337,
+        "total_tokens": 1550
+      },
+      {
+        "group": "GampClassification",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 808,
+        "output_tokens": 166,
+        "total_tokens": 974
+      },
+      {
+        "group": "ScriptPreconditions",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 675,
+        "output_tokens": 644,
+        "total_tokens": 1319
+      },
+      {
+        "group": "ScriptSteps",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 895,
+        "output_tokens": 577,
+        "total_tokens": 1472
+      }
+    ],
+    "total": {
+      "input_tokens": 6305,
+      "output_tokens": 2572,
+      "total_tokens": 8877
+    }
+  }
+}

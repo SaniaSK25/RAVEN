@@ -1,0 +1,291 @@
+{
+  "mode": "evidence",
+  "requirement": "System should contain an AI agent which aids in decision making and tool navigation",
+  "model_id": "us.anthropic.claude-opus-4-8",
+  "region": "us-east-1",
+  "timestamp_utc": "20261006_120217",
+  "evidence": {
+    "gamp_category": 5,
+    "gamp_reason": "An AI agent that aids in decision making and tool navigation represents custom-developed, bespoke software logic with adaptive behavior, which falls under GAMP Category 5 (custom applications); however, the requirement is silent on whether this is built in-house versus a configured commercial product, so this classification carries lower confidence (~0.6).",
+    "severity": {
+      "patient_safety": {
+        "value": false,
+        "confidence": 0.6,
+        "evidence": "The requirement describes an AI agent that aids in decision making and tool navigation, with no stated connection to patient treatment or direct harm, so the text is silent on patient safety."
+      },
+      "product_quality": {
+        "value": true,
+        "confidence": 0.55,
+        "evidence": "An AI agent that 'aids in decision making' could influence an incorrect result or specification decision if it provides faulty guidance, though the text does not specify what decisions are involved."
+      },
+      "batch_release": {
+        "value": false,
+        "confidence": 0.55,
+        "evidence": "The requirement mentions general decision making and tool navigation but does not state any participation in batch disposition or release activities."
+      },
+      "data_integrity": {
+        "value": true,
+        "confidence": 0.5,
+        "evidence": "An AI agent aiding decision making may generate or alter records whose accuracy and completeness matter, though the text does not explicitly describe record creation or modification."
+      },
+      "regulatory_compliance": {
+        "value": true,
+        "confidence": 0.5,
+        "evidence": "An AI agent influencing decisions in a regulated laboratory system could affect GMP or electronic-records expectations, though the requirement does not reference specific regulatory controls."
+      },
+      "business_continuity": {
+        "value": true,
+        "confidence": 0.6,
+        "evidence": "Because the AI agent 'aids in decision making and tool navigation,' its failure would slow users relying on that assistance to operate the tool, impacting laboratory workflow."
+      }
+    },
+    "probability": {
+      "functional_complexity": {
+        "value": "HIGH",
+        "confidence": 0.7,
+        "evidence": "The requirement specifies an AI agent that aids in decision making and tool navigation, which implies complex inferential and adaptive logic rather than deterministic rules."
+      },
+      "dependency_complexity": {
+        "value": "MEDIUM",
+        "confidence": 0.5,
+        "evidence": "The agent's role in 'tool navigation' implies integration with other tools or modules, though the text does not name specific external systems or data sources."
+      },
+      "workflow_complexity": {
+        "value": "MEDIUM",
+        "confidence": 0.5,
+        "evidence": "Aiding in 'decision making' suggests multiple steps and state transitions, but the text does not specify distinct roles or a defined sequence of workflow states."
+      }
+    },
+    "detectability": {
+      "detection_controls": {
+        "value": "LOW",
+        "confidence": 0.8,
+        "evidence": "The requirement states only that the system should contain an AI agent aiding decision making and tool navigation, with no mention of automated checks, interlocks, or validations to detect erroneous AI outputs."
+      },
+      "traceability": {
+        "value": "LOW",
+        "confidence": 0.8,
+        "evidence": "The text is silent on audit trails, logs, or decision history for the AI agent, so there is no described means to trace its decisions or navigation suggestions."
+      },
+      "failure_visibility": {
+        "value": "LOW",
+        "confidence": 0.75,
+        "evidence": "Because the AI agent 'aids in decision making' without any stated indication of confidence, rationale, or error signaling, a flawed recommendation could go unnoticed by a user or QA reviewer."
+      }
+    }
+  },
+  "assessment": {
+    "gamp_category": 5,
+    "gamp_reason": "An AI agent that aids in decision making and tool navigation represents custom-developed, bespoke software logic with adaptive behavior, which falls under GAMP Category 5 (custom applications); however, the requirement is silent on whether this is built in-house versus a configured commercial product, so this classification carries lower confidence (~0.6).",
+    "gxp_impact": true,
+    "gxp_reason": "GxP impact via product_quality, data_integrity, regulatory_compliance. Supporting evidence: product_quality: An AI agent that 'aids in decision making' could influence an incorrect result or specification decision if it provides faulty guidance, though the text does not specify what decisions are involved. | data_integrity: An AI agent aiding decision making may generate or alter records whose accuracy and completeness matter, though the text does not explicitly describe record creation or modification. | regulatory_compliance: An AI agent influencing decisions in a regulated laboratory system could affect GMP or electronic-records expectations, though the requirement does not reference specific regulatory controls.",
+    "severity": {
+      "score": 4,
+      "rule_id": "SEV-R3",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "patient_safety",
+          "result": false,
+          "evidence": "The requirement describes an AI agent that aids in decision making and tool navigation, with no stated connection to patient treatment or direct harm, so the text is silent on patient safety."
+        },
+        {
+          "check": "product_quality",
+          "result": true,
+          "evidence": "An AI agent that 'aids in decision making' could influence an incorrect result or specification decision if it provides faulty guidance, though the text does not specify what decisions are involved."
+        },
+        {
+          "check": "batch_release",
+          "result": false,
+          "evidence": "The requirement mentions general decision making and tool navigation but does not state any participation in batch disposition or release activities."
+        }
+      ],
+      "reasoning": "Severity 4: failure affects product quality without direct batch release impact. Supporting evidence: product_quality: An AI agent that 'aids in decision making' could influence an incorrect result or specification decision if it provides faulty guidance, though the text does not specify what decisions are involved."
+    },
+    "probability": {
+      "score": 4,
+      "rule_id": "PROB-S10",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "functional_complexity",
+          "result": "HIGH",
+          "points": 3,
+          "weight": 2,
+          "weighted": 6,
+          "evidence": "The requirement specifies an AI agent that aids in decision making and tool navigation, which implies complex inferential and adaptive logic rather than deterministic rules."
+        },
+        {
+          "check": "dependency_complexity",
+          "result": "MEDIUM",
+          "points": 2,
+          "weight": 1,
+          "weighted": 2,
+          "evidence": "The agent's role in 'tool navigation' implies integration with other tools or modules, though the text does not name specific external systems or data sources."
+        },
+        {
+          "check": "workflow_complexity",
+          "result": "MEDIUM",
+          "points": 2,
+          "weight": 1,
+          "weighted": 2,
+          "evidence": "Aiding in 'decision making' suggests multiple steps and state transitions, but the text does not specify distinct roles or a defined sequence of workflow states."
+        },
+        {
+          "check": "computation",
+          "sum": 10,
+          "mapped": 4,
+          "gamp_category": 5,
+          "gamp_modifier": 0,
+          "final_score": 4
+        }
+      ],
+      "reasoning": "Probability 4: functional complexity HIGH, dependency complexity MEDIUM, workflow complexity MEDIUM give weighted sum 10 (formula: 2xF + D + W = 10), which maps to 4. Supporting evidence: functional_complexity: The requirement specifies an AI agent that aids in decision making and tool navigation, which implies complex inferential and adaptive logic rather than deterministic rules. | dependency_complexity: The agent's role in 'tool navigation' implies integration with other tools or modules, though the text does not name specific external systems or data sources. | workflow_complexity: Aiding in 'decision making' suggests multiple steps and state transitions, but the text does not specify distinct roles or a defined sequence of workflow states."
+    },
+    "detectability": {
+      "score": 5,
+      "rule_id": "DET-S6",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "detection_controls",
+          "result": "LOW",
+          "points": 2,
+          "evidence": "The requirement states only that the system should contain an AI agent aiding decision making and tool navigation, with no mention of automated checks, interlocks, or validations to detect erroneous AI outputs."
+        },
+        {
+          "check": "traceability",
+          "result": "LOW",
+          "points": 2,
+          "evidence": "The text is silent on audit trails, logs, or decision history for the AI agent, so there is no described means to trace its decisions or navigation suggestions."
+        },
+        {
+          "check": "failure_visibility",
+          "result": "LOW",
+          "points": 2,
+          "evidence": "Because the AI agent 'aids in decision making' without any stated indication of confidence, rationale, or error signaling, a flawed recommendation could go unnoticed by a user or QA reviewer."
+        },
+        {
+          "check": "computation",
+          "sum": 6,
+          "mapped_score": 5,
+          "controls_floor": null,
+          "floor_applied": false,
+          "final_score": 5
+        }
+      ],
+      "reasoning": "Detectability 5: detection controls LOW, traceability LOW, failure visibility LOW give point sum 6 (higher sum = harder to detect), which maps to 5 (1 = easily detected, 5 = hard to detect). Supporting evidence: detection_controls: The requirement states only that the system should contain an AI agent aiding decision making and tool navigation, with no mention of automated checks, interlocks, or validations to detect erroneous AI outputs. | traceability: The text is silent on audit trails, logs, or decision history for the AI agent, so there is no described means to trace its decisions or navigation suggestions. | failure_visibility: Because the AI agent 'aids in decision making' without any stated indication of confidence, rationale, or error signaling, a flawed recommendation could go unnoticed by a user or QA reviewer."
+    },
+    "rpn": 4.15,
+    "rpn_points": 83,
+    "band": "High",
+    "assurance": {
+      "assurance_level": "scripted",
+      "generate_test": true,
+      "rule_id": "ASR-SEV-FLOOR",
+      "reason": "Severity 4 >= 4 forces scripted testing regardless of band (High)."
+    }
+  },
+  "test_script": {
+    "preconditions": "1. The validated application environment (QA/Validation instance) is installed, deployed, and operational at the correct version/build under test, with the AI agent module/feature enabled and configured per the design specification.\n\n2. The AI agent service and all dependent back-end components (model endpoint/inference service, API gateway, knowledge base/vector store, and required integrations) are running, reachable, and confirmed healthy prior to test start.\n\n3. The AI model and its underlying knowledge base/training data are loaded at the approved, version-controlled release intended for validation (model version documented and traceable).\n\n4. A test user account exists with the appropriate role and privileges to access the AI agent, the decision-making workflows, and all tools/features the agent is expected to navigate.\n\n5. The test user is authenticated and logged into the system; session is active and the AI agent interface (chat/assistant panel or equivalent) is visible and accessible from the applicable screens.\n\n6. Required test data is prepared and loaded, including:\n   - Representative business scenarios/queries requiring decision support.\n   - Known navigation requests mapping to specific tools/modules/menus.\n   - Expected/approved responses or acceptance criteria for each scenario (derived from an approved baseline/oracle) to allow objective pass/fail evaluation.\n\n7. Network connectivity between the client, application, and AI agent/model services is stable; any required licenses, API keys, or tokens for the AI service are valid and not expired.\n\n8. System configuration settings (e.g., agent prompts/guardrails, confidence thresholds, timeout values, logging/audit trail enablement) are set to the approved values defined in configuration specifications.\n\n9. Audit trail and application logging are enabled and functioning to capture AI agent interactions, inputs, outputs, and navigation actions for review.\n\n10. No conflicting background jobs, maintenance activities, or deployments are scheduled during the execution window that could affect agent availability or responses.\n\n11. Approved test documentation (test script, requirement traceability reference, and expected results) and the appropriate environment access/credentials are available to the tester.\n\n12. Browser/client meets the supported platform and version requirements per the system specification.",
+    "steps": [
+      {
+        "step_number": 1,
+        "action": "Log into the system with a valid user account and locate the AI agent interface within the application.",
+        "expected_result": "The AI agent is present and accessible from the user interface, displaying an input field or chat window ready to receive queries."
+      },
+      {
+        "step_number": 2,
+        "action": "Enter a decision-making query relevant to the system's domain (e.g., 'Which sample batch should I prioritize for release testing?') into the AI agent and submit it.",
+        "expected_result": "The AI agent returns a relevant, context-aware recommendation or decision-support response based on the query."
+      },
+      {
+        "step_number": 3,
+        "action": "Ask the AI agent for navigation assistance to a specific tool or module (e.g., 'How do I navigate to the batch record approval screen?').",
+        "expected_result": "The AI agent provides accurate navigation guidance, including the correct path or a direct link to the requested tool/module."
+      },
+      {
+        "step_number": 4,
+        "action": "Follow the navigation guidance provided by the AI agent to reach the referenced tool or module.",
+        "expected_result": "The user successfully arrives at the correct tool/module as directed by the AI agent, confirming the guidance is accurate."
+      },
+      {
+        "step_number": 5,
+        "action": "Submit an ambiguous or out-of-scope query to the AI agent (e.g., unrelated to the system's functions).",
+        "expected_result": "The AI agent responds gracefully, either requesting clarification or indicating the query is outside its supported scope, without producing an error or crashing."
+      },
+      {
+        "step_number": 6,
+        "action": "Review the system audit trail or interaction log for the AI agent session.",
+        "expected_result": "All AI agent interactions (queries and responses) are recorded with user ID, timestamp, and content, ensuring traceability of AI-assisted decisions and navigation."
+      }
+    ]
+  },
+  "prompt": {
+    "name": "test_script_generator",
+    "version": 3
+  },
+  "token_usage": {
+    "per_call": [
+      {
+        "group": "SeverityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1510,
+        "output_tokens": 598,
+        "total_tokens": 2108
+      },
+      {
+        "group": "ProbabilityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1168,
+        "output_tokens": 316,
+        "total_tokens": 1484
+      },
+      {
+        "group": "DetectabilityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1195,
+        "output_tokens": 331,
+        "total_tokens": 1526
+      },
+      {
+        "group": "GampClassification",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 790,
+        "output_tokens": 167,
+        "total_tokens": 957
+      },
+      {
+        "group": "ScriptPreconditions",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 657,
+        "output_tokens": 735,
+        "total_tokens": 1392
+      },
+      {
+        "group": "ScriptSteps",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 877,
+        "output_tokens": 625,
+        "total_tokens": 1502
+      }
+    ],
+    "total": {
+      "input_tokens": 6197,
+      "output_tokens": 2772,
+      "total_tokens": 8969
+    }
+  }
+}

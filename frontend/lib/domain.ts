@@ -1,12 +1,9 @@
 /**
  * RAVEN frontend domain model — the STABLE contract the UI is built against.
  *
- * This deliberately does NOT mirror today's backend shapes one-to-one.
- * The backend is incomplete (see lib/api-types.ts), so the UI depends on
- * these domain types and the adapter layer converts API responses into them.
- * When the backend is corrected, only the adapter changes — not components.
- *
- * Intended model reference: frontend.txt sections 2–3.
+ * This deliberately does NOT mirror backend shapes one-to-one.
+ * The UI depends on these domain types and each page adapts live
+ * backend responses (see lib/backend-api.ts) into them.
  */
 
 /** Lifecycle states a requirement (or version) can be in. */
@@ -63,6 +60,7 @@ export interface RiskAssessment {
 export type AssuranceOutcome =
   | "scripted"
   | "exploratory"
+  | "unscripted"
   | "unscripted-supplier"
   | "unscripted-adhoc";
 

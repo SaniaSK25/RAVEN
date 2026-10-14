@@ -265,6 +265,8 @@ export function assuranceLabel(outcome: AssuranceOutcome): string {
       return "SCRIPTED";
     case "exploratory":
       return "EXPLORATORY";
+    case "unscripted":
+      return "UNSCRIPTED";
     case "unscripted-supplier":
       return "SUPPLIER ASSURANCE";
     case "unscripted-adhoc":

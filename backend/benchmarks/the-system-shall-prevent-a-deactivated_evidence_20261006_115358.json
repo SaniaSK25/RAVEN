@@ -1,0 +1,286 @@
+{
+  "mode": "evidence",
+  "requirement": "The system shall prevent a deactivated user account from accessing the application or performing transactions.",
+  "model_id": "us.anthropic.claude-opus-4-8",
+  "region": "us-east-1",
+  "timestamp_utc": "20261006_115358",
+  "evidence": {
+    "gamp_category": 4,
+    "gamp_reason": "Value: Category 4; Confidence: 0.6; Evidence sentence: The requirement to \"prevent a deactivated user account from accessing the application\" describes a configurable access-control/user-management function typical of a configured commercial platform, though the text is silent on whether custom code is needed, so the conservative configured-software classification is chosen with moderate confidence.",
+    "severity": {
+      "patient_safety": {
+        "value": false,
+        "confidence": 0.7,
+        "evidence": "The requirement concerns blocking deactivated accounts from access and does not describe any direct interaction with patients or clinical outcomes."
+      },
+      "product_quality": {
+        "value": false,
+        "confidence": 0.6,
+        "evidence": "The text addresses account access control rather than generating results, handling samples, or making specification decisions, so no direct product-quality impact is stated."
+      },
+      "batch_release": {
+        "value": false,
+        "confidence": 0.6,
+        "evidence": "Preventing deactivated-user access is a security control and the requirement is silent on batch disposition or release activities."
+      },
+      "data_integrity": {
+        "value": true,
+        "confidence": 0.85,
+        "evidence": "Blocking deactivated accounts from performing transactions protects records from being altered or created by unauthorized users, safeguarding data integrity."
+      },
+      "regulatory_compliance": {
+        "value": true,
+        "confidence": 0.9,
+        "evidence": "Restricting access to authorized active accounts is an electronic-records expectation under access-control requirements such as 21 CFR Part 11, so failure would breach GMP/e-records expectations."
+      },
+      "business_continuity": {
+        "value": false,
+        "confidence": 0.55,
+        "evidence": "The requirement restricts deactivated accounts and does not indicate that active laboratory operations would be interrupted or slowed if the control functions correctly; impact on continuity is not addressed."
+      }
+    },
+    "probability": {
+      "functional_complexity": {
+        "value": "LOW",
+        "confidence": 0.8,
+        "evidence": "The requirement describes a single straightforward rule: block a deactivated user account from accessing the application or performing transactions."
+      },
+      "dependency_complexity": {
+        "value": "LOW",
+        "confidence": 0.7,
+        "evidence": "The text references only the application itself and user account status, with no mention of external systems, modules, or data sources."
+      },
+      "workflow_complexity": {
+        "value": "LOW",
+        "confidence": 0.7,
+        "evidence": "Only a single account state transition (deactivated) and one actor (user account) are implied, with no multi-role or multi-step workflow described."
+      }
+    },
+    "detectability": {
+      "detection_controls": {
+        "value": "HIGH",
+        "confidence": 0.75,
+        "evidence": "The requirement specifies an automated access-control enforcement that blocks deactivated accounts from accessing the application or performing transactions, which acts as a preventive interlock."
+      },
+      "traceability": {
+        "value": "LOW",
+        "confidence": 0.6,
+        "evidence": "The text is silent on audit trails, logs, or history for recording deactivated-account access attempts, so traceability cannot be confirmed."
+      },
+      "failure_visibility": {
+        "value": "MEDIUM",
+        "confidence": 0.55,
+        "evidence": "A failure where a deactivated user still gains access would be noticeable if attempted, but the requirement does not mention alerts or user-facing error messages to make such a failure obvious to QA reviewers."
+      }
+    }
+  },
+  "assessment": {
+    "gamp_category": 4,
+    "gamp_reason": "Value: Category 4; Confidence: 0.6; Evidence sentence: The requirement to \"prevent a deactivated user account from accessing the application\" describes a configurable access-control/user-management function typical of a configured commercial platform, though the text is silent on whether custom code is needed, so the conservative configured-software classification is chosen with moderate confidence.",
+    "gxp_impact": true,
+    "gxp_reason": "GxP impact via data_integrity, regulatory_compliance. Supporting evidence: data_integrity: Blocking deactivated accounts from performing transactions protects records from being altered or created by unauthorized users, safeguarding data integrity. | regulatory_compliance: Restricting access to authorized active accounts is an electronic-records expectation under access-control requirements such as 21 CFR Part 11, so failure would breach GMP/e-records expectations.",
+    "severity": {
+      "score": 4,
+      "rule_id": "SEV-R4",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "patient_safety",
+          "result": false,
+          "evidence": "The requirement concerns blocking deactivated accounts from access and does not describe any direct interaction with patients or clinical outcomes."
+        },
+        {
+          "check": "product_quality",
+          "result": false,
+          "evidence": "The text addresses account access control rather than generating results, handling samples, or making specification decisions, so no direct product-quality impact is stated."
+        },
+        {
+          "check": "data_integrity",
+          "result": true,
+          "evidence": "Blocking deactivated accounts from performing transactions protects records from being altered or created by unauthorized users, safeguarding data integrity."
+        },
+        {
+          "check": "regulatory_compliance",
+          "result": true,
+          "evidence": "Restricting access to authorized active accounts is an electronic-records expectation under access-control requirements such as 21 CFR Part 11, so failure would breach GMP/e-records expectations."
+        }
+      ],
+      "reasoning": "Severity 4: failure compromises both data integrity and regulatory compliance. Supporting evidence: data_integrity: Blocking deactivated accounts from performing transactions protects records from being altered or created by unauthorized users, safeguarding data integrity. | regulatory_compliance: Restricting access to authorized active accounts is an electronic-records expectation under access-control requirements such as 21 CFR Part 11, so failure would breach GMP/e-records expectations."
+    },
+    "probability": {
+      "score": 1,
+      "rule_id": "PROB-S4",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "functional_complexity",
+          "result": "LOW",
+          "points": 1,
+          "weight": 2,
+          "weighted": 2,
+          "evidence": "The requirement describes a single straightforward rule: block a deactivated user account from accessing the application or performing transactions."
+        },
+        {
+          "check": "dependency_complexity",
+          "result": "LOW",
+          "points": 1,
+          "weight": 1,
+          "weighted": 1,
+          "evidence": "The text references only the application itself and user account status, with no mention of external systems, modules, or data sources."
+        },
+        {
+          "check": "workflow_complexity",
+          "result": "LOW",
+          "points": 1,
+          "weight": 1,
+          "weighted": 1,
+          "evidence": "Only a single account state transition (deactivated) and one actor (user account) are implied, with no multi-role or multi-step workflow described."
+        },
+        {
+          "check": "computation",
+          "sum": 4,
+          "mapped": 1,
+          "gamp_category": 4,
+          "gamp_modifier": 0,
+          "final_score": 1
+        }
+      ],
+      "reasoning": "Probability 1: functional complexity LOW, dependency complexity LOW, workflow complexity LOW give weighted sum 4 (formula: 2xF + D + W = 4), which maps to 1. Supporting evidence: functional_complexity: The requirement describes a single straightforward rule: block a deactivated user account from accessing the application or performing transactions. | dependency_complexity: The text references only the application itself and user account status, with no mention of external systems, modules, or data sources. | workflow_complexity: Only a single account state transition (deactivated) and one actor (user account) are implied, with no multi-role or multi-step workflow described."
+    },
+    "detectability": {
+      "score": 3,
+      "rule_id": "DET-S3",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "detection_controls",
+          "result": "HIGH",
+          "points": 0,
+          "evidence": "The requirement specifies an automated access-control enforcement that blocks deactivated accounts from accessing the application or performing transactions, which acts as a preventive interlock."
+        },
+        {
+          "check": "traceability",
+          "result": "LOW",
+          "points": 2,
+          "evidence": "The text is silent on audit trails, logs, or history for recording deactivated-account access attempts, so traceability cannot be confirmed."
+        },
+        {
+          "check": "failure_visibility",
+          "result": "MEDIUM",
+          "points": 1,
+          "evidence": "A failure where a deactivated user still gains access would be noticeable if attempted, but the requirement does not mention alerts or user-facing error messages to make such a failure obvious to QA reviewers."
+        },
+        {
+          "check": "computation",
+          "sum": 3,
+          "mapped_score": 3,
+          "controls_floor": null,
+          "floor_applied": false,
+          "final_score": 3
+        }
+      ],
+      "reasoning": "Detectability 3: detection controls HIGH, traceability LOW, failure visibility MEDIUM give point sum 3 (higher sum = harder to detect), which maps to 3 (1 = easily detected, 5 = hard to detect). Supporting evidence: detection_controls: The requirement specifies an automated access-control enforcement that blocks deactivated accounts from accessing the application or performing transactions, which acts as a preventive interlock. | traceability: The text is silent on audit trails, logs, or history for recording deactivated-account access attempts, so traceability cannot be confirmed. | failure_visibility: A failure where a deactivated user still gains access would be noticeable if attempted, but the requirement does not mention alerts or user-facing error messages to make such a failure obvious to QA reviewers."
+    },
+    "rpn": 3.1,
+    "rpn_points": 62,
+    "band": "Medium",
+    "assurance": {
+      "assurance_level": "scripted",
+      "generate_test": true,
+      "rule_id": "ASR-SEV-FLOOR",
+      "reason": "Severity 4 >= 4 forces scripted testing regardless of band (Medium)."
+    }
+  },
+  "test_script": {
+    "preconditions": "1. The application is installed, configured, and running in the validated test environment at the approved software version.\n\n2. An administrator account with User Management privileges is available and able to log in to create and deactivate user accounts.\n\n3. A test user account exists in the system with valid credentials (username and password) and has been successfully provisioned with at least one assigned role/permission that would normally allow application access and transaction execution.\n\n4. The test user account has been set to a \"Deactivated\" (disabled/inactive) status by an authorized administrator prior to test execution, and this status change is confirmed in the user administration module and recorded in the audit trail.\n\n5. The credentials (username and password) for the deactivated test user account are known and were valid immediately prior to deactivation.\n\n6. No active or lingering session exists for the deactivated test user account (the user is fully logged out and any cached authentication tokens/cookies have been cleared).\n\n7. The user authentication service, database, and any associated identity/access management components are operational and reachable.\n\n8. Access to a supported client workstation/browser configured per the system specification is available to attempt login.\n\n9. The audit trail/logging functionality is enabled and operational to capture login attempts and access-denial events.\n\n10. The tester has appropriate access and documented test instructions to execute the test, and all preconditions have been verified and recorded before test start.",
+    "steps": [
+      {
+        "step_number": 1,
+        "action": "Log in as an administrator and navigate to the User Management module. Select an active user account and set its status to 'Deactivated', then save the change.",
+        "expected_result": "The system updates the account status to 'Deactivated', records the change in the audit trail with user ID, date, and time, and displays a confirmation message."
+      },
+      {
+        "step_number": 2,
+        "action": "Log out of the administrator session. Attempt to log in to the application using the credentials of the deactivated user account.",
+        "expected_result": "The system rejects the login attempt and displays a message indicating the account is deactivated or access is denied. The user is not granted access to the application."
+      },
+      {
+        "step_number": 3,
+        "action": "If a session for the deactivated user was already open prior to deactivation, attempt to perform a transaction (e.g., create or save a record) within that existing session.",
+        "expected_result": "The system blocks the transaction, prevents the record from being saved, and terminates or invalidates the session, denying any further activity."
+      },
+      {
+        "step_number": 4,
+        "action": "Review the audit trail and system logs for the deactivated user account's login and transaction attempts.",
+        "expected_result": "The audit trail captures the failed login attempt and any blocked transaction attempt with the associated user ID, date, time, and outcome (denied)."
+      }
+    ]
+  },
+  "prompt": {
+    "name": "test_script_generator",
+    "version": 3
+  },
+  "token_usage": {
+    "per_call": [
+      {
+        "group": "SeverityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1515,
+        "output_tokens": 575,
+        "total_tokens": 2090
+      },
+      {
+        "group": "ProbabilityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1173,
+        "output_tokens": 274,
+        "total_tokens": 1447
+      },
+      {
+        "group": "DetectabilityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1200,
+        "output_tokens": 322,
+        "total_tokens": 1522
+      },
+      {
+        "group": "GampClassification",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 795,
+        "output_tokens": 175,
+        "total_tokens": 970
+      },
+      {
+        "group": "ScriptPreconditions",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 662,
+        "output_tokens": 451,
+        "total_tokens": 1113
+      },
+      {
+        "group": "ScriptSteps",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 882,
+        "output_tokens": 451,
+        "total_tokens": 1333
+      }
+    ],
+    "total": {
+      "input_tokens": 6227,
+      "output_tokens": 2248,
+      "total_tokens": 8475
+    }
+  }
+}

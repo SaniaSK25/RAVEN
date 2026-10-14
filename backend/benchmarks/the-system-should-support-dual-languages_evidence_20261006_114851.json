@@ -1,0 +1,249 @@
+{
+  "mode": "evidence",
+  "requirement": "the system should support dual languages",
+  "model_id": "us.anthropic.claude-opus-4-8",
+  "region": "us-east-1",
+  "timestamp_utc": "20261006_114851",
+  "evidence": {
+    "gamp_category": 3,
+    "gamp_reason": "Dual-language support is typically a standard, configurable feature of commercial off-the-shelf software used as supplied without custom code, consistent with GAMP Category 3, though the text is silent on whether this is a non-configurable default or requires custom development, lowering confidence.",
+    "severity": {
+      "patient_safety": {
+        "value": false,
+        "confidence": 0.85,
+        "evidence": "The requirement only concerns dual-language display support and makes no mention of patient care, dosing, or clinical outcomes that could cause patient harm."
+      },
+      "product_quality": {
+        "value": false,
+        "confidence": 0.7,
+        "evidence": "Supporting two languages is a user-interface localization feature and does not, as stated, affect result correctness, sample handling, or specification decisions; the text is silent on any analytical impact."
+      },
+      "batch_release": {
+        "value": false,
+        "confidence": 0.8,
+        "evidence": "The requirement describes language support only and does not reference batch disposition or release activities."
+      },
+      "data_integrity": {
+        "value": false,
+        "confidence": 0.6,
+        "evidence": "The text addresses language display and does not describe how records are created, stored, or altered, though mistranslation could theoretically affect record clarity; this impact is not stated."
+      },
+      "regulatory_compliance": {
+        "value": false,
+        "confidence": 0.6,
+        "evidence": "Dual-language support is not identified in the text as an electronic-records or GMP expectation; the requirement is silent on any regulatory obligation."
+      },
+      "business_continuity": {
+        "value": false,
+        "confidence": 0.55,
+        "evidence": "The requirement supports language usability but the text does not indicate that its absence would interrupt or slow laboratory operations."
+      }
+    },
+    "probability": {
+      "functional_complexity": {
+        "value": "LOW",
+        "confidence": 0.6,
+        "evidence": "The requirement only states the system should support dual languages, implying simple display/localization logic with no described conditional rules or computations."
+      },
+      "dependency_complexity": {
+        "value": "LOW",
+        "confidence": 0.55,
+        "evidence": "No external systems, modules, or data sources are mentioned beyond the implied language resource support within the system itself."
+      },
+      "workflow_complexity": {
+        "value": "LOW",
+        "confidence": 0.6,
+        "evidence": "The text describes no roles, multi-step processes, or state transitions, only a static capability to support two languages."
+      }
+    },
+    "detectability": {
+      "detection_controls": {
+        "value": "LOW",
+        "confidence": 0.75,
+        "evidence": "The requirement states only that 'the system should support dual languages' without specifying any automated checks, validations, or interlocks to verify correct language handling."
+      },
+      "traceability": {
+        "value": "LOW",
+        "confidence": 0.75,
+        "evidence": "The requirement mentions dual-language support but is silent on any audit trails, logs, or history for tracking language selection or changes."
+      },
+      "failure_visibility": {
+        "value": "MEDIUM",
+        "confidence": 0.55,
+        "evidence": "A missing or incorrect translation in a user-facing dual-language display may be noticeable to a user, but the requirement provides no detail on how such a failure would surface to QA reviewers."
+      }
+    }
+  },
+  "assessment": {
+    "gamp_category": 3,
+    "gamp_reason": "Dual-language support is typically a standard, configurable feature of commercial off-the-shelf software used as supplied without custom code, consistent with GAMP Category 3, though the text is silent on whether this is a non-configurable default or requires custom development, lowering confidence.",
+    "gxp_impact": false,
+    "gxp_reason": "No GxP impact flags were raised.",
+    "severity": {
+      "score": 1,
+      "rule_id": "SEV-R7",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "patient_safety",
+          "result": false,
+          "evidence": "The requirement only concerns dual-language display support and makes no mention of patient care, dosing, or clinical outcomes that could cause patient harm."
+        },
+        {
+          "check": "product_quality",
+          "result": false,
+          "evidence": "Supporting two languages is a user-interface localization feature and does not, as stated, affect result correctness, sample handling, or specification decisions; the text is silent on any analytical impact."
+        },
+        {
+          "check": "data_integrity",
+          "result": false,
+          "evidence": "The text addresses language display and does not describe how records are created, stored, or altered, though mistranslation could theoretically affect record clarity; this impact is not stated."
+        },
+        {
+          "check": "regulatory_compliance",
+          "result": false,
+          "evidence": "Dual-language support is not identified in the text as an electronic-records or GMP expectation; the requirement is silent on any regulatory obligation."
+        },
+        {
+          "check": "business_continuity",
+          "result": false,
+          "evidence": "The requirement supports language usability but the text does not indicate that its absence would interrupt or slow laboratory operations."
+        }
+      ],
+      "reasoning": "Severity 1: no impact beyond convenience or cosmetic behaviour was identified. No severity impact flags were raised."
+    },
+    "probability": {
+      "score": 1,
+      "rule_id": "PROB-S4",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "functional_complexity",
+          "result": "LOW",
+          "points": 1,
+          "weight": 2,
+          "weighted": 2,
+          "evidence": "The requirement only states the system should support dual languages, implying simple display/localization logic with no described conditional rules or computations."
+        },
+        {
+          "check": "dependency_complexity",
+          "result": "LOW",
+          "points": 1,
+          "weight": 1,
+          "weighted": 1,
+          "evidence": "No external systems, modules, or data sources are mentioned beyond the implied language resource support within the system itself."
+        },
+        {
+          "check": "workflow_complexity",
+          "result": "LOW",
+          "points": 1,
+          "weight": 1,
+          "weighted": 1,
+          "evidence": "The text describes no roles, multi-step processes, or state transitions, only a static capability to support two languages."
+        },
+        {
+          "check": "computation",
+          "sum": 4,
+          "mapped": 1,
+          "gamp_category": 3,
+          "gamp_modifier": 0,
+          "final_score": 1
+        }
+      ],
+      "reasoning": "Probability 1: functional complexity LOW, dependency complexity LOW, workflow complexity LOW give weighted sum 4 (formula: 2xF + D + W = 4), which maps to 1. Supporting evidence: functional_complexity: The requirement only states the system should support dual languages, implying simple display/localization logic with no described conditional rules or computations. | dependency_complexity: No external systems, modules, or data sources are mentioned beyond the implied language resource support within the system itself. | workflow_complexity: The text describes no roles, multi-step processes, or state transitions, only a static capability to support two languages."
+    },
+    "detectability": {
+      "score": 4,
+      "rule_id": "DET-S5",
+      "rule_version": "3.0.0",
+      "decision_path": [
+        {
+          "check": "detection_controls",
+          "result": "LOW",
+          "points": 2,
+          "evidence": "The requirement states only that 'the system should support dual languages' without specifying any automated checks, validations, or interlocks to verify correct language handling."
+        },
+        {
+          "check": "traceability",
+          "result": "LOW",
+          "points": 2,
+          "evidence": "The requirement mentions dual-language support but is silent on any audit trails, logs, or history for tracking language selection or changes."
+        },
+        {
+          "check": "failure_visibility",
+          "result": "MEDIUM",
+          "points": 1,
+          "evidence": "A missing or incorrect translation in a user-facing dual-language display may be noticeable to a user, but the requirement provides no detail on how such a failure would surface to QA reviewers."
+        },
+        {
+          "check": "computation",
+          "sum": 5,
+          "mapped_score": 4,
+          "controls_floor": null,
+          "floor_applied": false,
+          "final_score": 4
+        }
+      ],
+      "reasoning": "Detectability 4: detection controls LOW, traceability LOW, failure visibility MEDIUM give point sum 5 (higher sum = harder to detect), which maps to 4 (1 = easily detected, 5 = hard to detect). Supporting evidence: detection_controls: The requirement states only that 'the system should support dual languages' without specifying any automated checks, validations, or interlocks to verify correct language handling. | traceability: The requirement mentions dual-language support but is silent on any audit trails, logs, or history for tracking language selection or changes. | failure_visibility: A missing or incorrect translation in a user-facing dual-language display may be noticeable to a user, but the requirement provides no detail on how such a failure would surface to QA reviewers."
+    },
+    "rpn": 1.45,
+    "rpn_points": 29,
+    "band": "Low",
+    "assurance": {
+      "assurance_level": "unscripted",
+      "generate_test": false,
+      "rule_id": "ASR-BAND-LOW",
+      "reason": "Low band allows unscripted testing."
+    }
+  },
+  "test_script": null,
+  "prompt": {
+    "name": "test_script_generator",
+    "version": 3
+  },
+  "token_usage": {
+    "per_call": [
+      {
+        "group": "SeverityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1496,
+        "output_tokens": 552,
+        "total_tokens": 2048
+      },
+      {
+        "group": "ProbabilityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1154,
+        "output_tokens": 268,
+        "total_tokens": 1422
+      },
+      {
+        "group": "DetectabilityEvidence",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 1181,
+        "output_tokens": 305,
+        "total_tokens": 1486
+      },
+      {
+        "group": "GampClassification",
+        "model": "us.anthropic.claude-opus-4-8",
+        "attempt": 1,
+        "ok": true,
+        "input_tokens": 776,
+        "output_tokens": 146,
+        "total_tokens": 922
+      }
+    ],
+    "total": {
+      "input_tokens": 4607,
+      "output_tokens": 1271,
+      "total_tokens": 5878
+    }
+  }
+}

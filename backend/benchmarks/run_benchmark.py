@@ -50,7 +50,9 @@ def main() -> None:
     assessment = assess_evidence(evidence)
     test_script = None
     if is_generation_required(assessment["assurance"]):
-        test_script = generate_test_script(requirement, usage_log=usage_log)
+        test_script = generate_test_script(
+            requirement, assessment["assurance"], usage_log=usage_log
+        )
     record = {
         "mode": "evidence",
         "requirement": requirement,

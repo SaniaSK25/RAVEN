@@ -64,7 +64,7 @@ export interface TraceMatrixRow {
 
 export interface OrphanArtifact {
   id: string;
-  kind: "Test" | "Risk" | "Assurance";
+  kind: "Requirement" | "Test" | "Risk" | "Assurance";
   reason: string;
 }
 
