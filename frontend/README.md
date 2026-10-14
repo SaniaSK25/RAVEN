@@ -18,6 +18,23 @@ not at `http://127.0.0.1:8000`. The variable is server-only; requests to the
 FastAPI `/api/v1` routes go through a same-origin Next.js proxy, avoiding
 browser CORS configuration.
 
+## Docker deployment
+
+The root Compose file builds and starts the frontend, backend, and PostgreSQL
+containers together. Follow the [backend Docker deployment
+instructions](../backend/README.md#docker-deployment) to configure secrets,
+then run this command from the repository root:
+
+```bash
+docker compose up -d --build
+```
+
+The frontend reaches the backend over the Compose network. It listens on port
+`3000` by default; set `FRONTEND_PORT` in the root `.env` to change the host
+port. Configure the EC2 security group to allow inbound traffic only on the
+ports you intend to serve, and use HTTPS through a reverse proxy or load
+balancer for public access.
+
 ## Requirement ingestion
 
 Open **Ingestion** from the primary navigation. The page accepts CSV files with
