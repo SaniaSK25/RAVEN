@@ -1,3 +1,6 @@
 # opencode local config
 .opencode/
 AGENTS.md
+.env
+.env.*
+!.env.example
