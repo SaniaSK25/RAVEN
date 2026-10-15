@@ -2,14 +2,14 @@
 
 RAVEN runs in its own Compose project with three containers:
 
-- `raven_frontend` publishes host port `3001` (default).
+- `raven_frontend` publishes host port `80`.
 - `raven_backend` is internal to the RAVEN Docker network on port `8000`.
 - `raven_postgres` is internal to the RAVEN Docker network on port `5432`.
 
-The existing application remains at `http://<ec2-public-ip>/` on port `80`.
-RAVEN is available separately at `http://<ec2-public-ip>:3001/raven/`.
-This setup does not require changes to the existing application's containers,
-Docker network, frontend, or web-server configuration.
+RADAR and RAVEN both use host port `80`. Use `switch-ec2-app.sh` to stop one
+stack before starting the other, then open the selected application at
+`http://<ec2-public-ip>/` (RAVEN uses the `/raven/` base path). Do not start both
+stacks simultaneously because they will contend for port `80`.
 
 ## Deploy RAVEN
 
@@ -27,21 +27,20 @@ docker-compose logs --tail=50 backend frontend
 Confirm only RAVEN's three containers are listed by `docker-compose ps`:
 `raven_frontend`, `raven_backend`, and `raven_postgres`.
 
-In the EC2 security group, allow inbound TCP port `3001` from the intended
-client IP addresses. Avoid opening backend/database ports `8000` or `5432`.
-If the RAVEN website must be publicly accessible, allow `3001` from the
-required audience; otherwise restrict it to trusted IPs.
+In the EC2 security group, allow inbound TCP port `80` from the intended client
+IP addresses. Backend/database ports `8000` and `5432` are not published to the
+host and should not be opened.
 
 Verify from EC2:
 
 ```sh
 curl -sS -L -o /dev/null -w 'RAVEN -> %{http_code}\n' \
-  http://127.0.0.1:3001/raven/
+  http://127.0.0.1/raven/
 docker-compose exec backend python -c \
   "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/').read()[:80])"
 ```
 
-Then open `http://<ec2-public-ip>:3001/raven/` in a browser.
+Then open `http://<ec2-public-ip>/raven/` in a browser.
 
 ## RAVEN-only operations
 
