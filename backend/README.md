@@ -3,7 +3,7 @@
 From the repository root, build and start the complete stack:
 
 ```sh
-docker compose up -d --build
+docker-compose up -d --build
 ```
 
 No `.env` file is needed for local startup. The root `docker-compose.yml`
@@ -37,8 +37,8 @@ its existing volume and authentication tokens remain valid.
 The frontend host port is fixed at `80` to match the RADAR stack. Backend and
 PostgreSQL ports are not published to the host.
 
-Stop the stack with `docker compose down`. This keeps the database volume; do
-not use `docker compose down --volumes` unless you intend to delete its data.
+Stop the stack with `docker-compose down`. This keeps the database volume; do
+not use `docker-compose down --volumes` unless you intend to delete its data.
 
 ## Switching EC2 applications
 
@@ -50,5 +50,5 @@ instance ID and region; the shell script contains the EC2 application paths.
 Deploy the latest repository changes to EC2 first so
 `/home/ssm-user/RAVEN/switch-ec2-app.sh` exists there. AWS CLI and Session
 Manager Plugin must be installed locally, and the instance must be online in
-Systems Manager. The script uses `docker compose down` without removing
+Systems Manager. The script uses `docker-compose down` without removing
 volumes, so database data is retained.

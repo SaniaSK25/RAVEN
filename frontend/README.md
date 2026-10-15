@@ -24,7 +24,7 @@ The single root Compose file builds and starts the frontend, backend, and
 PostgreSQL containers together. From the repository root, run:
 
 ```bash
-docker compose up -d --build
+docker-compose up -d --build
 ```
 
 No `.env` file is required for local startup. The frontend reaches the backend
