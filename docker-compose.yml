@@ -1,36 +1,16 @@
-# Explicit project name: isolates RAVEN volumes/networks/containers from
-# application 1 on the same EC2. `docker compose down` in this directory
-# only touches the `raven-stack` project — it can never stop app1's
-# containers. Never run `docker stop $(docker ps -q)` or
-# `docker system prune -a` on the shared host.
-
-# RAVEN full stack (frontend + backend + postgres).
-# Local startup needs no .env file. The SECRET_KEY fallback is for local
-# development only; set a strong, persistent SECRET_KEY for deployments.
-# Deploy on shared EC2 alongside the existing app on port 80:
-#   - The frontend is published on host port 3001; visit
-#     http://<ec2-host>:3001/raven/ without changing the other app.
-#   - Backend and postgres are internal-only (expose, no ports) and are
-#   reached over the `raven_net` Docker network.
-# This is the only Compose file for the RAVEN stack.
-
-name: raven-stack
+version: "3.8"
 
 services:
   db:
     image: postgres:16
     container_name: raven_postgres
     restart: always
-    # Cap memory so RAVEN can never starve application 1 on the shared EC2.
-    # Tune down further if the instance is small (check `free -h` first).
-    mem_limit: 1g
-    mem_reservation: 512m
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-raven_db}
-    expose:
-      - "5432"
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
     healthcheck:
       test:
         [
@@ -42,33 +22,29 @@ services:
       retries: 10
     volumes:
       - raven_postgres_data:/var/lib/postgresql/data
-    networks:
-      - raven_net
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: raven_backend
     restart: always
-    mem_limit: 2g
-    mem_reservation: 1g
     environment:
-      ENVIRONMENT: ${ENVIRONMENT:-development}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
       DEBUG: "${DEBUG:-false}"
-      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-me-in-production}
+      SECRET_KEY: ${SECRET_KEY:-change-me}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-raven_db}
       POSTGRES_SERVER: db
-      DATABASE_URL: "postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-raven_db}"
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-raven_db}
       AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
       AWS_REGION: ${AWS_REGION:-us-east-1}
       BEDROCK_MODEL_ID: ${BEDROCK_MODEL_ID:-global.anthropic.claude-opus-4-8}
       AWS_EC2_METADATA_DISABLED: "false"
       BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS:-http://localhost:3001,http://127.0.0.1:3001}
-    expose:
-      - "8000"
+    ports:
+      - "${BACKEND_PORT:-8001}:8000"
     depends_on:
       db:
         condition: service_healthy
@@ -82,8 +58,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
-    networks:
-      - raven_net
 
   frontend:
     build:
@@ -91,8 +65,6 @@ services:
       dockerfile: Dockerfile
     container_name: raven_frontend
     restart: always
-    mem_limit: 1g
-    mem_reservation: 512m
     environment:
       RAVEN_BACKEND_URL: http://backend:8000
     ports:
@@ -100,12 +72,6 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-    networks:
-      - raven_net
 
 volumes:
   raven_postgres_data:
-
-networks:
-  raven_net:
-    driver: bridge
