@@ -20,6 +20,8 @@ start_stack() {
 
     printf 'Stopping the other application...\n'
     (cd "$stop_dir" && docker-compose down)
+    printf 'Cleaning up any previous %s containers (database volumes are kept)...\n' "$app_name"
+    (cd "$start_dir" && docker-compose down)
     printf 'Building and starting %s...\n' "$app_name"
     (cd "$start_dir" && docker-compose up -d --build)
     printf '%s is running. The stopped stack volumes were preserved.\n' "$app_name"

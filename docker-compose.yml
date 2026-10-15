@@ -1,7 +1,6 @@
 services:
   db:
     image: postgres:16
-    container_name: raven_postgres
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -23,7 +22,6 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: raven_backend
     restart: always
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-production}
@@ -57,7 +55,6 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: raven_frontend
     restart: always
     environment:
       RAVEN_BACKEND_URL: http://backend:8000

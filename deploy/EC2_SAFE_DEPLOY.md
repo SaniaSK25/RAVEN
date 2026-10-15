@@ -1,10 +1,10 @@
 # RAVEN EC2 deployment alongside an existing application
 
-RAVEN runs in its own Compose project with three containers:
+RAVEN runs in its own Compose project with three services:
 
-- `raven_frontend` publishes host port `80`.
-- `raven_backend` is internal to the RAVEN Docker network on port `8000`.
-- `raven_postgres` is internal to the RAVEN Docker network on port `5432`.
+- `frontend` publishes host port `80`.
+- `backend` is internal to the RAVEN Docker network on port `8000`.
+- `db` is internal to the RAVEN Docker network on port `5432`.
 
 RADAR and RAVEN both use host port `80`. Use `switch-ec2-app.sh` to stop one
 stack before starting the other, then open the selected application at
@@ -24,8 +24,8 @@ docker-compose ps
 docker-compose logs --tail=50 backend frontend
 ```
 
-Confirm only RAVEN's three containers are listed by `docker-compose ps`:
-`raven_frontend`, `raven_backend`, and `raven_postgres`.
+Confirm the `db`, `backend`, and `frontend` services are running with
+`docker-compose ps`.
 
 In the EC2 security group, allow inbound TCP port `80` from the intended client
 IP addresses. Backend/database ports `8000` and `5432` are not published to the
