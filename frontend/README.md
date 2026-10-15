@@ -27,13 +27,13 @@ PostgreSQL containers together. From the repository root, run:
 docker-compose up -d --build
 ```
 
-No `.env` file is required for local startup. The frontend reaches the backend
-over the Compose network and is available at `http://localhost/raven/`. On EC2,
-it is available at `http://<ec2-public-ip>/raven/`. RAVEN and RADAR share host
-port 80 because the application switcher runs only one stack at a time. Allow
-inbound TCP port 80 in the EC2 security group. For production deployment, follow the
+The frontend reaches the backend over the Compose network and is available at
+`http://localhost/raven/`. On EC2, it is available at
+`http://<ec2-public-ip>/raven/`. RAVEN and RADAR share host port 80 because the
+application switcher runs only one stack at a time. Allow inbound TCP port 80
+in the EC2 security group. For deployment setup, follow the
 [backend Docker deployment instructions](../backend/README.md#docker-deployment)
-to configure a persistent secret and secure database credentials.
+to configure secure, persistent database credentials.
 
 ## Requirement ingestion
 
