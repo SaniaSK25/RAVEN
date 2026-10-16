@@ -183,12 +183,14 @@ export interface BackendTest {
   requirement_title: string;
 }
 
+export const RAVEN_BASE_PATH = "/raven";
+
 export async function backendFetch<T>(
   path: string,
   init?: RequestInit,
 ): Promise<T> {
   const normalizedPath = path.replace(/^\/+/, "");
-  const response = await fetch(`/api/v1/${normalizedPath}`, {
+  const response = await fetch(`${RAVEN_BASE_PATH}/api/v1/${normalizedPath}`, {
     ...init,
     cache: "no-store",
     headers: {
