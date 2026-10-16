@@ -57,6 +57,17 @@ function toAssessmentRecord(record: BackendAssessmentRecord): AssessmentRecord {
     severity: record.severity,
     probability: record.probability,
     detectability: record.detectability,
+    severityReasoning: record.severity_reasoning,
+    probabilityReasoning: record.probability_reasoning,
+    detectabilityReasoning: record.detectability_reasoning,
+    severityRuleId: record.severity_rule_id,
+    probabilityRuleId: record.probability_rule_id,
+    detectabilityRuleId: record.detectability_rule_id,
+    severityDecisionPath: record.severity_decision_path,
+    probabilityDecisionPath: record.probability_decision_path,
+    detectabilityDecisionPath: record.detectability_decision_path,
+    gampReason: record.gamp_reason,
+    rpnPoints: record.rpn_points,
     rpn: record.rpn,
     band,
     status:
@@ -72,6 +83,7 @@ function toAssessmentRecord(record: BackendAssessmentRecord): AssessmentRecord {
     ]
       .filter((value): value is string => Boolean(value))
       .join(" · "),
+    ruleVersion: record.rule_version,
   };
 }
 

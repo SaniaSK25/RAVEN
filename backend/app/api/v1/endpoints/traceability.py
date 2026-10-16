@@ -7,6 +7,8 @@ from pydantic import BaseModel
 
 from app.api.v1.endpoints.helpers import get_or_404
 from app.db.dependencies import DBSession
+from app.models.requirement import Requirement
+from app.models.requirement_version import RequirementVersion
 from app.services.traceability.graph import build_graph
 from app.services.traceability.io import snapshot_from_db
 from app.services.traceability.matrix import (
@@ -61,10 +63,49 @@ def _serialise_link(row) -> dict:
 
 
 @router.get("/matrix")
-def get_matrix(db: DBSession):
+def get_matrix(
+    db: DBSession,
+    requirement_key: str | None = Query(default=None),
+    version: int | None = Query(default=None, ge=1),
+):
     snapshot = snapshot_from_db(db)
     orphans = find_orphans(snapshot)
-    rows = build_matrix(snapshot, orphans)
+    version_row = None
+    if requirement_key is not None or version is not None:
+        if requirement_key is None or version is None:
+            raise HTTPException(
+                status_code=400,
+                detail="requirement_key and version must be provided together",
+            )
+        requirement = (
+            db.query(Requirement)
+            .filter(Requirement.req_key == requirement_key)
+            .first()
+        )
+        if requirement is None:
+            raise HTTPException(
+                status_code=404, detail=f"requirement {requirement_key} not found"
+            )
+        version_row = (
+            db.query(RequirementVersion)
+            .filter(
+                RequirementVersion.requirement_id == requirement.id,
+                RequirementVersion.version_number == version,
+            )
+            .first()
+        )
+        if version_row is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"version {version} not found for {requirement_key}",
+            )
+    rows = build_matrix(
+        snapshot,
+        orphans,
+        requirement_key=requirement_key,
+        requirement_version_id=str(version_row.id) if version_row else None,
+        requirement_version_number=version_row.version_number if version_row else None,
+    )
     return {"columns": list(MATRIX_COLUMNS), "rows": rows, "total": len(rows)}
 
 
@@ -85,13 +126,45 @@ def get_graph(
     db: DBSession,
     requirement_key: str | None = Query(default=None),
     include_inactive: bool = Query(default=False),
+    version: int | None = Query(default=None, ge=1),
 ):
+    version_row = None
+    if version is not None:
+        if requirement_key is None:
+            raise HTTPException(
+                status_code=400,
+                detail="requirement_key is required when selecting a graph version",
+            )
+        requirement = (
+            db.query(Requirement)
+            .filter(Requirement.req_key == requirement_key)
+            .first()
+        )
+        if requirement is None:
+            raise HTTPException(
+                status_code=404, detail=f"requirement {requirement_key} not found"
+            )
+        version_row = (
+            db.query(RequirementVersion)
+            .filter(
+                RequirementVersion.requirement_id == requirement.id,
+                RequirementVersion.version_number == version,
+            )
+            .first()
+        )
+        if version_row is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"version {version} not found for {requirement_key}",
+            )
     snapshot = snapshot_from_db(db)
     return build_graph(
         snapshot,
         find_orphans(snapshot),
         requirement_key=requirement_key,
-        include_inactive=include_inactive,
+        include_inactive=include_inactive or version_row is not None,
+        requirement_version_id=str(version_row.id) if version_row else None,
+        requirement_version_number=version_row.version_number if version_row else None,
     )
 
 

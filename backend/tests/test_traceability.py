@@ -44,6 +44,7 @@ def make_req(rid="R1", key="LIMS-001", status="active", version=1):
 def make_risk(
     rid="K1",
     req="R1",
+    version_id="V1",
     freshness="fresh",
     current=True,
     severity=4,
@@ -55,7 +56,7 @@ def make_risk(
     return RiskInfo(
         id=rid,
         requirement_id=req,
-        requirement_version_id="V1",
+        requirement_version_id=version_id,
         freshness=freshness,
         is_current_version=current,
         severity=severity,
@@ -97,6 +98,7 @@ def make_test(
     risk="K1",
     title="Title",
     external=None,
+    requirement_version_id="V1",
 ):
     return TestInfo(
         id=tid,
@@ -105,6 +107,7 @@ def make_test(
         title=title,
         external_code=external,
         risk_id=risk,
+        requirement_version_id=requirement_version_id,
     )
 
 
@@ -567,6 +570,74 @@ class TestDiff:
 
 
 class TestMatrix:
+    def test_version_scope_selects_only_that_versions_assessment_and_tests(self):
+        snap = scripted_snapshot()
+        snap.requirements["R1"] = make_req(version=2)
+        snap.risks["K1"] = make_risk(freshness="superseded", severity=4)
+        snap.assessments["A1"] = make_assessment(
+            risk="K1", freshness="superseded"
+        )
+        snap.decisions["D1"] = make_decision(
+            risk="K1", freshness="superseded"
+        )
+        snap.tests["T1"] = make_test(
+            "T1", freshness="superseded", external="TC-101"
+        )
+        snap.tests["T2"] = make_test(
+            "T2", freshness="superseded", external="TC-102"
+        )
+        snap.risks["K2"] = make_risk(
+            rid="K2",
+            version_id="V2",
+            freshness="fresh",
+            current=True,
+            severity=2,
+            probability=2,
+            detectability=2,
+            rpn=2.0,
+            band="Low",
+        )
+        snap.assessments["A2"] = make_assessment(aid="A2", risk="K2")
+        snap.decisions["D2"] = make_decision(
+            did="D2", assessment="A2", risk="K2"
+        )
+        snap.tests["T3"] = make_test(
+            "T3", risk="K2", external="TC-V2", requirement_version_id="V2"
+        )
+        snap.links.extend(
+            [
+                make_link("L6", "requirement", "R1", "risk", "K2", "has_risk"),
+                make_link("L7", "risk", "K2", "assurance", "D2", "assessed_as"),
+                make_link("L8", "test", "T3", "requirement", "R1", "verifies"),
+            ]
+        )
+
+        rows = build_matrix(
+            snap,
+            [],
+            requirement_key="LIMS-001",
+            requirement_version_id="V2",
+            requirement_version_number=2,
+        )
+
+        assert len(rows) == 1
+        assert rows[0]["requirement_version"] == 2
+        assert rows[0]["severity"] == 2
+        assert rows[0]["test_id"] == "TC-V2"
+
+        prior_rows = build_matrix(
+            snap,
+            [],
+            requirement_key="LIMS-001",
+            requirement_version_id="V1",
+            requirement_version_number=1,
+        )
+        assert len(prior_rows) == 2
+        assert {row["severity"] for row in prior_rows} == {4}
+        assert {row["test_id"] for row in prior_rows} == {"TC-101", "TC-102"}
+        assert all(row["coverage_status"] == "stale" for row in prior_rows)
+        assert all(row["stale"] is True for row in prior_rows)
+
     def test_covered_requirement_one_row_all_fields(self):
         snap = TraceSnapshot(
             requirements={"R1": make_req()},
@@ -717,6 +788,73 @@ class TestMatrix:
 
 
 class TestGraph:
+    def test_version_scope_keeps_only_selected_version_chain(self):
+        snap = scripted_snapshot()
+        snap.requirements["R1"] = make_req(version=2)
+        snap.risks["K1"] = make_risk(freshness="superseded")
+        snap.assessments["A1"] = make_assessment(
+            risk="K1", freshness="superseded"
+        )
+        snap.decisions["D1"] = make_decision(
+            risk="K1", freshness="superseded"
+        )
+        snap.tests["T1"] = make_test(
+            "T1", freshness="superseded", external="TC-101"
+        )
+        snap.tests["T2"] = make_test(
+            "T2", freshness="superseded", external="TC-102"
+        )
+        snap.risks["K2"] = make_risk(rid="K2", version_id="V2", current=True)
+        snap.assessments["A2"] = make_assessment(aid="A2", risk="K2")
+        snap.decisions["D2"] = make_decision(did="D2", assessment="A2", risk="K2")
+        snap.tests["T3"] = make_test("T3", risk="K2", requirement_version_id="V2")
+        snap.links.extend(
+            [
+                make_link("L6", "requirement", "R1", "risk", "K2", "has_risk"),
+                make_link("L7", "risk", "K2", "assurance", "D2", "assessed_as"),
+                make_link("L8", "assurance", "D2", "test", "T3", "mitigated_by"),
+            ]
+        )
+
+        graph = build_graph(
+            snap,
+            [],
+            requirement_key="LIMS-001",
+            requirement_version_id="V2",
+            requirement_version_number=2,
+        )
+
+        node_ids = {node["id"] for node in graph["nodes"]}
+        assert node_ids == {
+            "requirement:R1",
+            "risk:K2",
+            "assurance:D2",
+            "test:T3",
+        }
+        assert all(edge["source"] in node_ids and edge["target"] in node_ids for edge in graph["edges"])
+        assert next(node for node in graph["nodes"] if node["id"] == "requirement:R1")["meta"]["version"] == 2
+
+        prior_graph = build_graph(
+            snap,
+            [],
+            requirement_key="LIMS-001",
+            requirement_version_id="V1",
+            requirement_version_number=1,
+        )
+        prior_node_ids = {node["id"] for node in prior_graph["nodes"]}
+        assert prior_node_ids == {
+            "requirement:R1",
+            "risk:K1",
+            "assurance:D1",
+            "test:T1",
+            "test:T2",
+        }
+        assert all(
+            node["stale"]
+            for node in prior_graph["nodes"]
+            if node["type"] != "requirement"
+        )
+
     def test_node_id_format(self):
         graph = build_graph(scripted_snapshot(), [])
         ids = {n["id"] for n in graph["nodes"]}

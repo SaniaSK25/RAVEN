@@ -38,7 +38,25 @@ def _serialise(assessment: RiskAssessment) -> dict:
     severity = assessment.severity_result
     probability = assessment.probability_result
     detectability = assessment.detectability_result
+    evidence = assessment.evidence
     rule_config = assessment.rule_config
+
+    def decision_path(result) -> list[dict]:
+        if result is None or not isinstance(result.decision_path, list):
+            return []
+        path = []
+        for step in result.decision_path:
+            if not isinstance(step, dict):
+                continue
+            item = dict(step)
+            check = item.get("check")
+            if isinstance(check, str) and evidence is not None:
+                item["confidence"] = getattr(
+                    evidence, f"{check}_confidence", None
+                )
+            path.append(item)
+        return path
+
     return {
         "id": str(assessment.id),
         "requirement_id": str(requirement.id) if requirement is not None else None,
@@ -63,6 +81,17 @@ def _serialise(assessment: RiskAssessment) -> dict:
         "detectability_rule_id": (
             detectability.rule_id if detectability is not None else None
         ),
+        "severity_reasoning": severity.reasoning if severity is not None else None,
+        "probability_reasoning": (
+            probability.reasoning if probability is not None else None
+        ),
+        "detectability_reasoning": (
+            detectability.reasoning if detectability is not None else None
+        ),
+        "severity_decision_path": decision_path(severity),
+        "probability_decision_path": decision_path(probability),
+        "detectability_decision_path": decision_path(detectability),
+        "gamp_reason": evidence.gamp_reason if evidence is not None else None,
         "rpn": assessment.rpn,
         "rpn_points": assessment.rpn_points,
         "band": getattr(assessment.band, "value", assessment.band),

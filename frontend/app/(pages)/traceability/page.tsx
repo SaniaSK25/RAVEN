@@ -82,6 +82,7 @@ async function fetchTraceabilityData(): Promise<{
   items: TraceMatrixRow[];
   orphans: OrphanArtifact[];
   requirementAliases: Record<string, string>;
+  requirements: Record<string, BackendRequirement>;
 }> {
   const [matrix, requirementPage, orphanData] = await Promise.all([
     backendFetch<BackendTraceMatrix>("traceability/matrix"),
@@ -89,6 +90,12 @@ async function fetchTraceabilityData(): Promise<{
     backendFetch<BackendOrphans>("traceability/orphans"),
   ]);
   const requirements = new Map(
+    requirementPage.items.map((requirement) => [
+      requirement.req_key ?? requirement.id,
+      requirement,
+    ]),
+  );
+  const requirementsByKey = Object.fromEntries(
     requirementPage.items.map((requirement) => [
       requirement.req_key ?? requirement.id,
       requirement,
@@ -130,6 +137,7 @@ async function fetchTraceabilityData(): Promise<{
   return {
     items: [...aggregated.values()],
     requirementAliases,
+    requirements: requirementsByKey,
     orphans: orphanData.orphans.map((orphan) => ({
       id: orphan.entity_key || orphan.entity_id,
       kind:
@@ -149,12 +157,18 @@ export default function TraceabilityPage() {
   const [all, setAll] = useState<TraceMatrixRow[]>([]);
   const [orphans, setOrphans] = useState<OrphanArtifact[]>([]);
   const [requirementAliases, setRequirementAliases] = useState<Record<string, string>>({});
+  const [requirements, setRequirements] = useState<Record<string, BackendRequirement>>({});
   const [graph, setGraph] = useState<{ key: string; data: Traceability } | null>(null);
+  const [selectedMatrix, setSelectedMatrix] = useState<{
+    key: string;
+    row: TraceMatrixRow;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<TraceFilterState>(EMPTY_FILTERS);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedVersion, setSelectedVersion] = useState<number | null>(null);
   const [graphRefresh, setGraphRefresh] = useState(0);
   const [routeSelectionDismissed, setRouteSelectionDismissed] = useState(false);
   const routeRequirement = useSyncExternalStore(
@@ -178,6 +192,7 @@ export default function TraceabilityPage() {
       setAll(result.items);
       setOrphans(result.orphans);
       setRequirementAliases(result.requirementAliases);
+      setRequirements(result.requirements);
       setGraphRefresh((refresh) => refresh + 1);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not load traceability.");
@@ -194,6 +209,7 @@ export default function TraceabilityPage() {
           setAll(result.items);
           setOrphans(result.orphans);
           setRequirementAliases(result.requirementAliases);
+          setRequirements(result.requirements);
         }
       })
       .catch((cause: unknown) => {
@@ -249,16 +265,59 @@ export default function TraceabilityPage() {
   const effectiveSelectedId = selectedId ?? (routeSelectionDismissed ? null : routedRequirementId);
   const graphRow = matches.find((row) => row.requirementId === effectiveSelectedId) ?? null;
   const graphId = graphRow?.requirementId ?? null;
-  const currentGraph = graph?.key === graphId ? graph.data : null;
-  const graphLoading = Boolean(graphId && currentGraph === null && !error);
+  const selectedRequirement = graphId ? requirements[graphId] : undefined;
+  const selectedVersionNumber =
+    selectedVersion ??
+    selectedRequirement?.versions.find((version) => version.is_current)?.version ??
+    selectedRequirement?.version ??
+    1;
+  const selectedVersionRecord = selectedRequirement?.versions.find(
+    (version) => version.version === selectedVersionNumber,
+  );
+  const selectionKey = graphId ? `${graphId}@v${selectedVersionNumber}` : null;
+  const currentGraph = graph?.key === selectionKey ? graph.data : null;
+  const currentMatrix =
+    selectedMatrix?.key === selectionKey ? selectedMatrix.row : null;
+  const graphLoading = Boolean(
+    graphId && (currentGraph === null || currentMatrix === null) && !error,
+  );
   useEffect(() => {
-    if (!graphId) return;
+    if (!graphId || !selectionKey || !graphRow) return;
     let active = true;
-    backendFetch<BackendTraceGraph>(
-      `traceability/graph?requirement_key=${encodeURIComponent(graphId)}`,
-    )
-      .then((data) => {
-        if (active) setGraph({ key: graphId, data: adaptGraph(data) });
+    const baseRow = graphRow;
+    const queryParams = `requirement_key=${encodeURIComponent(graphId)}&version=${selectedVersionNumber}`;
+    Promise.all([
+      backendFetch<BackendTraceGraph>(`traceability/graph?${queryParams}`),
+      backendFetch<BackendTraceMatrix>(`traceability/matrix?${queryParams}`),
+    ])
+      .then(([graphData, matrixData]) => {
+        if (!active) return;
+        setGraph({ key: selectionKey, data: adaptGraph(graphData) });
+        const firstRow = matrixData.rows[0];
+        if (!firstRow) {
+          throw new Error(
+            `No traceability matrix data was returned for ${graphId} version ${selectedVersionNumber}.`,
+          );
+        }
+        const assurance = toAssurance(firstRow.assurance_level);
+        setSelectedMatrix({
+          key: selectionKey,
+          row: {
+            ...baseRow,
+            title: selectedVersionRecord?.text ?? baseRow.title,
+            band: toBand(firstRow.band),
+            rpn: typeof firstRow.rpn === "number" ? firstRow.rpn : null,
+            assurance,
+            hasRisk: typeof firstRow.risk_id === "string" && firstRow.risk_id.length > 0,
+            hasAssurance: assurance !== null,
+            testCount: matrixData.rows.filter(
+              (row) => typeof row.test_id === "string" && row.test_id.length > 0,
+            ).length,
+            coverage: toCoverage(firstRow.coverage_status),
+            status: firstRow.stale === true ? "stale" : "current",
+            currentVersion: `v${selectedVersionNumber}`,
+          },
+        });
       })
       .catch((cause: unknown) => {
         if (active) {
@@ -270,11 +329,19 @@ export default function TraceabilityPage() {
     return () => {
       active = false;
     };
-  }, [graphId, graphRefresh]);
+  }, [
+    graphId,
+    graphRefresh,
+    graphRow,
+    selectedVersionNumber,
+    selectedVersionRecord?.text,
+    selectionKey,
+  ]);
 
   function handleSelectRequirement(requirementId: string) {
     setRouteSelectionDismissed(true);
     setSelectedId(requirementId);
+    setSelectedVersion(null);
     setQuery(requirementId);
   }
 
@@ -315,6 +382,8 @@ export default function TraceabilityPage() {
                   setRouteSelectionDismissed(true);
                   setQuery(value);
                   setSelectedId(null);
+                  setSelectedVersion(null);
+                  setError("");
                 }}
               />
             </div>
@@ -383,19 +452,50 @@ export default function TraceabilityPage() {
           className="mt-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-zinc-800 dark:bg-zinc-950"
         >
             <div className="mb-4">
-              <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
-                Requirement matrix
-              </h2>
-              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                Recorded risk, assurance, test coverage, and freshness for {graphRow.requirementId}.
-              </p>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+                    Requirement matrix
+                  </h2>
+                  <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                    Recorded risk, assurance, test coverage, and freshness for {graphRow.requirementId}.
+                  </p>
+                </div>
+                {selectedRequirement?.versions.length ? (
+                  <label className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-300">
+                    <span>Requirement version</span>
+                    <select
+                      value={selectedVersionNumber}
+                      onChange={(event) => {
+                        setSelectedVersion(Number(event.target.value));
+                        setError("");
+                      }}
+                      className="min-h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 focus-visible:outline-2 focus-visible:outline-accent dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                    >
+                      {selectedRequirement.versions
+                        .slice()
+                        .sort((left, right) => right.version - left.version)
+                        .map((version) => (
+                          <option key={version.version} value={version.version}>
+                            v{version.version}{version.is_current ? " · Current" : ""}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                ) : null}
+              </div>
             </div>
             <TraceMatrix
-              items={[graphRow]}
+              items={currentMatrix ? [currentMatrix] : []}
               onViewChain={() =>
                 document.getElementById("trace-graph")?.scrollIntoView({ behavior: "smooth" })
               }
             />
+            {!currentMatrix && graphLoading ? (
+              <p role="status" className="py-4 text-sm text-zinc-500 dark:text-zinc-400">
+                Loading version {selectedVersionNumber} traceability…
+              </p>
+            ) : null}
           </section>
 
         <section

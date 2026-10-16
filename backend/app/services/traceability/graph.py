@@ -8,6 +8,8 @@ def build_graph(
     orphans: list | None = None,
     requirement_key: str | None = None,
     include_inactive: bool = False,
+    requirement_version_id: str | None = None,
+    requirement_version_number: int | None = None,
 ) -> dict:
     """Build ``{"nodes", "edges", "summary"}`` for frontend consumption."""
     orphans = orphans or []
@@ -31,14 +33,23 @@ def build_graph(
             },
         }
     for risk in snapshot.risks.values():
+        if (
+            requirement_version_id is not None
+            and risk.requirement_version_id != requirement_version_id
+        ):
+            continue
         requirement = snapshot.requirements.get(risk.requirement_id)
         requirement_label = requirement.req_key if requirement else "Unknown requirement"
         risk_requirements[risk.id] = requirement_label
         nodes[f"risk:{risk.id}"] = {
             "id": f"risk:{risk.id}",
             "type": "risk",
-            "label": f"Risk assessment · {requirement_label}",
-            "stale": risk.freshness == "stale",
+            "label": (
+                f"Risk assessment · {requirement_label} · v{requirement_version_number}"
+                if requirement_version_id is not None
+                else f"Risk assessment · {requirement_label}"
+            ),
+            "stale": risk.freshness in ("stale", "superseded"),
             "orphan": ("risk", risk.id) in orphan_nodes,
             "meta": {
                 "version": risk.requirement_version_id,
@@ -49,7 +60,15 @@ def build_graph(
                 "band": risk.band,
             },
         }
+    scoped_risk_ids = {
+        risk_id
+        for risk_id, risk in snapshot.risks.items()
+        if requirement_version_id is None
+        or risk.requirement_version_id == requirement_version_id
+    }
     for decision in snapshot.decisions.values():
+        if requirement_version_id is not None and decision.risk_id not in scoped_risk_ids:
+            continue
         nodes[f"assurance:{decision.id}"] = {
             "id": f"assurance:{decision.id}",
             "type": "assurance",
@@ -57,7 +76,7 @@ def build_graph(
                 f"{decision.level.title()} assurance · "
                 f"{risk_requirements.get(decision.risk_id, 'Requirement')}"
             ),
-            "stale": decision.freshness == "stale",
+            "stale": decision.freshness in ("stale", "superseded"),
             "orphan": ("assurance", decision.id) in orphan_nodes,
             "meta": {
                 "level": decision.level,
@@ -66,6 +85,11 @@ def build_graph(
             },
         }
     for test in snapshot.tests.values():
+        if (
+            requirement_version_id is not None
+            and test.requirement_version_id != requirement_version_id
+        ):
+            continue
         requirement_label = risk_requirements.get(test.risk_id or "")
         label = (
             test.external_code
@@ -80,7 +104,7 @@ def build_graph(
             "id": f"test:{test.id}",
             "type": "test",
             "label": label,
-            "stale": test.freshness == "stale",
+            "stale": test.freshness in ("stale", "superseded"),
             "orphan": ("test", test.id) in orphan_nodes,
             "meta": {
                 "title": test.title,
@@ -100,6 +124,10 @@ def build_graph(
             f"{link.dst_type}:{link.dst_id}",
         )
         if requirement_key and source not in nodes and target not in nodes:
+            continue
+        if requirement_version_id is not None and (
+            source not in nodes or target not in nodes
+        ):
             continue
         edges.append(
             {
@@ -139,6 +167,11 @@ def build_graph(
                         frontier.append(neighbour)
             nodes = {nid: n for nid, n in nodes.items() if nid in seen}
             edges = [e for e in edges if e["source"] in seen and e["target"] in seen]
+
+    if requirement_version_id is not None:
+        for node in nodes.values():
+            if node["type"] == "requirement":
+                node["meta"]["version"] = requirement_version_number
 
     nodes_list = [nodes[nid] for nid in sorted(nodes)]
     edges.sort(key=lambda e: e["id"])
