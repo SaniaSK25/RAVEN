@@ -5,6 +5,7 @@ import { AlertCircle, Download, LoaderCircle } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import {
   backendFetch,
+  RAVEN_BASE_PATH,
   type BackendPage,
   type BackendRequirement,
   type BackendTest,
@@ -40,7 +41,9 @@ export default function ExportsPage() {
     setDownloading(true);
     setError("");
     try {
-      const response = await fetch("/api/v1/traceability/matrix/export", { cache: "no-store" });
+      const response = await fetch(`${RAVEN_BASE_PATH}/api/v1/traceability/matrix/export`, {
+        cache: "no-store",
+      });
       if (!response.ok) throw new Error(`Export failed (${response.status}).`);
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
