@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { RAVEN_BASE_PATH } from "@/lib/backend-api";
 import {
   parseRequirementsFile,
   type IngestionRow,
@@ -98,7 +99,7 @@ export default function IngestionPage() {
     for (const [index, row] of retryRows.entries()) {
       setProgress(index + 1);
       try {
-        const response = await fetch("/api/ingestion", {
+        const response = await fetch(`${RAVEN_BASE_PATH}/api/ingestion`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
