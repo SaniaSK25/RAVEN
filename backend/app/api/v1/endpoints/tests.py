@@ -42,7 +42,7 @@ def _serialise(test: TestScript) -> dict:
         "created_at": test.created_at.isoformat() if test.created_at else None,
         "requirement_id": str(requirement.id),
         "requirement_key": requirement.req_key,
-        "requirement_title": requirement.title,
+        "requirement_title": requirement.description,
     }
 
 

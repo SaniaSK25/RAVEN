@@ -19,7 +19,7 @@ import type {
 } from "@/lib/domain";
 
 const base =
-  "inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-[11px] font-semibold tracking-wide whitespace-nowrap";
+  "inline-flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs font-semibold tracking-wide whitespace-nowrap";
 
 export function RiskBadge({ value }: { value: RiskBand }) {
   const Icon = value === "LOW" ? ShieldCheck : value === "MEDIUM" ? ShieldAlert : OctagonAlert;

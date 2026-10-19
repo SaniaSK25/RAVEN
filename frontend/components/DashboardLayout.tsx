@@ -118,17 +118,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </ul>
         </nav>
 
-        <p className="border-t border-white/10 px-5 py-3 text-[11px] leading-5 text-zinc-500">
-          QA control center
-          <br />
-          Live: dashboard, requirements, assessments, assurance, ingestion, changes, tests, traceability, exports
-          <br />
-          Compliance registry not connected yet
-        </p>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-zinc-200 bg-white/80 px-6 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/80">
+        <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-zinc-200 bg-white/80 px-6 backdrop-blur-md md:hidden dark:border-zinc-800 dark:bg-zinc-950/80">
           <span className="flex items-center gap-2.5 md:hidden">
             <span
               aria-hidden="true"
@@ -138,17 +131,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </span>
             <span className="text-sm font-bold tracking-wide">RAVEN</span>
           </span>
-          <p className="hidden text-sm text-zinc-500 md:block dark:text-zinc-400">
-            Regulated-software QA control center
-          </p>
           <div className="flex items-center gap-3">
-            <span className="hidden items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-700 sm:inline-flex dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
-              <span
-                aria-hidden="true"
-                className="h-1.5 w-1.5 rounded-full bg-emerald-500"
-              />
-              RAVEN workspace
-            </span>
             <button
               type="button"
               aria-label={mobileNavOpen ? "Close navigation" : "Open navigation"}

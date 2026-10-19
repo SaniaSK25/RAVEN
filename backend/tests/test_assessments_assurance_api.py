@@ -95,7 +95,23 @@ def seed_assessed(session, key="LIMS-001", freshness="fresh"):
         score=4,
         rule_id="SEV-R3",
         rule_version="1.0.0",
-        decision_path=[{"rule": "SEV-R3"}],
+        decision_path=[
+            {
+                "check": "patient_safety",
+                "result": False,
+                "evidence": "No direct patient safety impact was described.",
+            },
+            {
+                "check": "product_quality",
+                "result": True,
+                "evidence": "The requirement protects product quality.",
+            },
+            {
+                "check": "batch_release",
+                "result": False,
+                "evidence": "The requirement does not participate in batch release.",
+            },
+        ],
         reasoning="severity reasoning",
     )
     prob = ProbabilityResult(
@@ -103,7 +119,40 @@ def seed_assessed(session, key="LIMS-001", freshness="fresh"):
         score=3,
         rule_id="PROB-S7",
         rule_version="1.0.0",
-        decision_path=[{"sum": 9, "gamp_modifier": 0}],
+        decision_path=[
+            {
+                "check": "functional_complexity",
+                "result": "HIGH",
+                "points": 3,
+                "weight": 2,
+                "weighted": 6,
+                "evidence": "The requirement describes several interacting behaviours.",
+            },
+            {
+                "check": "dependency_complexity",
+                "result": "LOW",
+                "points": 1,
+                "weight": 1,
+                "weighted": 1,
+                "evidence": "No external dependencies are specified.",
+            },
+            {
+                "check": "workflow_complexity",
+                "result": "MEDIUM",
+                "points": 2,
+                "weight": 1,
+                "weighted": 2,
+                "evidence": "The workflow includes multiple user steps.",
+            },
+            {
+                "check": "computation",
+                "sum": 9,
+                "mapped": 4,
+                "gamp_category": 4,
+                "gamp_modifier": 0,
+                "final_score": 4,
+            },
+        ],
         weighted_sum=9.0,
         gamp_modifier=0.0,
         reasoning="probability reasoning",
@@ -113,7 +162,34 @@ def seed_assessed(session, key="LIMS-001", freshness="fresh"):
         score=4,
         rule_id="DET-S4",
         rule_version="1.0.0",
-        decision_path=[{"controls_floor": 2}],
+        decision_path=[
+            {
+                "check": "detection_controls",
+                "result": "MEDIUM",
+                "points": 1,
+                "evidence": "Some automated validation is present.",
+            },
+            {
+                "check": "traceability",
+                "result": "LOW",
+                "points": 2,
+                "evidence": "The audit history may be incomplete.",
+            },
+            {
+                "check": "failure_visibility",
+                "result": "MEDIUM",
+                "points": 1,
+                "evidence": "Failure may require review to identify.",
+            },
+            {
+                "check": "computation",
+                "sum": 4,
+                "mapped_score": 4,
+                "controls_floor": 2,
+                "floor_applied": False,
+                "final_score": 4,
+            },
+        ],
         controls_floor=2,
         reasoning="detectability reasoning",
     )
@@ -182,7 +258,7 @@ class TestAssessmentList:
                 assert body["total"] == 1
                 item = body["items"][0]
                 assert item["requirement_key"] == "LIMS-001"
-                assert item["requirement_title"] == "Assessed requirement"
+                assert item["requirement_title"] == "original text LIMS-001"
                 assert item["version"] == 1
                 assert item["current_requirement_version"] == 1
                 assert item["is_current_version"] is True
@@ -193,6 +269,15 @@ class TestAssessmentList:
                 assert item["severity_rule_id"] == "SEV-R3"
                 assert item["probability_rule_id"] == "PROB-S7"
                 assert item["detectability_rule_id"] == "DET-S4"
+                assert item["severity_reasoning"] == "severity reasoning"
+                assert item["probability_reasoning"] == "probability reasoning"
+                assert item["detectability_reasoning"] == "detectability reasoning"
+                assert item["severity_decision_path"][1]["evidence"] == (
+                    "The requirement protects product quality."
+                )
+                assert item["probability_decision_path"][0]["weighted"] == 6
+                assert item["detectability_decision_path"][0]["result"] == "MEDIUM"
+                assert item["gamp_reason"] is None
                 assert item["rpn"] == 3.75
                 assert item["rpn_points"] == 75
                 assert item["band"] == "HIGH"
@@ -248,7 +333,7 @@ class TestAssuranceList:
                 assert body["total"] == 1
                 item = body["items"][0]
                 assert item["requirement_key"] == "LIMS-001"
-                assert item["requirement_title"] == "Assessed requirement"
+                assert item["requirement_title"] == "original text LIMS-001"
                 assert item["version"] == 1
                 assert item["current_requirement_version"] == 1
                 assert item["is_current_version"] is True

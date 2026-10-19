@@ -1,16 +1,12 @@
 "use client";
 
-import { useMemo, useSyncExternalStore } from "react";
-import { useRouter } from "next/navigation";
-import { Background, ReactFlow, type Edge, type Node } from "reactflow";
+import { useMemo, useState, useSyncExternalStore } from "react";
+import { Background, Controls, ReactFlow, type Edge, type Node } from "reactflow";
 import "reactflow/dist/style.css";
 import type { Traceability, TraceNodeType } from "@/lib/domain";
 
 interface TraceGraphProps {
   trace: Traceability;
-  requirementId: string;
-  /** False for trace-only stubs with no detail page (nodes don't navigate). */
-  canOpenDetail: boolean;
 }
 
 const NODE_STYLE: Record<TraceNodeType, { background: string; border: string }> = {
@@ -20,26 +16,12 @@ const NODE_STYLE: Record<TraceNodeType, { background: string; border: string }> 
   test: { background: "#eff6ff", border: "1px solid #1d4ed8" },
 };
 
-function targetFor(nodeId: string, type: TraceNodeType, requirementId: string): string | null {
-  if (nodeId.startsWith("endpoint-")) return null;
-  switch (type) {
-    case "requirement":
-      return `/requirements/${requirementId}`;
-    case "risk":
-      return `/requirements/${requirementId}?tab=risk`;
-    case "assurance":
-      return `/requirements/${requirementId}?tab=assurance`;
-    case "test":
-      return `/requirements/${requirementId}?tab=tests`;
-  }
-}
-
 /**
- * Exploration graph for one requirement chain. Zoom, pan, select, and
- * click-to-navigate only — no editing.
+ * Exploration graph for one requirement chain. Zoom uses explicit controls so
+ * scrolling over the graph continues to scroll the page.
  */
-export default function TraceGraph({ trace, requirementId, canOpenDetail }: TraceGraphProps) {
-  const router = useRouter();
+export default function TraceGraph({ trace }: TraceGraphProps) {
+  const [panEnabled, setPanEnabled] = useState(false);
   // React Flow measures the DOM, so render it only after client hydration.
   const mounted = useSyncExternalStore(
     () => () => {},
@@ -58,7 +40,14 @@ export default function TraceGraph({ trace, requirementId, canOpenDetail }: Trac
       return {
         id: node.id,
         position: { x: column * 260, y: seen * 110 },
-        data: { label: `${node.type.toUpperCase()}\n${node.label}` },
+        data: {
+          label: `${{
+            requirement: "Requirement",
+            risk: "Risk assessment",
+            assurance: "Assurance decision",
+            test: "Test script",
+          }[node.type]}\n${node.label}`,
+        },
         style: {
           ...style,
           color: "#18181b",
@@ -82,14 +71,6 @@ export default function TraceGraph({ trace, requirementId, canOpenDetail }: Trac
     return { nodes: rfNodes, edges: rfEdges };
   }, [trace]);
 
-  function handleNodeClick(_event: React.MouseEvent, node: Node) {
-    if (!canOpenDetail) return;
-    const domain = trace.nodes.find((n) => n.id === node.id);
-    if (!domain) return;
-    const target = targetFor(domain.id, domain.type, requirementId);
-    if (target) router.push(target);
-  }
-
   if (!mounted) {
     return (
       <div
@@ -104,14 +85,28 @@ export default function TraceGraph({ trace, requirementId, canOpenDetail }: Trac
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        onNodeClick={handleNodeClick}
         nodesDraggable={false}
         nodesConnectable={false}
+        elementsSelectable={false}
+        zoomOnScroll={false}
+        zoomOnDoubleClick={false}
+        panOnScroll={false}
+        panOnDrag={panEnabled}
+        onPaneClick={() => setPanEnabled((enabled) => !enabled)}
         fitView
         fitViewOptions={{ padding: 0.2 }}
         attributionPosition="bottom-right"
+        className={`raven-trace-flow ${
+          panEnabled
+            ? "[&_.react-flow__pane]:cursor-grab [&_.react-flow__pane.dragging]:cursor-grabbing"
+            : "[&_.react-flow__pane]:cursor-default [&_.react-flow__pane.dragging]:cursor-default"
+        } [&_.react-flow__node]:cursor-default`}
       >
         <Background gap={20} color="#e4e4e7" />
+        <Controls
+          showInteractive={false}
+          position="bottom-left"
+        />
       </ReactFlow>
     </div>
   );

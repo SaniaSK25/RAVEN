@@ -185,10 +185,16 @@ def _o1_reason(
 def _test_display_key(snapshot: TraceSnapshot, test_id: str) -> str:
     test = snapshot.tests.get(test_id)
     if test is None:
-        return test_id
+        return "Test script"
     if test.external_code:
         return test.external_code
-    return f"TS-{test_id[:8]}"
+    if test.title:
+        return test.title
+    risk = snapshot.risks.get(test.risk_id or "")
+    requirement = snapshot.requirements.get(risk.requirement_id) if risk else None
+    if requirement:
+        return f"Test script · {requirement.req_key}"
+    return "Test script"
 
 
 def _find_o2(snapshot: TraceSnapshot, verifies: list) -> list[Orphan]:
@@ -232,8 +238,17 @@ def _find_o2(snapshot: TraceSnapshot, verifies: list) -> list[Orphan]:
 
 
 def _risk_display_key(snapshot: TraceSnapshot, risk: str | object) -> str:
-    risk_id = risk if isinstance(risk, str) else risk.id
-    return f"RSK-{risk_id[:8]}"
+    risk_info = snapshot.risks.get(risk) if isinstance(risk, str) else risk
+    requirement = (
+        snapshot.requirements.get(risk_info.requirement_id)
+        if risk_info is not None
+        else None
+    )
+    return (
+        f"Risk assessment · {requirement.req_key}"
+        if requirement is not None
+        else "Risk assessment"
+    )
 
 
 def _find_o3(snapshot, risks_by_req, decisions_by_risk) -> list[Orphan]:

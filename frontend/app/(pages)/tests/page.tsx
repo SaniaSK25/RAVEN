@@ -88,7 +88,7 @@ export default function TestsPage() {
                 {visible.map((test) => (
                   <tr key={test.id}>
                     <td className="max-w-lg px-5 py-4">
-                      <p className="font-medium text-zinc-900 dark:text-zinc-100">{test.title ?? test.external_code ?? `TS-${test.id.slice(0, 8)}`}</p>
+                      <p className="font-medium text-zinc-900 dark:text-zinc-100">{test.title ?? test.external_code ?? "Test script"}</p>
                       <details className="mt-2">
                         <summary className="cursor-pointer text-xs font-medium text-accent">View persisted script</summary>
                         <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-md bg-zinc-50 p-3 text-xs leading-5 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">{test.script}</pre>
