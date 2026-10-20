@@ -3,12 +3,15 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AlertCircle, ArrowLeft, FileText, LoaderCircle, Play } from "lucide-react";
+import { AlertCircle, ArrowLeft, FileText, LoaderCircle, Play, Archive, Download, CheckCircle } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import {
   backendFetch,
   type BackendRequirementDetail,
 } from "@/lib/backend-api";
+import { getRequirementDetail } from "@/lib/requirement-detail-data";
+import { getTraceMatrix } from "@/lib/traceability-data";
+import { generateValidationPackZip, downloadBlob, type ValidationPackData } from "@/lib/export-utils";
 
 const PRECONDITIONS_HEADER = "Preconditions:";
 const STEPS_HEADER = "Test Steps:";
@@ -68,6 +71,9 @@ export default function RequirementDetailPage() {
   const [analysisMessage, setAnalysisMessage] = useState("");
   const [scriptError, setScriptError] = useState("");
   const [scriptMessage, setScriptMessage] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
+  const [exportSuccess, setExportSuccess] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -161,6 +167,48 @@ export default function RequirementDetailPage() {
     }
   }
 
+  async function exportValidationPack() {
+    setIsExporting(true);
+    setExportError("");
+    setExportSuccess("");
+
+    try {
+      // Get detailed requirement data
+      const detail = getRequirementDetail(id);
+      if (!detail) {
+        throw new Error("Could not load requirement detail for export");
+      }
+
+      // Get trace matrix row
+      const matrix = getTraceMatrix();
+      const traceRow = matrix.find(r => r.requirementId === id);
+
+      // Prepare validation pack data
+      const packData: ValidationPackData[] = [{
+        requirement: detail,
+        traceMatrixRow: traceRow,
+      }];
+
+      // Get trace matrix elements for image capture
+      const traceElements = new Map<string, HTMLDivElement>();
+
+      // Generate ZIP
+      const zipBlob = await generateValidationPackZip(packData, traceElements);
+
+      // Download
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const filename = `validation-pack-${id}-${timestamp}.zip`;
+      downloadBlob(zipBlob, filename);
+
+      setExportSuccess(`Successfully exported validation pack for ${id}`);
+    } catch (err) {
+      console.error("Export failed:", err);
+      setExportError("Failed to generate validation pack. Please try again.");
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   const hasGeneratedScript = requirement?.tests.some(
     (test) => test.origin === "generated" && test.freshness !== "superseded",
   ) ?? false;
@@ -177,6 +225,19 @@ export default function RequirementDetailPage() {
         <ArrowLeft aria-hidden="true" className="h-4 w-4" />
         Requirements
       </Link>
+
+      {exportSuccess && (
+        <div role="status" className="mt-4 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
+          <CheckCircle aria-hidden="true" className="h-4 w-4 flex-shrink-0" />
+          <span>{exportSuccess}</span>
+        </div>
+      )}
+      {exportError && (
+        <div role="alert" className="mt-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+          <AlertCircle aria-hidden="true" className="h-4 w-4 flex-shrink-0" />
+          <span>{exportError}</span>
+        </div>
+      )}
 
       {error?.id === id ? (
         <section role="alert" className="mt-6 rounded-xl border border-red-200 bg-white p-6 dark:border-red-900 dark:bg-zinc-950">
@@ -217,6 +278,25 @@ export default function RequirementDetailPage() {
               {isAnalyzing ? "Analyzing…" : "Run risk & assurance analysis"}
             </button>
           </header>
+
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => void exportValidationPack()}
+              disabled={isExporting}
+              className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-md bg-zinc-100 px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
+            >
+              {isExporting ? (
+                <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" />
+              ) : (
+                <Archive className="h-4 w-4" />
+              )}
+              {isExporting ? "Exporting…" : "Export validation pack"}
+            </button>
+            <span className="text-xs text-zinc-500 dark:text-zinc-400">
+              ZIP with Risk Assessment, Assurance Rationale, Test Scripts, Gap Report, Traceability Matrix
+            </span>
+          </div>
 
           {isAnalyzing ? (
             <p role="status" className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">

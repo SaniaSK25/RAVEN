@@ -33,20 +33,6 @@ from app.services.traceability.requirement_ops import (
 router = APIRouter(prefix="/requirements", tags=["Requirements"])
 
 
-<<<<<<< HEAD
-=======
-class RequirementCreate(BaseModel):
-    description: str
-    text: str | None = None
-    req_key: str | None = None
-    created_by: str = "api"
-
-
-class RequirementEdit(BaseModel):
-    text: str
-    edited_by: str = "api"
-
->>>>>>> a03cc02db04bfbf35f3cfc28131460ebf6aa9d07
 def _serialise(requirement: Requirement) -> dict:
     current = (
         requirement.current_version

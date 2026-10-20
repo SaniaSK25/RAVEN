@@ -6,7 +6,8 @@ from fastapi import APIRouter, HTTPException, Query, Response
 
 from app.api.v1.endpoints.helpers import get_or_404
 from app.db.dependencies import DBSession
-<<<<<<< HEAD
+from app.models.requirement import Requirement
+from app.models.requirement_version import RequirementVersion
 from app.schemas.responses import (
     ImportSummaryResponse,
     LinkRebuildResponse,
@@ -16,10 +17,6 @@ from app.schemas.responses import (
     TraceMatrixResponse,
 )
 from app.schemas.traceability import ImportPayload, LinkCreate
-=======
-from app.models.requirement import Requirement
-from app.models.requirement_version import RequirementVersion
->>>>>>> a03cc02db04bfbf35f3cfc28131460ebf6aa9d07
 from app.services.traceability.graph import build_graph
 from app.services.traceability.io import snapshot_from_db
 from app.services.traceability.matrix import (
@@ -58,17 +55,12 @@ def _serialise_link(row) -> dict:
     }
 
 
-<<<<<<< HEAD
 @router.get("/matrix", response_model=TraceMatrixResponse)
-def get_matrix(db: DBSession):
-=======
-@router.get("/matrix")
 def get_matrix(
     db: DBSession,
     requirement_key: str | None = Query(default=None),
     version: int | None = Query(default=None, ge=1),
 ):
->>>>>>> a03cc02db04bfbf35f3cfc28131460ebf6aa9d07
     snapshot = snapshot_from_db(db)
     orphans = find_orphans(snapshot)
     version_row = None

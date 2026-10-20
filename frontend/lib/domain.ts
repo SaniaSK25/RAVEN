@@ -54,6 +54,8 @@ export interface RiskAssessment {
   decisionPath: string[];
   reasoning: string;
   createdAt: string;
+  /** Freshness of the assessment relative to the current requirement version. */
+  freshness?: "current" | "stale" | "superseded";
 }
 
 /** Assurance outcomes (intended model — four outcomes). */
@@ -75,6 +77,8 @@ export interface AssuranceDecision {
   /** True only when outcome is "scripted". */
   generateTest: boolean;
   createdAt: string;
+  /** Freshness of the decision relative to the current requirement version. */
+  freshness?: "current" | "stale" | "superseded";
 }
 
 /** Evidence supporting a requirement, with reviewer confidence. */

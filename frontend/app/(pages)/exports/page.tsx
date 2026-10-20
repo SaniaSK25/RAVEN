@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertCircle, Download, LoaderCircle } from "lucide-react";
+import { AlertCircle, Download, LoaderCircle, Archive, FileText } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
+import ValidationPackExport from "@/components/exports/ValidationPackExport";
 import {
   backendFetch,
   RAVEN_BASE_PATH,
@@ -71,14 +72,14 @@ export default function ExportsPage() {
           Exports
         </h1>
         <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-          Audit-package workspace — download live backend records as CSV.
+          Export validation packs, traceability matrices, and other audit artifacts.
         </p>
       </div>
 
       {loading ? (
         <div role="status" className="mt-6 flex items-center gap-2 text-sm text-zinc-500">
           <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" />
-          Loading export counts from RAVEN…
+          Loading export workspace…
         </div>
       ) : error && !counts ? (
         <section
@@ -92,31 +93,55 @@ export default function ExportsPage() {
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">{error}</p>
         </section>
       ) : (
-        <section className="page-panel mt-6">
-          <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
-            Traceability matrix (CSV)
-          </h2>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            {counts
-              ? `${counts.requirements} requirements · ${counts.tests} tests in the backend.`
-              : "Live backend export."}{" "}
-            Generated server-side from the current traceability snapshot.
-          </p>
-          {error ? (
-            <p role="alert" className="mt-3 text-sm text-red-700 dark:text-red-300">
-              {error}
-            </p>
-          ) : null}
-          <button
-            type="button"
-            onClick={() => void handleDownloadMatrix()}
-            disabled={downloading}
-            className="mt-4 inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-brand hover:bg-accent-dark focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <Download aria-hidden="true" className="h-4 w-4" />
-            {downloading ? "Preparing…" : "Download matrix CSV"}
-          </button>
-        </section>
+        <div className="mt-6 space-y-6">
+          {/* Validation Pack Export */}
+          <section className="page-panel">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
+                  <Archive className="h-5 w-5 text-accent" />
+                  Validation Pack Export
+                </h2>
+                <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                  Generate a comprehensive validation pack as a ZIP file containing Risk Assessment, Assurance Rationale, Test Scripts, Gap Report, and Traceability Matrix (PNG) for selected requirements.
+                </p>
+              </div>
+            </div>
+            <ValidationPackExport />
+          </section>
+
+          {/* Traceability Matrix CSV Export */}
+          <section className="page-panel">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-accent" />
+                  Traceability Matrix (CSV)
+                </h2>
+                <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                  {counts
+                    ? `${counts.requirements} requirements · ${counts.tests} tests in the backend.`
+                    : "Live backend export."}{" "}
+                  Generated server-side from the current traceability snapshot.
+                </p>
+              </div>
+            </div>
+            {error ? (
+              <p role="alert" className="mt-3 text-sm text-red-700 dark:text-red-300">
+                {error}
+              </p>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => void handleDownloadMatrix()}
+              disabled={downloading}
+              className="mt-4 inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-brand hover:bg-accent-dark focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Download aria-hidden="true" className="h-4 w-4" />
+              {downloading ? "Preparing…" : "Download matrix CSV"}
+            </button>
+          </section>
+        </div>
       )}
     </DashboardLayout>
   );
