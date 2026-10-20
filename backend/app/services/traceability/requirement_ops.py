@@ -59,8 +59,13 @@ def create_requirement(
     return requirement
 
 
-def edit_requirement(session, requirement_id, new_text: str, edited_by: str) -> dict:
-    """Append a new version; unchanged text creates no event (200 ``unchanged``)."""
+def edit_requirement(
+    session,
+    requirement_id,
+    new_text: str,
+    edited_by: str,
+) -> dict:
+    """Append a new requirement-text version and mark impacted artifacts stale."""
     requirement_id = coerce_uuid(requirement_id)
     requirement = session.get(Requirement, requirement_id)
     if requirement is None:

@@ -70,6 +70,13 @@ export interface BackendAssessmentRecord {
   severity_rule_id: string | null;
   probability_rule_id: string | null;
   detectability_rule_id: string | null;
+  severity_reasoning: string | null;
+  probability_reasoning: string | null;
+  detectability_reasoning: string | null;
+  severity_decision_path: Array<Record<string, unknown>>;
+  probability_decision_path: Array<Record<string, unknown>>;
+  detectability_decision_path: Array<Record<string, unknown>>;
+  gamp_reason: string | null;
   rpn: number | null;
   rpn_points: number | null;
   band: string | null;
@@ -125,6 +132,7 @@ export interface BackendTraceGraph {
     label: string;
     stale: boolean;
     orphan: boolean;
+    orphaned?: boolean;
     meta: Record<string, unknown>;
   }>;
   edges: Array<{

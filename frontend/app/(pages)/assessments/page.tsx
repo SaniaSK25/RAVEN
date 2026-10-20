@@ -57,14 +57,23 @@ function toAssessmentRecord(record: BackendAssessmentRecord): AssessmentRecord {
     severity: record.severity,
     probability: record.probability,
     detectability: record.detectability,
+    severityReasoning: record.severity_reasoning,
+    probabilityReasoning: record.probability_reasoning,
+    detectabilityReasoning: record.detectability_reasoning,
+    severityRuleId: record.severity_rule_id,
+    probabilityRuleId: record.probability_rule_id,
+    detectabilityRuleId: record.detectability_rule_id,
+    severityDecisionPath: record.severity_decision_path,
+    probabilityDecisionPath: record.probability_decision_path,
+    detectabilityDecisionPath: record.detectability_decision_path,
+    gampReason: record.gamp_reason,
+    rpnPoints: record.rpn_points,
     rpn: record.rpn,
     band,
     status:
-      freshness !== "fresh" || !record.is_current || !record.is_current_version
-        ? "stale"
-        : record.status.toUpperCase() === "DRAFT"
-          ? "needs-review"
-          : "current",
+      freshness === "fresh" && record.is_current && record.is_current_version
+        ? "fresh"
+        : "stale",
     assessedVersion: version,
     currentVersion,
     ruleId: [
@@ -74,6 +83,7 @@ function toAssessmentRecord(record: BackendAssessmentRecord): AssessmentRecord {
     ]
       .filter((value): value is string => Boolean(value))
       .join(" · "),
+    ruleVersion: record.rule_version,
   };
 }
 
@@ -89,7 +99,6 @@ function compareOptionalNumber(
 
 export default function AssessmentsPage() {
   const [all, setAll] = useState<AssessmentRecord[]>([]);
-  const [total, setTotal] = useState(0);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [loadedAttempt, setLoadedAttempt] = useState(-1);
   const [error, setError] = useState<{ attempt: number; message: string } | null>(null);
@@ -107,7 +116,6 @@ export default function AssessmentsPage() {
         const records = data.items.map(toAssessmentRecord);
         if (active) {
           setAll(records);
-          setTotal(data.total);
           setError(null);
         }
       })
@@ -189,8 +197,8 @@ export default function AssessmentsPage() {
         <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">
           Assessments
         </h1>
-        <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-          Persisted risk-assessment results and rule outputs, shown against their requirement versions.
+        <p className="mt-2 text-sm leading-6 text-zinc-500 sm:text-[15px] dark:text-zinc-400">
+          Fresh means this assessment matches the current requirement. Stale means the requirement changed afterwards — re-run analysis from the requirement page to get a fresh result.
         </p>
       </div>
 
@@ -264,15 +272,6 @@ export default function AssessmentsPage() {
         )}
           </section>
 
-          {visible.length > 0 ? (
-        <p className="mt-4 text-[13px] text-zinc-500 dark:text-zinc-400">
-          Showing {visible.length} of {all.length} loaded assessments ({total} total). Select a row to open the requirement detail.
-        </p>
-          ) : null}
-
-          <p className="mt-4 text-[13px] text-zinc-500 dark:text-zinc-400">
-        Live persisted results only. This view does not create or recalculate risk assessments.
-          </p>
         </>
       )}
     </DashboardLayout>

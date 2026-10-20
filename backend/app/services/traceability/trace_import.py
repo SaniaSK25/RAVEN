@@ -78,7 +78,9 @@ def apply_import(
             requirement_only += 1
             continue
         if code and (not req_key or req_key not in requirements):
-            test = _resolve_test(session, tests_by_external, tests_by_id, row)
+            test = _resolve_test(
+                session, tests_by_external, tests_by_id, row, requirements
+            )
             if test is None:
                 test = _create_imported_test(session, row)
                 tests_created += 1
@@ -93,7 +95,9 @@ def apply_import(
             continue
         # Both present and requirement known (active or deleted).
         requirement = requirements[req_key]
-        test = _resolve_test(session, tests_by_external, tests_by_id, row)
+        test = _resolve_test(
+            session, tests_by_external, tests_by_id, row, requirements
+        )
         if test is None:
             test = _create_imported_test(session, row)
             tests_created += 1
@@ -148,7 +152,7 @@ def apply_import(
     }
 
 
-def _resolve_test(session, tests_by_external, tests_by_id, row):
+def _resolve_test(session, tests_by_external, tests_by_id, row, requirements):
     code = row["test_code"]
     if code in tests_by_external:
         return tests_by_external[code]
@@ -158,6 +162,28 @@ def _resolve_test(session, tests_by_external, tests_by_id, row):
         for test_id, test in tests_by_id.items():
             if test_id.lower().startswith(stem) or test_id.lower() == stem:
                 return test
+    readable_prefix = "Test script · "
+    req_key = row["requirement_key"]
+    if req_key and code == f"{readable_prefix}{req_key}":
+        from app.models.requirement_version import RequirementVersion
+
+        requirement = requirements.get(req_key)
+        if requirement is not None:
+            version_ids = [
+                row.id
+                for row in session.query(RequirementVersion.id)
+                .filter(RequirementVersion.requirement_id == requirement.id)
+                .all()
+            ]
+            candidates = [
+                test
+                for test in tests_by_id.values()
+                if test.requirement_version_id in version_ids
+                and not test.external_code
+                and not test.title
+            ]
+            if len(candidates) == 1:
+                return candidates[0]
     return None
 
 

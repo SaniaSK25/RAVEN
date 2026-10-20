@@ -501,7 +501,58 @@ class TestAppWiring:
                 detail = client.get(f"/api/v1/requirements/{requirement.req_key}")
                 assert detail.status_code == 200
                 assert detail.json()["text"] == "Persisted backend requirement."
+                assert detail.json()["title"] == detail.json()["description"]
                 assert detail.json()["versions"][0]["is_current"] is True
+
+                created = client.post(
+                    "/api/v1/requirements",
+                    json={
+                        "description": "A complete requirement description.",
+                        "text": "A complete requirement description.",
+                        "created_by": "test",
+                    },
+                )
+                assert created.status_code == 201
+                assert created.json()["description"] == (
+                    "A complete requirement description."
+                )
+                assert created.json()["title"] == created.json()["description"]
+        finally:
+            app.dependency_overrides.pop(get_db, None)
+            session.close()
+
+    def test_version_scoped_routes_validate_selection(self, monkeypatch):
+        monkeypatch.setenv("SECRET_KEY", "test-secret-key-for-ci-only")
+        from fastapi.testclient import TestClient
+
+        from app.db.session import get_db
+        from app.main import app
+
+        session = make_session()
+
+        def override_db():
+            yield session
+
+        app.dependency_overrides[get_db] = override_db
+        try:
+            with TestClient(app) as client:
+                assert (
+                    client.get(
+                        "/api/v1/traceability/matrix?requirement_key=REQ-0001"
+                    ).status_code
+                    == 400
+                )
+                assert (
+                    client.get("/api/v1/traceability/graph?version=1").status_code
+                    == 400
+                )
+                assert (
+                    client.get(
+                        "/api/v1/traceability/matrix"
+                        "?requirement_key=UNKNOWN&version=1"
+                    ).status_code
+                    == 404
+                )
         finally:
             app.dependency_overrides.pop(get_db, None)
             session.close()

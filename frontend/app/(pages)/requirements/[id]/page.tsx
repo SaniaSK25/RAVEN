@@ -200,11 +200,8 @@ export default function RequirementDetailPage() {
                 {requirement.version ? ` · v${requirement.version}` : ""}
               </p>
               <h1 className="mt-2 max-w-4xl text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-                {requirement.title}
+                {requirement.description}
               </h1>
-              <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-                Lifecycle: {requirement.status}
-              </p>
             </div>
             <button
               type="button"
@@ -277,7 +274,7 @@ export default function RequirementDetailPage() {
                 <ul className="mt-2 space-y-2 text-sm">
                   {requirement.tests.map((test) => (
                     <li key={test.id}>
-                      <span className="font-medium">{test.title ?? test.external_code ?? test.id}</span>
+                      <span className="font-medium">{test.title ?? test.external_code ?? "Test script"}</span>
                       <span className="block text-xs text-zinc-500">{test.origin} · {test.freshness}</span>
                     </li>
                   ))}

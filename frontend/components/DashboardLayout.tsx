@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import {
   ClipboardCheck,
   Download,
@@ -40,27 +40,39 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const sidebarRef = useRef<HTMLElement>(null);
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
+  const handleMouseEnter = () => setSidebarCollapsed(false);
+  const handleMouseLeave = () => setSidebarCollapsed(true);
+
   return (
     <div className="flex min-h-screen bg-canvas text-ink dark:bg-black dark:text-zinc-100">
-      <aside className="hidden w-64 shrink-0 flex-col self-start border-r border-zinc-200 bg-[linear-gradient(180deg,#070708_0%,#111111_100%)] md:sticky md:top-0 md:flex md:h-screen dark:border-zinc-800 dark:bg-black">
-        <div className="flex h-16 items-center gap-2.5 border-b border-white/10 px-5">
+      <aside
+        ref={sidebarRef}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        className={`hidden shrink-0 flex-col self-start border-r border-zinc-200 bg-[linear-gradient(180deg,#070708_0%,#111111_100%)] transition-[width] duration-200 md:sticky md:top-0 md:flex md:h-screen dark:border-zinc-800 dark:bg-black ${sidebarCollapsed ? "w-16" : "w-64"}`}
+      >
+        <div className={`flex h-16 items-center gap-2.5 border-b border-white/10 ${sidebarCollapsed ? "justify-center px-0" : "px-5"}`}>
           <span
             aria-hidden="true"
-            className="flex h-8 w-8 items-center justify-center rounded-md bg-white text-[13px] font-bold tracking-tight text-brand shadow-sm"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white text-[13px] font-bold tracking-tight text-brand shadow-sm"
           >
             R
           </span>
-          <span className="leading-tight">
-            <span className="block text-[15px] font-bold tracking-wide text-white">
-              RAVEN
+          {!sidebarCollapsed && (
+            <span className="leading-tight">
+              <span className="block text-[15px] font-bold tracking-wide text-white">
+                RAVEN
+              </span>
+              <span className="block text-[11px] font-medium text-zinc-400">
+                Regulatory QA
+              </span>
             </span>
-            <span className="block text-[11px] font-medium text-zinc-400">
-              Regulatory QA
-            </span>
-          </span>
+          )}
         </div>
 
         <nav aria-label="Primary" className="sidebar-nav flex-1 overscroll-contain overflow-y-auto p-3">
@@ -73,14 +85,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     <Link
                       href={item.href}
                       aria-current="page"
-                      className="relative flex items-center gap-3 rounded-xl bg-white/10 px-3 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                      title={sidebarCollapsed ? item.label : undefined}
+                      className={`relative flex items-center gap-3 rounded-xl bg-white/10 px-3 py-2.5 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] ${sidebarCollapsed ? "justify-center" : ""}`}
                     >
-                      <span
-                        aria-hidden="true"
-                        className="absolute top-1/2 left-0 h-5 w-1 -translate-y-1/2 rounded-full bg-accent"
-                      />
-                      <Icon aria-hidden="true" className="h-4 w-4" />
-                      {item.label}
+                      {!sidebarCollapsed && (
+                        <span
+                          aria-hidden="true"
+                          className="absolute top-1/2 left-0 h-5 w-1 -translate-y-1/2 rounded-full bg-accent"
+                        />
+                      )}
+                      <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
+                      {!sidebarCollapsed && item.label}
                     </Link>
                   </li>
                 );
@@ -90,10 +105,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   <li key={item.label}>
                     <Link
                       href={item.href}
-                      className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-400 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-2 focus-visible:outline-accent"
+                      title={sidebarCollapsed ? item.label : undefined}
+                      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-400 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-2 focus-visible:outline-accent ${sidebarCollapsed ? "justify-center" : ""}`}
                     >
-                      <Icon aria-hidden="true" className="h-4 w-4" />
-                      {item.label}
+                      <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
+                      {!sidebarCollapsed && item.label}
                     </Link>
                   </li>
                 );
@@ -104,13 +120,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     type="button"
                     disabled
                     title={`${item.label} — coming soon`}
-                    className="flex w-full cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-600 opacity-80"
+                    className={`flex w-full cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-600 opacity-80 ${sidebarCollapsed ? "justify-center" : ""}`}
                   >
-                    <Icon aria-hidden="true" className="h-4 w-4" />
-                    <span className="flex-1 text-left">{item.label}</span>
-                    <span className="rounded border border-zinc-700 px-1.5 py-px text-[10px] font-semibold tracking-wide text-zinc-500 uppercase">
-                      Soon
-                    </span>
+                    <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
+                    {!sidebarCollapsed && <span className="flex-1 text-left">{item.label}</span>}
+                    {!sidebarCollapsed && (
+                      <span className="rounded border border-zinc-700 px-1.5 py-px text-[10px] font-semibold tracking-wide text-zinc-500 uppercase">
+                        Soon
+                      </span>
+                    )}
                   </button>
                 </li>
               );
@@ -118,17 +136,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </ul>
         </nav>
 
-        <p className="border-t border-white/10 px-5 py-3 text-[11px] leading-5 text-zinc-500">
-          QA control center
-          <br />
-          Live: dashboard, requirements, assessments, assurance, ingestion, changes, tests, traceability, exports
-          <br />
-          Compliance registry not connected yet
-        </p>
+
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-zinc-200 bg-white/80 px-6 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/80">
+        <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-zinc-200 bg-white/80 px-6 backdrop-blur-md md:hidden dark:border-zinc-800 dark:bg-zinc-950/80">
           <span className="flex items-center gap-2.5 md:hidden">
             <span
               aria-hidden="true"
@@ -138,17 +150,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </span>
             <span className="text-sm font-bold tracking-wide">RAVEN</span>
           </span>
-          <p className="hidden text-sm text-zinc-500 md:block dark:text-zinc-400">
-            Regulated-software QA control center
-          </p>
           <div className="flex items-center gap-3">
-            <span className="hidden items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-700 sm:inline-flex dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
-              <span
-                aria-hidden="true"
-                className="h-1.5 w-1.5 rounded-full bg-emerald-500"
-              />
-              RAVEN workspace
-            </span>
             <button
               type="button"
               aria-label={mobileNavOpen ? "Close navigation" : "Open navigation"}

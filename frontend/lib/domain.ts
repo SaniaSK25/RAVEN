@@ -140,6 +140,8 @@ export interface TraceNode {
   type: TraceNodeType;
   label: string;
   status: RequirementStatus;
+  /** True when this node belongs to a superseded requirement version. */
+  orphaned?: boolean;
 }
 
 export type TraceEdgeType =
