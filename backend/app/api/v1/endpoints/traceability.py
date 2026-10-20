@@ -158,6 +158,9 @@ def get_graph(
                 detail=f"version {version} not found for {requirement_key}",
             )
     snapshot = snapshot_from_db(db)
+    is_current = True
+    if version_row is not None:
+        is_current = bool(version_row.is_current)
     return build_graph(
         snapshot,
         find_orphans(snapshot),
@@ -165,6 +168,7 @@ def get_graph(
         include_inactive=include_inactive or version_row is not None,
         requirement_version_id=str(version_row.id) if version_row else None,
         requirement_version_number=version_row.version_number if version_row else None,
+        is_version_current=is_current,
     )
 
 

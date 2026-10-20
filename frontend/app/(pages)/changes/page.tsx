@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   AlertCircle,
   CheckCircle2,
+  ExternalLink,
   History,
   LoaderCircle,
   Pencil,
@@ -27,29 +28,6 @@ interface ChangeMutationResult {
   status: string;
   requirement_id: string;
   event_id?: string;
-  impact: Record<string, unknown>;
-}
-
-function impactEntries(
-  impact: Record<string, unknown>,
-): Array<{ kind: string; ids: string[] }> {
-  return Object.entries(impact)
-    .filter(([, ids]) => Array.isArray(ids) && ids.length > 0)
-    .map(([kind, ids]) => ({
-      kind,
-      ids: (ids as unknown[]).map(String),
-    }));
-}
-
-function impactLabel(kind: string): string {
-  const labels: Record<string, string> = {
-    risks: "Risks",
-    assessments: "Risk assessments",
-    decisions: "Assurance decisions",
-    tests: "Test scripts",
-    links: "Trace links",
-  };
-  return labels[kind] ?? kind.replaceAll("_", " ");
 }
 
 function statusLabel(status: string): string {
@@ -198,7 +176,7 @@ export default function ChangesPage() {
         result.status === "changed"
           ? `${selectedRequirement.req_key ?? "Requirement"} updated as version ${
               selectedRequirement.version + 1
-            }. The backend recorded the affected artifacts below.`
+            }.`
           : "No changes were saved because the requirement description is unchanged.",
       );
       await refreshBackendRecords();
@@ -223,7 +201,7 @@ export default function ChangesPage() {
       { method: "DELETE" },
     );
     setActionMessage(
-      `${selectedRequirement.req_key ?? "Requirement"} was retired. Its affected artifacts are recorded below.`,
+      `${selectedRequirement.req_key ?? "Requirement"} was retired.`,
     );
     setSelectedRequirementId("");
     setDraftText("");
@@ -383,14 +361,27 @@ export default function ChangesPage() {
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <Link
-                      href={`/traceability?requirement=${encodeURIComponent(
-                        selectedRequirement?.req_key ?? selectedRequirement?.id ?? "",
-                      )}&view=graph`}
-                      className="text-sm font-medium text-accent underline-offset-2 hover:underline"
-                    >
-                      View traceability matrix
-                    </Link>
+                    <span className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                      {selectedRequirement ? (
+                        <Link
+                          href={`/requirements/${encodeURIComponent(selectedRequirement.req_key ?? selectedRequirement.id)}`}
+                          className="inline-flex items-center gap-1.5 text-sm font-medium text-accent underline-offset-2 hover:underline"
+                        >
+                          <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
+                          Open requirement
+                        </Link>
+                      ) : null}
+                      {selectedRequirement ? (
+                        <Link
+                          href={`/traceability?requirement=${encodeURIComponent(
+                            selectedRequirement.req_key ?? selectedRequirement.id,
+                          )}&view=graph`}
+                          className="text-sm font-medium text-accent underline-offset-2 hover:underline"
+                        >
+                          View traceability matrix
+                        </Link>
+                      ) : null}
+                    </span>
                     <button
                       type="submit"
                       disabled={!selectedRequirement || !hasTextChanges || !draftText.trim() || isSaving}
@@ -423,14 +414,27 @@ export default function ChangesPage() {
                     I understand this retires the requirement and cannot be undone here.
                   </label>
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <Link
-                      href={`/traceability?requirement=${encodeURIComponent(
-                        selectedRequirement?.req_key ?? selectedRequirement?.id ?? "",
-                      )}&view=graph`}
-                      className="text-sm font-medium text-accent underline-offset-2 hover:underline"
-                    >
-                      View traceability matrix
-                    </Link>
+                    <span className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                      {selectedRequirement ? (
+                        <Link
+                          href={`/requirements/${encodeURIComponent(selectedRequirement.req_key ?? selectedRequirement.id)}`}
+                          className="inline-flex items-center gap-1.5 text-sm font-medium text-accent underline-offset-2 hover:underline"
+                        >
+                          <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
+                          Open requirement
+                        </Link>
+                      ) : null}
+                      {selectedRequirement ? (
+                        <Link
+                          href={`/traceability?requirement=${encodeURIComponent(
+                            selectedRequirement.req_key ?? selectedRequirement.id,
+                          )}&view=graph`}
+                          className="text-sm font-medium text-accent underline-offset-2 hover:underline"
+                        >
+                          View traceability matrix
+                        </Link>
+                      ) : null}
+                    </span>
                     <button
                       type="button"
                       onClick={() => void retireRequirement()}
@@ -484,44 +488,31 @@ export default function ChangesPage() {
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{changes.length ? "Try another requirement key or event status." : "Events are recorded when an existing requirement is edited or retired."}</p>
           </div>
         ) : visible.map((change) => {
-          const impactedArtifacts = impactEntries(change.impact);
           return (
             <article key={change.id} className="page-panel">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  {change.requirement_key ? (
-                    <Link href={`/requirements/${encodeURIComponent(change.requirement_key)}`} className="font-mono text-xs font-semibold text-accent hover:underline">{change.requirement_key}</Link>
-                  ) : <span className="font-mono text-xs text-zinc-500">{change.requirement_id}</span>}
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="font-mono text-xs font-semibold text-zinc-900 dark:text-zinc-50">
+                      {change.requirement_key ?? change.requirement_id}
+                    </span>
+                    <Link
+                      href={`/requirements/${encodeURIComponent(change.requirement_key ?? change.requirement_id)}`}
+                      className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-zinc-300 px-2.5 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-accent dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                    >
+                      <ExternalLink aria-hidden="true" className="h-3 w-3" />
+                      Open requirement
+                    </Link>
+                  </div>
                   <h2 className="mt-1 max-w-4xl whitespace-pre-wrap break-words text-sm font-semibold leading-5 text-zinc-900 dark:text-zinc-50">{change.current_text ?? "Requirement change"}</h2>
                 </div>
-                <span className="rounded-full border border-zinc-200 px-2.5 py-1 text-xs font-medium capitalize text-zinc-700 dark:border-zinc-700 dark:text-zinc-200">{statusLabel(change.status)}</span>
               </div>
               <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 border-t border-zinc-100 pt-3 text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
                 <span>Action: {change.kind}</span>
+                <span>Status: {statusLabel(change.status)}</span>
                 {change.current_version ? <span>Current version: v{change.current_version}</span> : null}
                 <span>{change.created_at ? `· ${new Date(change.created_at).toLocaleString()}` : "· Date unavailable"}</span>
                 <span>Recorded by: {change.created_by}</span>
-              </div>
-              <div className="mt-3">
-                <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Exact impact recorded by backend</p>
-                {impactedArtifacts.length ? (
-                  <div className="mt-2 space-y-2">
-                    {impactedArtifacts.map(({ kind, ids }) => (
-                      <details key={kind} className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950">
-                        <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-amber-950 marker:text-amber-700 dark:text-amber-100 dark:marker:text-amber-300">
-                          {impactLabel(kind)} · {ids.length} affected
-                        </summary>
-                        <ul className="space-y-1 border-t border-amber-200 px-3 py-2 dark:border-amber-900">
-                          {ids.map((id) => (
-                            <li key={id} className="break-all font-mono text-xs text-amber-900 dark:text-amber-200">
-                              {id}
-                            </li>
-                          ))}
-                        </ul>
-                      </details>
-                    ))}
-                  </div>
-                ) : <p className="mt-1 text-xs text-zinc-500">No fresh linked risks, assessments, assurance decisions, tests, or trace links were eligible for stale marking when this change was made.</p>}
               </div>
               <Link
                 href={`/traceability?requirement=${encodeURIComponent(
@@ -529,7 +520,7 @@ export default function ChangesPage() {
                 )}&view=graph`}
                 className="mt-3 inline-flex text-xs font-medium text-accent underline-offset-2 hover:underline"
               >
-                Open traceability matrix
+                View traceability matrix
               </Link>
               {change.resolution_note ? <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-300">Resolution note: {change.resolution_note}</p> : null}
             </article>

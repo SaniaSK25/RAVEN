@@ -132,6 +132,7 @@ export interface BackendTraceGraph {
     label: string;
     stale: boolean;
     orphan: boolean;
+    orphaned?: boolean;
     meta: Record<string, unknown>;
   }>;
   edges: Array<{

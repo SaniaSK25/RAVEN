@@ -83,6 +83,7 @@ def snapshot_from_db(session) -> TraceSnapshot:
             requirement_version_id=str(assessment.requirement_version_id),
             freshness=getattr(assessment, "freshness", "fresh") or "fresh",
             is_current_version=bool(version.is_current),
+            is_current=bool(getattr(assessment, "is_current", True)),
             severity=severity,
             probability=probability,
             detectability=detectability,

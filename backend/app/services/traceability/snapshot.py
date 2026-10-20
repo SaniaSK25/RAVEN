@@ -33,6 +33,9 @@ class RiskInfo:
     requirement_version_id: str = ""
     freshness: str = "fresh"  # "fresh" | "stale" | "superseded"
     is_current_version: bool = True
+    # Assessment-level flag (distinct from the parent version's is_current).
+    # Superseded assessments on the same version have is_current=False.
+    is_current: bool = True
     severity: int | None = None
     probability: int | None = None
     detectability: int | None = None
