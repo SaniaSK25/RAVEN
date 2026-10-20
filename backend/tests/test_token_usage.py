@@ -13,7 +13,7 @@ from langchain_core.runnables import RunnableLambda
 
 from app.agents.agent_analyzer import extract_evidence
 from app.agents.bedrock_config import TokenCollector
-from app.models.evidence import (
+from app.schemas.evidence import (
     DetectabilityEvidence,
     GampClassification,
     ProbabilityEvidence,

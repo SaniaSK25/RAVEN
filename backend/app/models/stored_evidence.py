@@ -2,7 +2,7 @@
 Stored Evidence model (ORM).
 
 Frozen Agent 1 extraction for one RequirementVersion, mirroring the
-Pydantic ``EvidenceRecord`` contract (``app.models.evidence``) in
+Pydantic ``EvidenceRecord`` contract (``app.schemas.evidence``) in
 relational form: every field is a value + confidence + evidence-sentence
 triple. Severity flags are booleans; complexity/detection are enums;
 GAMP category is an integer 1/3/4/5.

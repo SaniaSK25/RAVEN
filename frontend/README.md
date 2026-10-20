@@ -15,8 +15,8 @@ npm run dev
 
 Set `RAVEN_BACKEND_URL` in the frontend server environment when the backend is
 not at `http://127.0.0.1:8000`. The variable is server-only; requests to the
-FastAPI `/api/v1` routes go through a same-origin Next.js proxy, avoiding
-browser CORS configuration.
+FastAPI `/api/v1` routes go through the same-origin Next.js proxy under
+`/raven/api/v1`, avoiding browser CORS configuration.
 
 ## Docker deployment
 

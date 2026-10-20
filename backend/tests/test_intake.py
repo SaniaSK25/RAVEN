@@ -14,8 +14,8 @@ import import_requirements as intake
 from app.db.base import Base
 from app.models.assurance_decision import AssuranceDecision
 from app.models.configuration_version import ConfigurationVersion
-from app.models.evidence import EvidenceRecord
-from app.models.models import TestScript as PydanticScript
+from app.schemas.evidence import EvidenceRecord
+from app.schemas.test_scripts import TestScript as PydanticScript
 from app.models.prompt_version import PromptVersion
 from app.models.requirement import Requirement
 from app.models.requirement_version import RequirementVersion

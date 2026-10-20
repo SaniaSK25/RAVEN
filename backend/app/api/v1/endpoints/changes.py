@@ -8,13 +8,14 @@ analysis already present in the database. No LLM is called here.
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
 
 from app.api.v1.endpoints.helpers import get_or_404, optional_uuid
 from app.db.dependencies import DBSession
 from app.models.change_event import ChangeEvent
 from app.models.requirement import Requirement
 from app.models.requirement_version import RequirementVersion
+from app.schemas.changes import AcceptPayload, ConfirmPayload, ReanalyzePayload
+from app.schemas.responses import ChangeEventResponse
 from app.services.traceability.changediff import compute_diff
 from app.services.traceability.changeflow import (
     InvalidStateError,
@@ -26,19 +27,6 @@ from app.services.traceability.io import snapshot_from_db
 from app.services.traceability.sync import sync_links
 
 router = APIRouter(prefix="/changes", tags=["Changes"])
-
-
-class ReanalyzePayload(BaseModel):
-    assessment: dict | None = None
-    created_by: str = "api"
-
-
-class ConfirmPayload(BaseModel):
-    note: str
-
-
-class AcceptPayload(BaseModel):
-    note: str | None = None
 
 
 def _serialise(event: ChangeEvent, db=None) -> dict:
@@ -134,7 +122,7 @@ def _current_analysis(snapshot, requirement_id: str) -> dict | None:
     return None
 
 
-@router.get("")
+@router.get("", response_model=list[ChangeEventResponse])
 def list_events(
     db: DBSession, requirement_id: str | None = None, status: str | None = None
 ):
@@ -147,16 +135,20 @@ def list_events(
     return [_serialise(e, db) for e in query.all()]
 
 
-@router.get("/{event_id}")
+@router.get("/{event_id}", response_model=ChangeEventResponse)
 def get_event(event_id: str, db: DBSession):
     return _serialise(get_or_404(db, ChangeEvent, event_id, "change event"), db)
 
 
-@router.post("/{event_id}/reanalyze")
+@router.post("/{event_id}/reanalyze", response_model=ChangeEventResponse)
 def reanalyze(event_id: str, payload: ReanalyzePayload, db: DBSession):
     event = get_or_404(db, ChangeEvent, event_id, "change event")
     snapshot = snapshot_from_db(db)
-    after = payload.assessment or _current_analysis(snapshot, str(event.requirement_id))
+    after = (
+        payload.assessment.model_dump(exclude_unset=True)
+        if payload.assessment is not None
+        else _current_analysis(snapshot, str(event.requirement_id))
+    )
     if after is None:
         raise HTTPException(
             status_code=409,
@@ -181,7 +173,7 @@ def reanalyze(event_id: str, payload: ReanalyzePayload, db: DBSession):
     return _serialise(event, db)
 
 
-@router.post("/{event_id}/confirm-valid")
+@router.post("/{event_id}/confirm-valid", response_model=ChangeEventResponse)
 def confirm_valid(event_id: str, payload: ConfirmPayload, db: DBSession):
     event = get_or_404(db, ChangeEvent, event_id, "change event")
     try:
@@ -223,7 +215,7 @@ def confirm_valid(event_id: str, payload: ConfirmPayload, db: DBSession):
     return _serialise(event, db)
 
 
-@router.post("/{event_id}/accept")
+@router.post("/{event_id}/accept", response_model=ChangeEventResponse)
 def accept(event_id: str, payload: AcceptPayload, db: DBSession):
     event = get_or_404(db, ChangeEvent, event_id, "change event")
     try:

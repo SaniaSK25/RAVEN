@@ -7,7 +7,7 @@ happens before this function is ever called.
 
 from dataclasses import asdict
 
-from app.models.evidence import EvidenceRecord, SeverityEvidence
+from app.schemas.evidence import EvidenceRecord, SeverityEvidence
 from app.services.assurance import decide_assurance
 from app.services.detectability import calculate_detectability
 from app.services.probability import calculate_probability

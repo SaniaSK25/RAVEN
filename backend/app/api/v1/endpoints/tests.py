@@ -3,25 +3,18 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
 
 from app.api.v1.endpoints.helpers import get_or_404
 from app.db.dependencies import DBSession
 from app.models.requirement import Requirement
 from app.models.test_script import TestScript
 from app.models.trace_link import TraceLink
+from app.schemas.responses import TestResponse
+from app.schemas.tests import ManualTestCreate
 from app.services.traceability.sync import sync_links
 from app.services.traceability.trace_import import _ensure_prompt
 
 router = APIRouter(prefix="/tests", tags=["Tests"])
-
-
-class ManualTestCreate(BaseModel):
-    title: str
-    requirement_id: str
-    text: str | None = None
-    test_type: str = "manual"
-    created_by: str = "api"
 
 
 def _serialise(test: TestScript) -> dict:
@@ -46,7 +39,7 @@ def _serialise(test: TestScript) -> dict:
     }
 
 
-@router.get("")
+@router.get("", response_model=list[TestResponse])
 def list_tests(db: DBSession, freshness: str | None = None, origin: str | None = None):
     query = db.query(TestScript)
     if freshness:
@@ -56,12 +49,12 @@ def list_tests(db: DBSession, freshness: str | None = None, origin: str | None =
     return [_serialise(t) for t in query.all()]
 
 
-@router.get("/{test_id}")
+@router.get("/{test_id}", response_model=TestResponse)
 def get_test(test_id: str, db: DBSession):
     return _serialise(get_or_404(db, TestScript, test_id, "test"))
 
 
-@router.post("/manual", status_code=201)
+@router.post("/manual", status_code=201, response_model=TestResponse)
 def create_manual(payload: ManualTestCreate, db: DBSession):
     requirement = get_or_404(db, Requirement, payload.requirement_id, "requirement")
     if requirement.current_version_id is None:
@@ -105,7 +98,7 @@ def create_manual(payload: ManualTestCreate, db: DBSession):
     return _serialise(test)
 
 
-@router.delete("/{test_id}")
+@router.delete("/{test_id}", response_model=TestResponse)
 def delete_test(test_id: str, db: DBSession):
     test = get_or_404(db, TestScript, test_id, "test")
     try:
@@ -122,7 +115,7 @@ def delete_test(test_id: str, db: DBSession):
     return _serialise(test)
 
 
-@router.post("/{test_id}/revalidate")
+@router.post("/{test_id}/revalidate", response_model=TestResponse)
 def revalidate(test_id: str, db: DBSession):
     test = get_or_404(db, TestScript, test_id, "test")
     try:

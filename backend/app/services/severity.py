@@ -5,7 +5,7 @@ no LLM, no DB, no network, no clock. Rules evaluate strictly in order;
 the first match wins and the decision path stops there.
 """
 
-from app.models.evidence import SeverityEvidence
+from app.schemas.evidence import SeverityEvidence
 from app.services.engine_result import RULE_VERSION, EngineResult
 
 TEMPLATES = {

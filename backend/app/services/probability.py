@@ -5,7 +5,7 @@ complexity counts double (most direct driver of implementation failure).
 Pure function: no LLM, no DB, no network, no clock.
 """
 
-from app.models.evidence import ProbabilityEvidence
+from app.schemas.evidence import ProbabilityEvidence
 from app.services.engine_result import RULE_VERSION, EngineResult
 
 POINTS = {"LOW": 1, "MEDIUM": 2, "HIGH": 3}

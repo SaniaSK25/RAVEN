@@ -22,7 +22,7 @@ Pure functions: no LLM, no DB, no network, no clock.
 
 from __future__ import annotations
 
-from app.models.evidence import EvidenceRecord
+from app.schemas.evidence import EvidenceRecord
 from app.services.assessment import assess_evidence
 
 _COMPARED_FIELDS = (

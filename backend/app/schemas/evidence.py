@@ -1,13 +1,4 @@
-"""RAVEN Layer 3 evidence record — the frozen analyzer output.
-
-Every field carries value + confidence + evidence sentence. The engines
-(severity / probability / detectability) read ONLY `value`; confidence and
-evidence travel alongside for audit but never affect the score.
-
-Note: the Layer 3 spec says "20 evidence fields" but enumerates 12
-Layer-3-relevant ones (6 severity + 3 probability + 3 detectability).
-Only the enumerated fields are implemented here — nothing invented.
-"""
+"""Pydantic schemas for extracted evidence and risk-assessment inputs."""
 
 from typing import Generic, Literal, TypeVar
 
@@ -59,8 +50,7 @@ class EvidenceRecord(BaseModel):
 
 
 class GampClassification(BaseModel):
-    """Standalone GAMP verdict so it can be extracted in its own small
-    LLM call, then assembled into EvidenceRecord in code."""
+    """Standalone GAMP verdict used to assemble an EvidenceRecord."""
 
     gamp_category: Literal[1, 3, 4, 5]
     gamp_reason: str = Field(min_length=1)

@@ -17,7 +17,7 @@ from sqlalchemy.pool import StaticPool
 from app.db.base import Base
 from app.models.assurance_decision import AssuranceDecision
 from app.models.enums import RequirementStatus
-from app.models.evidence import (
+from app.schemas.evidence import (
     DetectabilityEvidence,
     EvidenceRecord,
     ProbabilityEvidence,
@@ -126,8 +126,8 @@ def fake_record_unscripted():
 
 
 def _fake_script():
-    from app.models.models import TestScript as ScriptModel
-    from app.models.models import TestStep
+    from app.schemas.test_scripts import TestScript as ScriptModel
+    from app.schemas.test_scripts import TestStep
 
     return ScriptModel(
         preconditions="User account exists and is active.",

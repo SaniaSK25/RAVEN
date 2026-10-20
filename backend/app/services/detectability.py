@@ -6,7 +6,7 @@ score means "easily detected" and a high score means "nearly invisible".
 Pure function: no LLM, no DB, no network, no clock.
 """
 
-from app.models.evidence import DetectabilityEvidence
+from app.schemas.evidence import DetectabilityEvidence
 from app.services.engine_result import RULE_VERSION, EngineResult
 
 POINTS = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}

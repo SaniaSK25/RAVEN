@@ -4,7 +4,7 @@ worsening-monotonicity, controls floor, purity. No AWS."""
 import itertools
 import pathlib
 
-from app.models.evidence import DetectabilityEvidence
+from app.schemas.evidence import DetectabilityEvidence
 from app.services.detectability import calculate_detectability
 
 LEVELS = ("HIGH", "MEDIUM", "LOW")

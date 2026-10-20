@@ -12,7 +12,7 @@ from langchain_core.runnables import RunnableLambda
 from pydantic import ValidationError
 
 from app.agents.agent_analyzer import extract_evidence
-from app.models.evidence import (
+from app.schemas.evidence import (
     DetectabilityEvidence,
     GampClassification,
     ProbabilityEvidence,

@@ -3,7 +3,7 @@ engines plus RPN/band. Uses the sample-ID requirement's evidence profile
 (di+rc true; MEDIUM/MEDIUM/LOW complexities; MEDIUM/MEDIUM/LOW detection).
 No AWS."""
 
-from app.models.evidence import EvidenceRecord
+from app.schemas.evidence import EvidenceRecord
 from app.services.assessment import assess_evidence
 
 

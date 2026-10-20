@@ -6,6 +6,7 @@ from fastapi import APIRouter
 from sqlalchemy import text
 
 from app.db.dependencies import DBSession
+from app.schemas.responses import DatabaseStatusResponse
 
 router = APIRouter(
     prefix="/test-db",
@@ -13,7 +14,7 @@ router = APIRouter(
 )
 
 
-@router.get("")
+@router.get("", response_model=DatabaseStatusResponse)
 def test_database(
     db: DBSession,
 ):

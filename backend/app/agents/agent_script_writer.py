@@ -1,7 +1,8 @@
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import ValidationError
+
 from app.agents.bedrock_config import TokenCollector, get_llm
-from app.models.models import ScriptPreconditions, ScriptSteps, TestScript
+from app.schemas.test_scripts import ScriptPreconditions, ScriptSteps, TestScript
 
 PROMPT_NAME = "test_script_generator"
 PROMPT_VERSION = 4

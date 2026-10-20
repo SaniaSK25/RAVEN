@@ -3,7 +3,7 @@ reachability, priority, path, purity, and determinism checks. No AWS."""
 
 import pathlib
 
-from app.models.evidence import SeverityEvidence
+from app.schemas.evidence import SeverityEvidence
 from app.services.severity import calculate_severity
 
 FIELDS = (

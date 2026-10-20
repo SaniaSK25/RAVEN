@@ -1,7 +1,8 @@
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import ValidationError
+
 from app.agents.bedrock_config import TokenCollector, get_llm
-from app.models.evidence import (
+from app.schemas.evidence import (
     DetectabilityEvidence,
     EvidenceRecord,
     GampClassification,

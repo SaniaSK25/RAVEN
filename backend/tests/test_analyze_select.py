@@ -15,7 +15,7 @@ from test_intake import EXPLORATORY_RECORD, SCRIPTED_RECORD
 
 from app.db.base import Base
 from app.models.assurance_decision import AssuranceDecision
-from app.models.models import TestScript as PydanticScript
+from app.schemas.test_scripts import TestScript as PydanticScript
 from app.models.risk_assessment import RiskAssessment
 from app.models.test_script import TestScript as StoredScript
 

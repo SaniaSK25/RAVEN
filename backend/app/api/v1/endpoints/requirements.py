@@ -10,7 +10,6 @@ from __future__ import annotations
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
 
 from app.db.dependencies import DBSession
 from app.models.assurance_decision import AssuranceDecision
@@ -18,6 +17,13 @@ from app.models.requirement import Requirement
 from app.models.risk_assessment import RiskAssessment
 from app.models.test_script import TestScript
 from app.models.token_usage import TokenUsage
+from app.schemas.requirements import RequirementCreate, RequirementEdit
+from app.schemas.responses import (
+    RequirementDetailResponse,
+    RequirementMutationResponse,
+    RequirementPageResponse,
+    RequirementResponse,
+)
 from app.services.traceability.requirement_ops import (
     create_requirement,
     delete_requirement,
@@ -25,19 +31,6 @@ from app.services.traceability.requirement_ops import (
 )
 
 router = APIRouter(prefix="/requirements", tags=["Requirements"])
-
-
-class RequirementCreate(BaseModel):
-    title: str
-    description: str
-    text: str | None = None
-    req_key: str | None = None
-    created_by: str = "api"
-
-
-class RequirementEdit(BaseModel):
-    text: str
-    edited_by: str = "api"
 
 
 def _serialise(requirement: Requirement) -> dict:
@@ -79,7 +72,7 @@ def _serialise(requirement: Requirement) -> dict:
     }
 
 
-@router.get("")
+@router.get("", response_model=RequirementPageResponse)
 def list_requirements(
     db: DBSession,
     skip: int = Query(default=0, ge=0),
@@ -96,7 +89,7 @@ def list_requirements(
     }
 
 
-@router.post("", status_code=201)
+@router.post("", status_code=201, response_model=RequirementResponse)
 def create(payload: RequirementCreate, db: DBSession):
     try:
         requirement = create_requirement(
@@ -114,7 +107,7 @@ def create(payload: RequirementCreate, db: DBSession):
     return _serialise(requirement)
 
 
-@router.get("/{requirement_id}")
+@router.get("/{requirement_id}", response_model=RequirementDetailResponse)
 def get_one(requirement_id: str, db: DBSession):
     try:
         parsed_id = UUID(requirement_id)
@@ -215,7 +208,7 @@ def get_one(requirement_id: str, db: DBSession):
     return result
 
 
-@router.patch("/{requirement_id}")
+@router.patch("/{requirement_id}", response_model=RequirementMutationResponse)
 def edit(requirement_id: str, payload: RequirementEdit, db: DBSession):
     try:
         outcome = edit_requirement(db, requirement_id, payload.text, payload.edited_by)
@@ -229,7 +222,7 @@ def edit(requirement_id: str, payload: RequirementEdit, db: DBSession):
     return outcome
 
 
-@router.delete("/{requirement_id}")
+@router.delete("/{requirement_id}", response_model=RequirementMutationResponse)
 def delete(requirement_id: str, db: DBSession, deleted_by: str = "api"):
     try:
         outcome = delete_requirement(db, requirement_id, deleted_by)

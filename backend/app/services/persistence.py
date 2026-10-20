@@ -16,12 +16,12 @@ from app.models.engine_results import (
     SeverityResult,
 )
 from app.models.enums import AssuranceLevel, ComplexityLevel, DetectionLevel, RiskBand
-from app.models.evidence import EvidenceRecord
 from app.models.prompt_version import PromptVersion
 from app.models.requirement_version import RequirementVersion
 from app.models.risk_assessment import RiskAssessment
 from app.models.stored_evidence import Evidence as StoredEvidence
 from app.models.test_script import TestScript as TestScriptRow
+from app.schemas.evidence import EvidenceRecord
 from app.services.engine_result import RULE_VERSION
 
 BAND_MAP = {"Low": RiskBand.LOW, "Medium": RiskBand.MEDIUM, "High": RiskBand.HIGH}

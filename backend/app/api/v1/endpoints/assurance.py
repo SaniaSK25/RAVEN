@@ -16,6 +16,7 @@ from app.models.assurance_decision import AssuranceDecision
 from app.models.requirement import Requirement
 from app.models.requirement_version import RequirementVersion
 from app.models.risk_assessment import RiskAssessment
+from app.schemas.responses import AssuranceDecisionPageResponse
 
 router = APIRouter(prefix="/assurance", tags=["Assurance"])
 
@@ -71,7 +72,7 @@ def _serialise(decision: AssuranceDecision) -> dict:
     }
 
 
-@router.get("")
+@router.get("", response_model=AssuranceDecisionPageResponse)
 def list_decisions(
     db: DBSession,
     skip: int = Query(default=0, ge=0),

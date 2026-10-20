@@ -22,6 +22,11 @@ from app.models.requirement_version import RequirementVersion
 from app.models.risk_assessment import RiskAssessment
 from app.models.test_script import TestScript
 from app.models.token_usage import TokenUsage
+from app.schemas.responses import (
+    AssessmentRunResponse,
+    GenerateScriptResponse,
+    RiskAssessmentPageResponse,
+)
 from app.services.pipeline import (
     generate_and_save_script,
     run_full_analysis,
@@ -75,7 +80,7 @@ def _serialise(assessment: RiskAssessment) -> dict:
     }
 
 
-@router.get("")
+@router.get("", response_model=RiskAssessmentPageResponse)
 def list_assessments(
     db: DBSession,
     skip: int = Query(default=0, ge=0),
@@ -158,7 +163,11 @@ def _retire_current_analyses(db, version: RequirementVersion) -> None:
     db.flush()
 
 
-@router.post("/{requirement_id}/run", status_code=201)
+@router.post(
+    "/{requirement_id}/run",
+    status_code=201,
+    response_model=AssessmentRunResponse,
+)
 def run_assessment(requirement_id: str, db: DBSession):
     """On-demand analysis of a requirement's current version.
 
@@ -260,7 +269,11 @@ def run_assessment(requirement_id: str, db: DBSession):
     }
 
 
-@router.post("/{requirement_id}/generate-script", status_code=201)
+@router.post(
+    "/{requirement_id}/generate-script",
+    status_code=201,
+    response_model=GenerateScriptResponse,
+)
 def generate_script_for_requirement(requirement_id: str, db: DBSession):
     """Generate a test script only after explicit request for scripted assurance."""
     requirement = _resolve_requirement(db, requirement_id)

@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.models.evidence import EvidenceRecord
+from app.schemas.evidence import EvidenceRecord
 
 
 def make_record(**overrides):

@@ -3,10 +3,18 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query, Response
-from pydantic import BaseModel
 
 from app.api.v1.endpoints.helpers import get_or_404
 from app.db.dependencies import DBSession
+from app.schemas.responses import (
+    ImportSummaryResponse,
+    LinkRebuildResponse,
+    OrphansResponse,
+    TraceGraphResponse,
+    TraceLinkResponse,
+    TraceMatrixResponse,
+)
+from app.schemas.traceability import ImportPayload, LinkCreate
 from app.services.traceability.graph import build_graph
 from app.services.traceability.io import snapshot_from_db
 from app.services.traceability.matrix import (
@@ -29,21 +37,6 @@ _VALID_EDGES = {
 }
 
 
-class LinkCreate(BaseModel):
-    src_type: str
-    src_id: str
-    dst_type: str
-    dst_id: str
-    link_type: str
-    created_by: str = "api"
-
-
-class ImportPayload(BaseModel):
-    content: str
-    mode: str = "merge"
-    created_by: str = "api"
-
-
 def _serialise_link(row) -> dict:
     return {
         "id": str(row.id),
@@ -60,7 +53,7 @@ def _serialise_link(row) -> dict:
     }
 
 
-@router.get("/matrix")
+@router.get("/matrix", response_model=TraceMatrixResponse)
 def get_matrix(db: DBSession):
     snapshot = snapshot_from_db(db)
     orphans = find_orphans(snapshot)
@@ -80,7 +73,7 @@ def export_matrix(db: DBSession):
     )
 
 
-@router.get("/graph")
+@router.get("/graph", response_model=TraceGraphResponse)
 def get_graph(
     db: DBSession,
     requirement_key: str | None = Query(default=None),
@@ -95,7 +88,7 @@ def get_graph(
     )
 
 
-@router.get("/orphans")
+@router.get("/orphans", response_model=OrphansResponse)
 def get_orphans(db: DBSession):
     orphans = find_orphans(snapshot_from_db(db))
     return {
@@ -104,7 +97,7 @@ def get_orphans(db: DBSession):
     }
 
 
-@router.post("/links", status_code=201)
+@router.post("/links", status_code=201, response_model=TraceLinkResponse)
 def create_link(payload: LinkCreate, db: DBSession):
     from app.models.trace_link import TraceLink
 
@@ -165,7 +158,7 @@ def create_link(payload: LinkCreate, db: DBSession):
     return _serialise_link(row)
 
 
-@router.delete("/links/{link_id}")
+@router.delete("/links/{link_id}", response_model=TraceLinkResponse)
 def delete_link(link_id: str, db: DBSession, deleted_by: str = "api"):
     from app.models.trace_link import TraceLink
 
@@ -185,7 +178,7 @@ def delete_link(link_id: str, db: DBSession, deleted_by: str = "api"):
     return _serialise_link(row)
 
 
-@router.post("/links/{link_id}/restore")
+@router.post("/links/{link_id}/restore", response_model=TraceLinkResponse)
 def restore_link(link_id: str, db: DBSession):
     from app.models.trace_link import TraceLink
 
@@ -201,7 +194,7 @@ def restore_link(link_id: str, db: DBSession):
     return _serialise_link(row)
 
 
-@router.post("/import")
+@router.post("/import", response_model=ImportSummaryResponse)
 def import_csv(payload: ImportPayload, db: DBSession):
     try:
         parsed = parse_import_csv(payload.content)
@@ -218,7 +211,7 @@ def import_csv(payload: ImportPayload, db: DBSession):
     return summary
 
 
-@router.post("/rebuild")
+@router.post("/rebuild", response_model=LinkRebuildResponse)
 def rebuild(db: DBSession):
     try:
         counts = rebuild_links(db)

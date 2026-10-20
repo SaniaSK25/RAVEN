@@ -10,13 +10,13 @@ from app.agents.agent_script_writer import (
     generate_test_script,
     is_generation_required,
 )
-from app.models.models import (
+from app.schemas.test_scripts import (
     ScriptPreconditions as PreconditionsModel,
 )
-from app.models.models import (
+from app.schemas.test_scripts import (
     ScriptSteps as StepsModel,
 )
-from app.models.models import (
+from app.schemas.test_scripts import (
     TestScript as ScriptModel,
 )
 

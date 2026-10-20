@@ -4,7 +4,7 @@ monotonicity, GAMP clamp, purity, determinism. No AWS."""
 import itertools
 import pathlib
 
-from app.models.evidence import ProbabilityEvidence
+from app.schemas.evidence import ProbabilityEvidence
 from app.services.probability import calculate_probability
 
 LEVELS = ("LOW", "MEDIUM", "HIGH")
