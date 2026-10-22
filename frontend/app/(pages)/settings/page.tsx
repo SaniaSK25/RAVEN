@@ -1,8 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2, Save, AlertCircle, RefreshCw, HelpCircle } from "lucide-react";
-import { backendFetch, type BackendPage, type BackendAssessmentRecord } from "@/lib/backend-api";
+import { useCallback, useEffect, useState } from "react";
+import {
+  AlertCircle,
+  HelpCircle,
+  Loader2,
+  RefreshCw,
+  Save,
+  Scale,
+} from "lucide-react";
+import DashboardLayout from "@/components/DashboardLayout";
+import { backendFetch } from "@/lib/backend-api";
 
 interface BandConfig {
   low_max: number;
@@ -43,6 +51,7 @@ const POINTS_MAX = 100;
 export default function Settings() {
   const [config, setConfig] = useState<BandConfig | null>(null);
   const [preview, setPreview] = useState<RecomputePreview | null>(null);
+  const [configLoading, setConfigLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [previewing, setPreviewing] = useState(false);
@@ -53,17 +62,68 @@ export default function Settings() {
   // Form state
   const [formValues, setFormValues] = useState({ low_max: 45, medium_max: 67 });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [exampleScores, setExampleScores] = useState({
+    severity: 3,
+    probability: 3,
+    detectability: 3,
+  });
 
-  // Load current config on mount
-  const loadConfig = async () => {
+  const loadConfig = useCallback(async () => {
     try {
-      setError(null);
       const data = await backendFetch<BandConfig>("config/bands");
+      setError(null);
       setConfig(data);
       setFormValues({ low_max: data.low_max, medium_max: data.medium_max });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load configuration");
+    } finally {
+      setConfigLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    backendFetch<BandConfig>("config/bands")
+      .then((data) => {
+        if (!mounted) return;
+        setConfig(data);
+        setFormValues({ low_max: data.low_max, medium_max: data.medium_max });
+      })
+      .catch((err: unknown) => {
+        if (!mounted) return;
+        setError(err instanceof Error ? err.message : "Failed to load configuration");
+      })
+      .finally(() => {
+        if (mounted) setConfigLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const examplePoints =
+    12 * exampleScores.severity +
+    5 * exampleScores.probability +
+    3 * exampleScores.detectability;
+  const exampleBand =
+    examplePoints <= formValues.low_max
+      ? "Low"
+      : examplePoints <= formValues.medium_max
+        ? "Medium"
+        : "High";
+  const exampleAssurance =
+    exampleScores.severity >= 4
+      ? "Scripted — severity floor"
+      : exampleBand === "High"
+        ? "Scripted"
+        : exampleBand === "Medium"
+          ? "Exploratory"
+          : "Unscripted";
+
+  const updateThresholds = (nextValues: typeof formValues) => {
+    setFormValues(nextValues);
+    setFormErrors({});
+    setPreview(null);
   };
 
   const validateForm = (): boolean => {
@@ -92,7 +152,9 @@ export default function Settings() {
         body: JSON.stringify(formValues),
       });
       setConfig(data);
-      setSuccess("Band thresholds saved. Run 'Preview Recompute' to see impact.");
+      setSuccess(
+        "Thresholds saved for future assessments. Preview and apply a recompute to update existing assessments.",
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save configuration");
     } finally {
@@ -144,8 +206,7 @@ export default function Settings() {
       });
       if (data.success) {
         setSuccess(data.message);
-        setConfig(null); // Force reload
-        loadConfig();
+        await loadConfig();
         setPreview(null);
         setActiveTab("bands");
       } else {
@@ -155,20 +216,6 @@ export default function Settings() {
       setError(err instanceof Error ? err.message : "Failed to apply recompute");
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Band label helper
-  const getBandLabel = (band: string) => {
-    switch (band?.toLowerCase()) {
-      case "low":
-        return "Low";
-      case "medium":
-        return "Medium";
-      case "high":
-        return "High";
-      default:
-        return band;
     }
   };
 
@@ -187,15 +234,21 @@ export default function Settings() {
   };
 
   return (
-    <div className="space-y-6">
+    <DashboardLayout>
+      <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-          Settings
-        </h1>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          Configure risk engine thresholds and preview recompute impact.
-        </p>
+      <div className="page-header-shell">
+        <div className="flex items-center gap-3">
+          <Scale aria-hidden="true" className="h-6 w-6 text-accent" />
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+              Risk band settings
+            </h1>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+              Understand the scoring rules, adjust band cutoffs, then preview and apply changes.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Alerts */}
@@ -249,13 +302,154 @@ export default function Settings() {
       {activeTab === "bands" && (
         <section className="space-y-6" aria-labelledby="bands-heading">
           <div className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+            <h2 className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+              <HelpCircle aria-hidden="true" className="h-5 w-5 text-accent" />
+              How a risk band is determined
+            </h2>
+            <ol className="mt-4 grid gap-4 md:grid-cols-3">
+              <li className="rounded-md border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                  1. Score the evidence
+                </p>
+                <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">
+                  Severity, probability, and detectability are each scored from 1 to 5.
+                </p>
+                <p className="mt-3 rounded bg-white px-3 py-2 font-mono text-xs text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+                  Points = 12S + 5P + 3D
+                </p>
+              </li>
+              <li className="rounded-md border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                  2. Map points to a band
+                </p>
+                <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">
+                  The two cutoffs define Low, Medium, and High. Display RPN is points ÷ 20.
+                </p>
+                <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
+                  Total points range from 20 to 100.
+                </p>
+              </li>
+              <li className="rounded-md border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                  3. Determine assurance
+                </p>
+                <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">
+                  Low → Unscripted · Medium → Exploratory · High → Scripted.
+                </p>
+                <p className="mt-3 text-xs font-medium text-amber-700 dark:text-amber-300">
+                  Severity 4 or 5 always forces Scripted, regardless of band.
+                </p>
+              </li>
+            </ol>
+
+            <div className="mt-5 rounded-md border border-accent/30 bg-orange-50/70 p-4 dark:bg-orange-950/20">
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                Try an example
+              </h3>
+              <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+                Change a score or cutoff to see how the result responds. This example does not change stored assessments.
+              </p>
+              <div className="mt-4 grid gap-4 sm:grid-cols-3">
+                {(
+                  [
+                    ["severity", "Severity"],
+                    ["probability", "Probability"],
+                    ["detectability", "Detectability"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <label
+                    key={key}
+                    htmlFor={`example-${key}`}
+                    className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
+                  >
+                    {label}
+                    <select
+                      id={`example-${key}`}
+                      value={exampleScores[key]}
+                      onChange={(event) =>
+                        setExampleScores({
+                          ...exampleScores,
+                          [key]: Number(event.target.value),
+                        })
+                      }
+                      className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                    >
+                      {[1, 2, 3, 4, 5].map((score) => (
+                        <option key={score} value={score}>
+                          {score}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ))}
+              </div>
+              <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
+                <span className="font-mono text-zinc-700 dark:text-zinc-300">
+                  {12}×{exampleScores.severity} + {5}×{exampleScores.probability} + {3}×
+                  {exampleScores.detectability} = {examplePoints} points (RPN{" "}
+                  {(examplePoints / 20).toFixed(2)})
+                </span>
+                <span
+                  className={`rounded border px-2 py-1 text-xs font-semibold ${getBandColor(exampleBand)}`}
+                >
+                  {exampleBand} band
+                </span>
+                <span className="text-zinc-600 dark:text-zinc-400">
+                  Assurance: <strong>{exampleAssurance}</strong>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
             <h2 id="bands-heading" className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-              RPN Band Thresholds
+              Configure band cutoffs
             </h2>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              Configure the points thresholds that determine risk bands. Points = 12×Severity + 5×Probability + 3×Detectability (range 20–100).
-              Display RPN = Points / 20 (range 1.0–5.0).
+              Choose the highest score allowed in Low and Medium. High starts at the next point.
             </p>
+
+            {configLoading ? (
+              <div className="mt-6 flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400" role="status">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading the current band thresholds…
+              </div>
+            ) : (
+              <>
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              {[
+                {
+                  name: "Low",
+                  range: `20–${formValues.low_max} points`,
+                  action: "Unscripted",
+                },
+                {
+                  name: "Medium",
+                  range: `${formValues.low_max + 1}–${formValues.medium_max} points`,
+                  action: "Exploratory",
+                },
+                {
+                  name: "High",
+                  range: `${formValues.medium_max + 1}–100 points`,
+                  action: "Scripted",
+                },
+              ].map((band) => (
+                <div
+                  key={band.name}
+                  className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800"
+                >
+                  <span className={`inline-flex rounded border px-2 py-0.5 text-xs font-semibold ${getBandColor(band.name)}`}>
+                    {band.name}
+                  </span>
+                  <p className="mt-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                    {band.range}
+                  </p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    {band.action} assurance
+                  </p>
+                </div>
+              ))}
+            </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               {/* Low Max */}
@@ -272,8 +466,14 @@ export default function Settings() {
                     type="number"
                     min={POINTS_MIN}
                     max={POINTS_MAX}
+                    disabled={!config || configLoading || previewing || saving || loading}
                     value={formValues.low_max}
-                    onChange={(e) => setFormValues({ ...formValues, low_max: parseInt(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      updateThresholds({
+                        ...formValues,
+                        low_max: parseInt(e.target.value, 10) || 0,
+                      })
+                    }
                     className={`block w-full rounded-md border px-3 py-2 text-sm shadow-sm transition-colors ${
                       formErrors.low_max
                         ? "border-red-300 focus:border-red-500 focus:ring-red-500"
@@ -289,7 +489,8 @@ export default function Settings() {
                   )}
                 </div>
                 <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
-                  Current RPN threshold: ≤ {config ? (config.low_max / 20).toFixed(2) : "—"}
+                  Saved cutoff: ≤ {config ? config.low_max : "—"} points (RPN ≤{" "}
+                  {config ? (config.low_max / 20).toFixed(2) : "—"})
                 </p>
               </div>
 
@@ -307,8 +508,14 @@ export default function Settings() {
                     type="number"
                     min={POINTS_MIN}
                     max={POINTS_MAX}
+                    disabled={!config || configLoading || previewing || saving || loading}
                     value={formValues.medium_max}
-                    onChange={(e) => setFormValues({ ...formValues, medium_max: parseInt(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      updateThresholds({
+                        ...formValues,
+                        medium_max: parseInt(e.target.value, 10) || 0,
+                      })
+                    }
                     className={`block w-full rounded-md border px-3 py-2 text-sm shadow-sm transition-colors ${
                       formErrors.medium_max
                         ? "border-red-300 focus:border-red-500 focus:ring-red-500"
@@ -324,7 +531,8 @@ export default function Settings() {
                   )}
                 </div>
                 <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
-                  Current RPN threshold: ≤ {config ? (config.medium_max / 20).toFixed(2) : "—"}
+                  Saved cutoff: ≤ {config ? config.medium_max : "—"} points (RPN ≤{" "}
+                  {config ? (config.medium_max / 20).toFixed(2) : "—"})
                 </p>
               </div>
             </div>
@@ -369,7 +577,7 @@ export default function Settings() {
               <button
                 type="button"
                 onClick={handleSaveConfig}
-                disabled={saving}
+                disabled={!config || configLoading || saving || previewing || loading}
                 className="inline-flex items-center gap-2 rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50 disabled:cursor-not-allowed dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
               >
                 <Save className="h-4 w-4" />
@@ -384,7 +592,7 @@ export default function Settings() {
               <button
                 type="button"
                 onClick={handlePreview}
-                disabled={previewing || saving}
+                disabled={!config || configLoading || previewing || saving || loading}
                 className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-accent/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <RefreshCw className="h-4 w-4" />
@@ -397,37 +605,11 @@ export default function Settings() {
                 )}
               </button>
             </div>
+              </>
+            )}
           </div>
 
           {/* Help / Info */}
-          <div className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-            <h3 className="flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-50">
-              <HelpCircle className="h-5 w-5 text-accent" />
-              How Band Thresholds Work
-            </h3>
-            <div className="mt-4 space-y-3 text-sm text-zinc-600 dark:text-zinc-400">
-              <p>
-                The risk engine computes a <strong>weighted points score</strong> from three 1–5 factors:
-              </p>
-              <p className="font-mono text-xs bg-zinc-100 px-2 py-1 rounded dark:bg-zinc-800">
-                Points = 12 × Severity + 5 × Probability + 3 × Detectability
-              </p>
-              <p>The points range is 20–100. The display RPN is Points / 20 (range 1.0–5.0).</p>
-              <p>
-                <strong>Severity dominates</strong> (weight 12/20 = 60%). A severity of 4 or 5
-                contributes 48–60 points alone, making High band very likely.
-              </p>
-              <p>
-                <strong>Severity Floor:</strong> If severity ≥ 4, the assurance level is forced to
-                <code className="font-mono px-1.5 py-0.5 bg-zinc-100 rounded dark:bg-zinc-800">Scripted</code>
-                regardless of the band. This rule cannot be changed from this page.
-              </p>
-              <p>
-                Changing thresholds <strong>only affects future assessments and recomputes</strong>.
-                Existing assessments keep their original band until you run a recompute.
-              </p>
-            </div>
-          </div>
         </section>
       )}
 
@@ -610,5 +792,6 @@ export default function Settings() {
         </div>
       )}
     </div>
+    </DashboardLayout>
   );
 }
