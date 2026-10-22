@@ -54,8 +54,7 @@ def _call_with_usage(fn, args, usage_log):
     """Pass usage collection only to functions that support it."""
     parameters = signature(fn).parameters.values()
     accepts_usage = any(
-        parameter.name == "usage_log"
-        or parameter.kind is Parameter.VAR_KEYWORD
+        parameter.name == "usage_log" or parameter.kind is Parameter.VAR_KEYWORD
         for parameter in parameters
     )
     if accepts_usage:
@@ -115,6 +114,11 @@ def run_full_analysis(
         external_log.extend(
             {**entry, "stage": "evidence_extraction"} for entry in extraction_entries
         )
+    if (
+        getattr(record, "requirement_version_id", None) is None
+        and getattr(record, "model_copy", None) is not None
+    ):
+        record = record.model_copy(update={"requirement_version_id": str(version.id)})
     assessment = assess_evidence(record)
     script = None
     if generate_script and is_generation_required(assessment["assurance"]):
@@ -124,8 +128,7 @@ def run_full_analysis(
             )
         finally:
             external_log.extend(
-                {**entry, "stage": "test_script_generation"}
-                for entry in script_entries
+                {**entry, "stage": "test_script_generation"} for entry in script_entries
             )
     ensure_prompt_version(
         session,
