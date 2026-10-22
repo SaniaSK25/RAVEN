@@ -3,15 +3,13 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AlertCircle, ArrowLeft, FileText, LoaderCircle, Play, Archive, Download, CheckCircle } from "lucide-react";
+import { AlertCircle, ArrowLeft, FileText, LoaderCircle, Play, Archive, CheckCircle } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import {
   backendFetch,
   type BackendRequirementDetail,
 } from "@/lib/backend-api";
-import { getRequirementDetail } from "@/lib/requirement-detail-data";
-import { getTraceMatrix } from "@/lib/traceability-data";
-import { generateValidationPackZip, downloadBlob, type ValidationPackData } from "@/lib/export-utils";
+import { fetchValidationDataset, generateValidationPackZip, downloadBlob } from "@/lib/export-utils";
 
 const PRECONDITIONS_HEADER = "Preconditions:";
 const STEPS_HEADER = "Test Steps:";
@@ -173,37 +171,28 @@ export default function RequirementDetailPage() {
     setExportSuccess("");
 
     try {
-      // Get detailed requirement data
-      const detail = getRequirementDetail(id);
-      if (!detail) {
-        throw new Error("Could not load requirement detail for export");
-      }
-
-      // Get trace matrix row
-      const matrix = getTraceMatrix();
-      const traceRow = matrix.find(r => r.requirementId === id);
-
-      // Prepare validation pack data
-      const packData: ValidationPackData[] = [{
-        requirement: detail,
-        traceMatrixRow: traceRow,
-      }];
-
-      // Get trace matrix elements for image capture
-      const traceElements = new Map<string, HTMLDivElement>();
-
-      // Generate ZIP
-      const zipBlob = await generateValidationPackZip(packData, traceElements);
+      const dataset = await fetchValidationDataset([id]);
+      const zipBlob = await generateValidationPackZip(dataset);
 
       // Download
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const filename = `validation-pack-${id}-${timestamp}.zip`;
+      const selected = dataset.requirements[0];
+      const label =
+        selected?.display_key ||
+        selected?.req_key ||
+        dataset.pack_reference ||
+        "validation-pack";
+      const filename = `RAVEN_Validation_Pack_${label}_${timestamp}.zip`;
       downloadBlob(zipBlob, filename);
 
-      setExportSuccess(`Successfully exported validation pack for ${id}`);
+      setExportSuccess(`Validation pack generated for ${label}.`);
     } catch (err) {
       console.error("Export failed:", err);
-      setExportError("Failed to generate validation pack. Please try again.");
+      setExportError(
+        err instanceof Error
+          ? `Failed to generate validation pack: ${err.message}`
+          : "Failed to generate validation pack. Please try again.",
+      );
     } finally {
       setIsExporting(false);
     }

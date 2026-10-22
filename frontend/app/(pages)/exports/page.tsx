@@ -1,147 +1,59 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertCircle, Download, LoaderCircle, Archive, FileText } from "lucide-react";
+import { AlertCircle, Archive, LoaderCircle } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import ValidationPackExport from "@/components/exports/ValidationPackExport";
-import {
-  backendFetch,
-  RAVEN_BASE_PATH,
-  type BackendPage,
-  type BackendRequirement,
-  type BackendTest,
-} from "@/lib/backend-api";
+import { backendFetch } from "@/lib/backend-api";
 
 export default function ExportsPage() {
-  const [counts, setCounts] = useState<{ requirements: number; tests: number } | null>(null);
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [downloading, setDownloading] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     let active = true;
-    Promise.all([
-      backendFetch<BackendPage<BackendRequirement>>("requirements?limit=1"),
-      backendFetch<BackendPage<BackendTest>>("tests?limit=1"),
-    ])
-      .then(([requirements, tests]) => {
-        if (active) setCounts({ requirements: requirements.total, tests: tests.total });
-      })
+    backendFetch("requirements?limit=1")
       .catch((cause: unknown) => {
-        if (active) setError(cause instanceof Error ? cause.message : "Could not load counts.");
+        if (active) setError(cause instanceof Error ? cause.message : "Could not connect to the backend.");
       })
       .finally(() => {
         if (active) setLoading(false);
       });
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, []);
-
-  async function handleDownloadMatrix() {
-    setDownloading(true);
-    setError("");
-    try {
-      const response = await fetch(`${RAVEN_BASE_PATH}/api/v1/traceability/matrix/export`, {
-        cache: "no-store",
-      });
-      if (!response.ok) throw new Error(`Export failed (${response.status}).`);
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "traceability-matrix.csv";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not download the matrix.");
-    } finally {
-      setDownloading(false);
-    }
-  }
 
   return (
     <DashboardLayout>
       <div className="page-header-shell">
-        <p className="text-xs font-semibold tracking-[0.18em] text-accent uppercase">
-          Audit package
-        </p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">
-          Exports
-        </h1>
-        <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-          Export validation packs, traceability matrices, and other audit artifacts.
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Audit package</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">Exports</h1>
+        <p className="mt-2 max-w-2xl text-sm text-zinc-500 dark:text-zinc-400">
+          Assemble a review-ready validation pack from selected requirements.
         </p>
       </div>
 
       {loading ? (
         <div role="status" className="mt-6 flex items-center gap-2 text-sm text-zinc-500">
-          <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" />
-          Loading export workspace…
+          <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" /> Loading export workspace...
         </div>
-      ) : error && !counts ? (
-        <section
-          role="alert"
-          className="mt-6 rounded-lg border border-red-200 bg-white p-5 dark:border-red-900 dark:bg-zinc-950"
-        >
-          <div className="flex items-center gap-2 font-semibold text-red-800 dark:text-red-300">
-            <AlertCircle aria-hidden="true" className="h-5 w-5" />
-            Exports could not be loaded
-          </div>
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">{error}</p>
+      ) : error ? (
+        <section role="alert" className="mt-6 rounded-xl border border-red-200 bg-red-50 p-5 text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+          <div className="flex items-center gap-2 font-semibold"><AlertCircle className="h-5 w-5" /> Exports could not be loaded</div>
+          <p className="mt-2 text-sm">{error}</p>
         </section>
       ) : (
-        <div className="mt-6 space-y-6">
-          {/* Validation Pack Export */}
-          <section className="page-panel">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
-                  <Archive className="h-5 w-5 text-accent" />
-                  Validation Pack Export
-                </h2>
-                <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                  Generate a comprehensive validation pack as a ZIP file containing Risk Assessment, Assurance Rationale, Test Scripts, Gap Report, and Traceability Matrix (PNG) for selected requirements.
-                </p>
-              </div>
-            </div>
-            <ValidationPackExport />
-          </section>
-
-          {/* Traceability Matrix CSV Export */}
-          <section className="page-panel">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-accent" />
-                  Traceability Matrix (CSV)
-                </h2>
-                <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                  {counts
-                    ? `${counts.requirements} requirements · ${counts.tests} tests in the backend.`
-                    : "Live backend export."}{" "}
-                  Generated server-side from the current traceability snapshot.
-                </p>
-              </div>
-            </div>
-            {error ? (
-              <p role="alert" className="mt-3 text-sm text-red-700 dark:text-red-300">
-                {error}
+        <section className="page-panel mt-6 overflow-hidden border-0 bg-transparent p-0 shadow-none">
+          <div className="mb-5 flex items-start gap-4 rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 p-6 text-white shadow-lg">
+            <div className="rounded-xl bg-white/10 p-3"><Archive className="h-6 w-6 text-blue-200" /></div>
+            <div>
+              <h2 className="text-xl font-semibold">Validation Pack</h2>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-blue-100/80">
+                Search and select requirements above the list, then generate the pack. The ZIP includes the consolidated PDF, section PDFs, traceability CSV, evidence index, and README.
               </p>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => void handleDownloadMatrix()}
-              disabled={downloading}
-              className="mt-4 inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-brand hover:bg-accent-dark focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <Download aria-hidden="true" className="h-4 w-4" />
-              {downloading ? "Preparing…" : "Download matrix CSV"}
-            </button>
-          </section>
-        </div>
+            </div>
+          </div>
+          <ValidationPackExport />
+        </section>
       )}
     </DashboardLayout>
   );
