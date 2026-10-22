@@ -41,6 +41,13 @@ async def root():
     """
     Root endpoint.
     """
+    return {"message": f"{settings.APP_NAME} is running!"}
+
+
+@app.get("/health", tags=["Root"])
+async def health():
     return {
-        "message": f"{settings.APP_NAME} is running!"
+        "status": "ok",
+        "app": settings.APP_NAME,
+        "version": settings.APP_VERSION,
     }

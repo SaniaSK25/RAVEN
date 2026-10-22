@@ -40,8 +40,16 @@ class DetectabilityEvidence(BaseModel):
 
 
 class EvidenceRecord(BaseModel):
-    """Frozen input to the Layer 3 engines."""
+    """Frozen input to the Layer 3 engines.
 
+    The two identity fields are optional because extraction assembles a
+    record before any row exists. The pipeline stamps the version id, and
+    persistence/recompute supply the stored evidence id when rebuilding a
+    record from the database.
+    """
+
+    requirement_version_id: str | None = None
+    evidence_id: str | None = None
     gamp_category: Literal[1, 3, 4, 5]
     gamp_reason: str = Field(min_length=1)
     severity: SeverityEvidence

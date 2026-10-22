@@ -4,6 +4,7 @@ from app.api.v1.endpoints import (
     assessments,
     assurance,
     changes,
+    config,
     requirements,
     test_db,
     tests,
@@ -23,3 +24,4 @@ router.include_router(tests.router)
 router.include_router(assessments.router)
 router.include_router(assurance.router)
 router.include_router(validation_pack.router)
+router.include_router(config.router)

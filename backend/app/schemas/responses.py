@@ -185,6 +185,13 @@ class RiskAssessmentResponse(BaseModel):
     severity_rule_id: str | None
     probability_rule_id: str | None
     detectability_rule_id: str | None
+    severity_reasoning: str | None = None
+    probability_reasoning: str | None = None
+    detectability_reasoning: str | None = None
+    severity_decision_path: list[dict[str, Any]] = Field(default_factory=list)
+    probability_decision_path: list[dict[str, Any]] = Field(default_factory=list)
+    detectability_decision_path: list[dict[str, Any]] = Field(default_factory=list)
+    gamp_reason: str | None = None
     rpn: int | float | None
     rpn_points: int | float | None
     band: str | None
