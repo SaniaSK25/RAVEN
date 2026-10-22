@@ -42,6 +42,8 @@ class DetectabilityEvidence(BaseModel):
 class EvidenceRecord(BaseModel):
     """Frozen input to the Layer 3 engines."""
 
+    requirement_version_id: str
+    evidence_id: str
     gamp_category: Literal[1, 3, 4, 5]
     gamp_reason: str = Field(min_length=1)
     severity: SeverityEvidence

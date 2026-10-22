@@ -30,7 +30,7 @@ const NAV_ITEMS = [
   { label: "Changes", icon: History, href: "/changes" },
   { label: "Compliance", icon: Scale, href: null },
   { label: "Exports", icon: Download, href: "/exports" },
-  { label: "Settings", icon: Settings, href: null },
+  { label: "Settings", icon: Settings, href: "/settings" },
 ];
 
 interface DashboardLayoutProps {
