@@ -28,7 +28,7 @@ const NAV_ITEMS = [
   { label: "Tests", icon: FlaskConical, href: "/tests" },
   { label: "Traceability", icon: Network, href: "/traceability" },
   { label: "Changes", icon: History, href: "/changes" },
-  { label: "Compliance", icon: Scale, href: null },
+  { label: "Compliance", icon: Scale, href: "/compliance" },
   { label: "Exports", icon: Download, href: "/exports" },
   { label: "Settings", icon: Settings, href: "/settings" },
 ];
