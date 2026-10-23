@@ -144,7 +144,7 @@ export interface TraceNode {
   type: TraceNodeType;
   label: string;
   status: RequirementStatus;
-  /** True when this node belongs to a superseded requirement version. */
+  /** True when this node belongs to a superseded version or its requirement was retired. */
   orphaned?: boolean;
 }
 

@@ -226,6 +226,20 @@ def _resolve_requirements(db, raw_keys: str | None) -> list[Requirement]:
             status_code=404,
             detail="Requirement not found: " + ", ".join(sorted(missing)),
         )
+
+    retired = [
+        req.req_key or f"REQ-{str(req.id)[:8].upper()}"
+        for req in resolved
+        if getattr(req.status, "value", req.status) in {"RETIRED", "SUPERSEDED"}
+    ]
+    if retired:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Retired requirements cannot be exported: "
+                + ", ".join(sorted(retired))
+            ),
+        )
     return sorted(resolved, key=lambda req: (req.req_key or "", str(req.id)))
 
 

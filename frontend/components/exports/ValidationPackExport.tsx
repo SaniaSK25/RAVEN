@@ -44,7 +44,11 @@ export default function ValidationPackExport() {
     setError("");
     try {
       const page = await backendFetch<RequirementPage>("requirements?limit=500");
-      setRequirements(Array.isArray(page.items) ? page.items : []);
+      const items = Array.isArray(page.items) ? page.items : [];
+      // Retired requirements are out of scope for a validation pack.
+      setRequirements(
+        items.filter((item) => (item.status ?? "").toUpperCase() !== "RETIRED"),
+      );
     } catch (cause) {
       setError(
         cause instanceof Error
@@ -155,22 +159,23 @@ export default function ValidationPackExport() {
     }
   };
 
-  const selectedSummary = dataset
-    ? `${dataset.requirements.length} requirement(s) loaded · ${dataset.requirements.reduce(
-        (count, item) => count + item.risks.length,
-        0,
-      )} risk assessment(s) · ${dataset.requirements.reduce(
-        (count, item) => count + item.assurance.length,
-        0,
-      )} assurance decision(s) · ${dataset.requirements.reduce(
-        (count, item) => count + item.tests.length,
-        0,
-      )} test script(s)`
-    : loadingDataset
-      ? "Retrieving the selected records..."
-      : selected.length
-        ? "Selection not loaded yet."
-        : "No requirements selected.";
+  const counts = dataset
+    ? {
+        requirements: dataset.requirements.length,
+        risks: dataset.requirements.reduce(
+          (count, item) => count + item.risks.length,
+          0,
+        ),
+        assurance: dataset.requirements.reduce(
+          (count, item) => count + item.assurance.length,
+          0,
+        ),
+        tests: dataset.requirements.reduce(
+          (count, item) => count + item.tests.length,
+          0,
+        ),
+      }
+    : null;
 
   const exportDisabled =
     busy || loadingDataset || !dataset || selected.length === 0;
@@ -249,24 +254,67 @@ export default function ValidationPackExport() {
               </button>
             )}
           </div>
-          <p
+          <div
             aria-live="polite"
-            className="text-sm font-medium text-zinc-700 dark:text-zinc-200"
+            className="flex items-center gap-3 rounded-xl border border-accent/40 bg-accent/10 px-4 py-2"
           >
-            Selected: <strong>{selected.length}</strong> requirement
-            {selected.length === 1 ? "" : "s"}
-            {search ? ` · Showing ${filtered.length} of ${requirements.length}` : ""}
-          </p>
+            <span className="text-3xl font-bold leading-none text-accent">
+              {selected.length}
+            </span>
+            <span className="leading-tight">
+              <span className="block text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                requirement{selected.length === 1 ? "" : "s"} selected
+              </span>
+              {search ? (
+                <span className="mt-0.5 block text-xs text-zinc-500 dark:text-zinc-400">
+                  Showing {filtered.length} of {requirements.length}
+                </span>
+              ) : null}
+            </span>
+          </div>
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
-          <span>{selectedSummary}</span>
-          {dataset && (
-            <span>
-              Compliance:{" "}
-              {dataset.compliance_evaluated
-                ? "persisted records available"
-                : "not evaluated"} · Test execution: not recorded
+        <div
+          aria-live="polite"
+          className="mt-4 flex flex-wrap items-center gap-2"
+        >
+          {loadingDataset ? (
+            <span className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
+              <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+              Retrieving the selected records...
+            </span>
+          ) : counts ? (
+            <>
+              <CountChip label="Requirements loaded" value={counts.requirements} />
+              <CountChip label="Risk assessments" value={counts.risks} />
+              <CountChip label="Assurance decisions" value={counts.assurance} />
+              <CountChip label="Test scripts" value={counts.tests} />
+              <StatusChip
+                label="Compliance"
+                value={
+                  dataset?.compliance_evaluated
+                    ? "Persisted records available"
+                    : "Not evaluated"
+                }
+                tone={dataset?.compliance_evaluated ? "good" : "warn"}
+              />
+              <StatusChip
+                label="Test execution"
+                value="Not recorded"
+                tone="neutral"
+              />
+            </>
+          ) : (
+            <span
+              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium ${
+                selected.length
+                  ? "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+                  : "border-zinc-200 bg-zinc-50 text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400"
+              }`}
+            >
+              {selected.length
+                ? "Selection not loaded yet."
+                : "No requirements selected."}
             </span>
           )}
         </div>
@@ -386,8 +434,7 @@ export default function ValidationPackExport() {
                         {requirementListKey(requirement)}
                       </b>
                       <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                        {requirementVersionLabel(requirement)} ·{" "}
-                        {requirement.status}
+                        {requirementVersionLabel(requirement)}
                       </span>
                     </span>
                     <span className="mt-1 block text-sm text-zinc-600 dark:text-zinc-300">
@@ -401,5 +448,49 @@ export default function ValidationPackExport() {
         )}
       </section>
     </div>
+  );
+}
+
+type StatusChipTone = "good" | "warn" | "neutral";
+
+const STATUS_DOT_CLASS: Record<StatusChipTone, string> = {
+  good: "bg-emerald-500",
+  warn: "bg-amber-500",
+  neutral: "bg-zinc-400",
+};
+
+function CountChip({ label, value }: { label: string; value: number }) {
+  return (
+    <span className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-md bg-accent px-1.5 text-xs font-bold text-brand">
+        {value}
+      </span>
+      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">
+        {label}
+      </span>
+    </span>
+  );
+}
+
+function StatusChip({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: StatusChipTone;
+}) {
+  return (
+    <span className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <span
+        aria-hidden="true"
+        className={`h-2 w-2 shrink-0 rounded-full ${STATUS_DOT_CLASS[tone]}`}
+      />
+      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">
+        {label}:
+      </span>
+      <span className="text-xs text-zinc-500 dark:text-zinc-400">{value}</span>
+    </span>
   );
 }

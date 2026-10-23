@@ -203,7 +203,7 @@ export default function TraceGraph({ trace, requirementId }: TraceGraphProps) {
               aria-hidden="true"
               className="h-3 w-3 rounded-sm border-2 border-dashed border-amber-600 bg-amber-50"
             />
-            Orphaned artifact from a superseded version
+            Orphaned record — its requirement was superseded or retired
           </span>
         ) : null}
       </div>

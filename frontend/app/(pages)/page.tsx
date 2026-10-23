@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertCircle, LoaderCircle } from "lucide-react";
+import { AlertCircle, AlertTriangle, LoaderCircle } from "lucide-react";
 import AttentionItem from "@/components/AttentionItem";
 import DashboardLayout from "@/components/DashboardLayout";
 import DistributionSection from "@/components/DistributionSection";
@@ -14,6 +14,7 @@ import {
   type BackendOrphans,
   type BackendPage,
   type BackendRequirement,
+  type BackendTraceMatrix,
 } from "@/lib/backend-api";
 
 interface DashboardNumbers {
@@ -27,12 +28,29 @@ interface DashboardNumbers {
   needsReview: number;
   changed: number;
   attention: Array<{ id: string; title: string; description: string; count: number }>;
+  uncovered: number;
 }
+
+const EMPTY_PAGE = { items: [], total: 0, skip: 0, limit: 0 };
+const EMPTY_MATRIX: BackendTraceMatrix = { total: 0, rows: [] };
+const EMPTY_ORPHANS: BackendOrphans = { orphans: [], summary: {} };
+const EMPTY_CHANGES: BackendChangeEvent[] = [];
+
+/** Human-readable labels for each dashboard data source, keyed to fetch order. */
+const SOURCE_LABELS = [
+  "requirements",
+  "risk assessments",
+  "assurance decisions",
+  "traceability matrix",
+  "traceability orphans",
+  "change events",
+] as const;
 
 function computeDashboard(
   requirements: BackendPage<BackendRequirement>,
   assessments: BackendPage<BackendAssessmentRecord>,
   assurance: BackendPage<BackendAssuranceRecord>,
+  matrix: BackendTraceMatrix,
   orphans: BackendOrphans,
   changes: BackendChangeEvent[],
 ): DashboardNumbers {
@@ -72,8 +90,20 @@ function computeDashboard(
     ["open", "reanalyzed"].includes(change.status.toLowerCase()),
   ).length;
 
-  const orphanReqs = orphans.orphans.filter((o) => o.entity_type === "requirement").length;
-  const orphanTests = orphans.orphans.filter((o) => o.entity_type === "test").length;
+  const orphanReqs = orphans.orphans.filter(
+    (orphan) => orphan.entity_type === "requirement",
+  ).length;
+  const orphanTests = orphans.orphans.filter(
+    (orphan) => orphan.entity_type === "test",
+  ).length;
+
+  // Coverage — rows are per test link; aggregate uncovered requirements.
+  const uncoveredReqs = new Set<string>();
+  for (const row of matrix.rows) {
+    if (row.coverage_status === "uncovered" && typeof row.requirement_id === "string") {
+      uncoveredReqs.add(row.requirement_id);
+    }
+  }
 
   return {
     totalRequirements: requirements.total,
@@ -111,11 +141,13 @@ function computeDashboard(
         count: orphanTests,
       },
     ],
+    uncovered: uncoveredReqs.size,
   };
 }
 
 export default function Home() {
   const [data, setData] = useState<DashboardNumbers | null>(null);
+  const [failedSources, setFailedSources] = useState<string[]>([]);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [loadedAttempt, setLoadedAttempt] = useState(-1);
   const [error, setError] = useState<{ attempt: number; message: string } | null>(null);
@@ -124,31 +156,64 @@ export default function Home() {
 
   useEffect(() => {
     let active = true;
-    Promise.all([
-      backendFetch<BackendPage<BackendRequirement>>("requirements?limit=500"),
-      backendFetch<BackendPage<BackendAssessmentRecord>>("assessments?limit=500"),
-      backendFetch<BackendPage<BackendAssuranceRecord>>("assurance?limit=500"),
-      backendFetch<BackendOrphans>("traceability/orphans"),
-      backendFetch<BackendChangeEvent[]>("changes"),
-    ])
-      .then(([requirements, assessments, assurance, orphans, changes]) => {
-        if (active) {
-          setData(computeDashboard(requirements, assessments, assurance, orphans, changes));
-          setError(null);
-        }
-      })
-      .catch((cause: unknown) => {
-        if (active) {
-          setError({
-            attempt: loadAttempt,
-            message:
-              cause instanceof Error ? cause.message : "Could not load dashboard data.",
-          });
-        }
-      })
-      .finally(() => {
-        if (active) setLoadedAttempt(loadAttempt);
-      });
+    // Load each source independently so a single failing read (e.g. an empty
+    // database or a flaky secondary endpoint) does not blank the whole page.
+    const load = async () => {
+      const settled = await Promise.allSettled([
+        backendFetch<BackendPage<BackendRequirement>>("requirements?limit=500"),
+        backendFetch<BackendPage<BackendAssessmentRecord>>("assessments?limit=500"),
+        backendFetch<BackendPage<BackendAssuranceRecord>>("assurance?limit=500"),
+        backendFetch<BackendTraceMatrix>("traceability/matrix"),
+        backendFetch<BackendOrphans>("traceability/orphans"),
+        backendFetch<BackendChangeEvent[]>("changes"),
+      ]);
+      if (!active) return;
+
+      if (settled[0].status === "rejected") {
+        const cause = settled[0].reason;
+        setData(null);
+        setFailedSources([]);
+        setError({
+          attempt: loadAttempt,
+          message:
+            cause instanceof Error ? cause.message : "Could not load dashboard data.",
+        });
+        setLoadedAttempt(loadAttempt);
+        return;
+      }
+
+      const values = settled.map((result, index) =>
+        result.status === "fulfilled"
+          ? result.value
+          : index === 3
+            ? EMPTY_MATRIX
+            : index === 4
+              ? EMPTY_ORPHANS
+              : index === 5
+                ? EMPTY_CHANGES
+              : EMPTY_PAGE,
+      );
+      setData(
+        computeDashboard(
+          values[0] as BackendPage<BackendRequirement>,
+          values[1] as BackendPage<BackendAssessmentRecord>,
+          values[2] as BackendPage<BackendAssuranceRecord>,
+          values[3] as BackendTraceMatrix,
+          values[4] as BackendOrphans,
+          values[5] as BackendChangeEvent[],
+        ),
+      );
+      setFailedSources(
+        settled.flatMap((result, index) =>
+          result.status === "rejected" && SOURCE_LABELS[index]
+            ? [SOURCE_LABELS[index]]
+            : [],
+        ),
+      );
+      setError(null);
+      setLoadedAttempt(loadAttempt);
+    };
+    void load();
     return () => {
       active = false;
     };
@@ -194,138 +259,191 @@ export default function Home() {
       ) : data ? (
         <>
           {data.totalRequirements === 0 ? (
-            <section className="mt-6 rounded-lg border border-zinc-200 bg-white p-6 text-sm text-zinc-600 shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
-              No requirements yet. Add your first requirement on the{" "}
-              <a href="/ingestion" className="font-medium underline">
-                Ingestion
-              </a>{" "}
-              page, then run analysis from a requirement detail page.
+            <section
+              className="mt-6 rounded-lg border border-zinc-200 bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-zinc-800 dark:bg-zinc-950"
+            >
+              <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+                No requirements are currently ingested
+              </h2>
+              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                The RAVEN database has no records yet. Import your first requirement
+                on the{" "}
+                <a href="/ingestion" className="font-medium underline">
+                  Ingestion
+                </a>{" "}
+                page — the dashboard will fill in automatically as requirements, risk
+                assessments and test coverage are added.
+              </p>
+            </section>
+          ) : failedSources.length > 0 ? (
+            <section
+              role="status"
+              className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/40"
+            >
+              <div className="flex items-center gap-2 text-sm font-semibold text-amber-900 dark:text-amber-200">
+                <AlertTriangle aria-hidden="true" className="h-4 w-4" />
+                {failedSources.length} data source
+                {failedSources.length === 1 ? "" : "s"} could not be loaded
+              </div>
+              <p className="mt-1 text-sm text-amber-900/80 dark:text-amber-200/80">
+                Unavailable: {failedSources.join(", ")}. Showing counts from the
+                sources that loaded successfully.
+              </p>
+              <button
+                type="button"
+                onClick={() => setLoadAttempt((attempt) => attempt + 1)}
+                className="mt-3 rounded-md border border-amber-300 px-3 py-1.5 text-sm font-medium text-amber-900 hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-accent dark:border-amber-800 dark:text-amber-200 dark:hover:bg-amber-950"
+              >
+                Retry
+              </button>
             </section>
           ) : null}
 
-          {/* Summary cards */}
-          <section
-            aria-label="Summary"
-            className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4"
-          >
-            <SummaryCard
-              label="Requirements"
-              value={data.totalRequirements}
-              subtext="Requirements currently in the system."
-              tone="brand"
-            />
-            <SummaryCard
-              label="Scripted testing"
-              value={data.scripted}
-              subtext="Documented test procedures for higher-risk requirements."
-              tone="success"
-            />
-            <SummaryCard
-              label="Exploratory testing"
-              value={data.exploratory}
-              subtext="Focused testing with recorded observations and results."
-              tone="sky"
-            />
-            <SummaryCard
-              label="Unscripted testing"
-              value={data.unscripted}
-              subtext="Low-risk requirements with unscripted testing."
-              tone="slate"
-            />
-          </section>
-
-          {/* Distributions */}
-          <div className="mt-6 grid gap-4 lg:grid-cols-2">
-            <DistributionSection
-              title="Risk Distribution"
-              description="Current assessments grouped by their risk rating."
-              totalLabel="assessments"
-              rows={[
-                {
-                  key: "low",
-                  label: "Low risk",
-                  value: data.riskLow,
-                  color: "#10b981",
-                  badgeClassName:
-                    "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200",
-                },
-                {
-                  key: "medium",
-                  label: "Medium risk",
-                  value: data.riskMedium,
-                  color: "#f59e0b",
-                  badgeClassName:
-                    "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200",
-                },
-                {
-                  key: "high",
-                  label: "High risk",
-                  value: data.riskHigh,
-                  color: "#ef4444",
-                  badgeClassName:
-                    "border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200",
-                },
-              ]}
-            />
-            <DistributionSection
-              title="Assurance Distribution"
-              description="Current decisions grouped by the level of testing required."
-              totalLabel="assurance decisions"
-              rows={[
-                {
-                  key: "scripted",
-                  label: "Scripted testing",
-                  value: data.scripted,
-                  color: "#52525b",
-                  badgeClassName:
-                    "border-zinc-300 bg-zinc-100 text-zinc-800 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100",
-                },
-                {
-                  key: "exploratory",
-                  label: "Exploratory testing",
-                  value: data.exploratory,
-                  color: "#0ea5e9",
-                  badgeClassName:
-                    "border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-200",
-                },
-                {
-                  key: "unscripted",
-                  label: "Unscripted testing",
-                  value: data.unscripted,
-                  color: "#8b5cf6",
-                  badgeClassName:
-                    "border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-900 dark:bg-violet-950 dark:text-violet-200",
-                },
-              ]}
-            />
-          </div>
-
-          {/* Needs attention */}
-          <section
-            aria-label="Needs Attention"
-            className="mt-6 rounded-lg border border-zinc-200 bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-zinc-800 dark:bg-zinc-950"
-          >
-            <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
-              Needs Attention
-            </h2>
-            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              Items currently requiring QA follow-up.
-            </p>
-            <ul className="mt-5 space-y-2.5">
-              {data.attention.map((item) => (
-                <AttentionItem
-                  key={item.id}
-                  title={`${item.count} ${item.title}`}
-                  description={item.description}
-                  count={item.count}
+          {data.totalRequirements !== 0 ? (
+            <>
+              {/* Summary cards */}
+              <section
+                aria-label="Summary"
+                className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4"
+              >
+                <SummaryCard
+                  label="Requirements"
+                  value={data.totalRequirements}
+                  subtext="Requirements currently in the system."
+                  tone="brand"
                 />
-              ))}
-            </ul>
-          </section>
-          <p className="mt-4 text-[13px] text-zinc-500 dark:text-zinc-400">
-            Live counts only — aggregated from requirements, assessments, assurance,
-            traceability and changes. This view does not run analysis.
-          </p>
+                <SummaryCard
+                  label="Scripted testing"
+                  value={data.scripted}
+                  subtext="Documented test procedures for higher-risk requirements."
+                  tone="success"
+                />
+                <SummaryCard
+                  label="Exploratory testing"
+                  value={data.exploratory}
+                  subtext="Focused testing with recorded observations and results."
+                  tone="sky"
+                />
+                <SummaryCard
+                  label="Unscripted testing"
+                  value={data.unscripted}
+                  subtext="Low-risk requirements with unscripted testing."
+                  tone="slate"
+                />
+                <SummaryCard
+                  label="Needs review"
+                  value={data.needsReview}
+                  subtext="Draft or outdated assessments awaiting review."
+                  tone="warning"
+                />
+                <SummaryCard
+                  label="Open changes"
+                  value={data.changed}
+                  subtext="Requirement changes awaiting follow-up."
+                  tone="brand"
+                />
+                <SummaryCard
+                  label="Uncovered requirements"
+                  value={data.uncovered}
+                  subtext="Requirements with no linked test coverage."
+                  tone="danger"
+                />
+              </section>
+
+              {/* Distributions */}
+              <div className="mt-6 grid gap-4 lg:grid-cols-2">
+                <DistributionSection
+                  title="Risk Distribution"
+                  description="Current assessments grouped by their risk rating."
+                  totalLabel="assessments"
+                  rows={[
+                    {
+                      key: "low",
+                      label: "Low risk",
+                      value: data.riskLow,
+                      color: "#10b981",
+                      badgeClassName:
+                        "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200",
+                    },
+                    {
+                      key: "medium",
+                      label: "Medium risk",
+                      value: data.riskMedium,
+                      color: "#f59e0b",
+                      badgeClassName:
+                        "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200",
+                    },
+                    {
+                      key: "high",
+                      label: "High risk",
+                      value: data.riskHigh,
+                      color: "#ef4444",
+                      badgeClassName:
+                        "border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200",
+                    },
+                  ]}
+                />
+                <DistributionSection
+                  title="Assurance Distribution"
+                  description="Current decisions grouped by the level of testing required."
+                  totalLabel="assurance decisions"
+                  rows={[
+                    {
+                      key: "scripted",
+                      label: "Scripted testing",
+                      value: data.scripted,
+                      color: "#52525b",
+                      badgeClassName:
+                        "border-zinc-300 bg-zinc-100 text-zinc-800 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100",
+                    },
+                    {
+                      key: "exploratory",
+                      label: "Exploratory testing",
+                      value: data.exploratory,
+                      color: "#0ea5e9",
+                      badgeClassName:
+                        "border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-200",
+                    },
+                    {
+                      key: "unscripted",
+                      label: "Unscripted testing",
+                      value: data.unscripted,
+                      color: "#8b5cf6",
+                      badgeClassName:
+                        "border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-900 dark:bg-violet-950 dark:text-violet-200",
+                    },
+                  ]}
+                />
+              </div>
+
+              <section
+                aria-label="Needs Attention"
+                className="mt-6 rounded-lg border border-zinc-200 bg-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:border-zinc-800 dark:bg-zinc-950"
+              >
+                <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+                  Needs Attention
+                </h2>
+                <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                  Items currently requiring QA follow-up.
+                </p>
+                <ul className="mt-5 space-y-2.5">
+                  {data.attention.map((item) => (
+                    <AttentionItem
+                      key={item.id}
+                      title={`${item.count} ${item.title}`}
+                      description={item.description}
+                      count={item.count}
+                    />
+                  ))}
+                </ul>
+              </section>
+
+              <p className="mt-4 text-[13px] text-zinc-500 dark:text-zinc-400">
+                Live counts only — aggregated from requirements, assessments, assurance,
+                traceability and changes. This view does not run analysis.
+              </p>
+            </>
+          ) : null}
         </>
       ) : null}
     </DashboardLayout>

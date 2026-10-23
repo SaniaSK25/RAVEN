@@ -110,7 +110,6 @@ function compareOptionalNumber(
 
 export default function AssurancePage() {
   const [all, setAll] = useState<AssuranceRecord[]>([]);
-  const [total, setTotal] = useState(0);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [loadedAttempt, setLoadedAttempt] = useState(-1);
   const [error, setError] = useState<{ attempt: number; message: string } | null>(null);
@@ -128,7 +127,6 @@ export default function AssurancePage() {
         const records = data.items.map(toAssuranceRecord);
         if (active) {
           setAll(records);
-          setTotal(data.total);
           setError(null);
         }
       })
@@ -293,15 +291,6 @@ export default function AssurancePage() {
         )}
       </section>
 
-      {visible.length > 0 ? (
-        <p className="mt-4 text-[13px] text-zinc-500 dark:text-zinc-400">
-          Showing {visible.length} of {all.length} loaded decisions ({total} total). Expand a row for recorded reasoning, or select a requirement to open its detail.
-        </p>
-      ) : null}
-
-      <p className="mt-4 text-[13px] text-zinc-500 dark:text-zinc-400">
-        Live persisted decisions only. This view does not run the assurance engine or create new decisions.
-      </p>
         </>
       )}
     </DashboardLayout>
