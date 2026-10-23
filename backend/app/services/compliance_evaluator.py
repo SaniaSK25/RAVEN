@@ -41,7 +41,10 @@ ANNEX_11_RULES: tuple[dict[str, Any], ...] = (
         "clause": "14",
         "title": "Electronic signatures",
         "summary": "Electronic signatures should be linked to the record and include the signer and date/time.",
-        "groups": (("electronic signature", "e-signature", "esignature", "digitally sign", "approval"), ("identity", "signer", "user", "authenticated"), ("date", "time", "timestamp", "linked", "record")),
+        # Do not treat ordinary approvals, users, dates, or records as
+        # electronic-signature evidence. The requirement must explicitly
+        # describe a signature/signing control and its attribution.
+        "groups": (("electronic signature", "e-signature", "esignature", "digital signature", "digitally sign"), ("signer", "signature identity", "authenticated signer"), ("signature timestamp", "signed date", "signed time", "signature linked", "linked to the record")),
     },
     {
         "clause": "16",
@@ -63,7 +66,7 @@ def _matching_ids(requirements: list[dict[str, str]], groups: tuple[tuple[str, .
         group_matches = [
             requirement["key"]
             for requirement in requirements
-            if any(term in requirement["text"] for term in group)
+            if any(_normalise(term) in _normalise(requirement["text"]) for term in group)
         ]
         if group_matches:
             matched.extend(group_matches)
@@ -82,7 +85,7 @@ def evaluate_requirements(requirements: list[dict[str, str]]) -> dict[str, Any]:
         elif coverage > 0:
             status = "PARTIALLY_COVERED"
             missing = [group[0] for group in rule["groups"] if not any(
-                any(term in requirement["text"] for term in group)
+                any(_normalise(term) in _normalise(requirement["text"]) for term in group)
                 for requirement in requirements
             )]
             explanation = f"Some control concepts are present, but the requirement set does not clearly mention: {', '.join(missing)}."
