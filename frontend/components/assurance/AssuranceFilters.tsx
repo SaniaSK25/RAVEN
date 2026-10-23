@@ -25,7 +25,7 @@ const ASSURANCE_OPTIONS: AssuranceOutcome[] = [
   "unscripted-adhoc",
 ];
 const RISK_OPTIONS: RiskBand[] = ["LOW", "MEDIUM", "HIGH"];
-const STATUS_OPTIONS: RequirementStatus[] = ["current", "needs-review", "stale"];
+const STATUS_OPTIONS: RequirementStatus[] = ["current", "stale"];
 const GXP_OPTIONS: Array<"yes" | "no"> = ["yes", "no"];
 
 function toggle<T>(list: T[], value: T): T[] {

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { AlertCircle, CheckCircle2, Clipboard, LoaderCircle, MinusCircle, ShieldCheck } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { AlertCircle, CheckCircle2, LoaderCircle, MinusCircle, ShieldCheck } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { backendFetch } from "@/lib/backend-api";
 
@@ -32,35 +32,32 @@ const statusCopy = {
 
 export default function CompliancePage() {
   const [report, setReport] = useState<ComplianceReport | null>(null);
-  const [prompt, setPrompt] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [promptLoading, setPromptLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function runEvaluation() {
+  const loadReport = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      setReport(await backendFetch<ComplianceReport>("compliance/evaluate", { method: "POST", body: JSON.stringify({}) }));
+      setReport(
+        await backendFetch<ComplianceReport>("compliance/evaluate", {
+          method: "POST",
+          body: JSON.stringify({}),
+        }),
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "The Annex 11 review could not be run.");
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
-  async function showPrompt() {
-    setPromptLoading(true);
-    setError(null);
-    try {
-      const response = await backendFetch<{ prompt: string }>("compliance/prompt", { method: "POST", body: JSON.stringify({}) });
-      setPrompt(response.prompt);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "The AI prompt could not be prepared.");
-    } finally {
-      setPromptLoading(false);
-    }
-  }
+  // The Annex 11 scan is deterministic and cheap (keyword check, no LLM call),
+  // so it runs automatically on page open; the button re-runs it to refresh
+  // after requirement changes.
+  useEffect(() => {
+    void loadReport();
+  }, [loadReport]);
 
   return (
     <DashboardLayout>
@@ -72,13 +69,9 @@ export default function CompliancePage() {
             <p className="mt-2 max-w-2xl text-sm text-zinc-500 dark:text-zinc-400">Checks whether the current LIMS requirement set asks for key Annex 11 controls. This is a requirements gap review, not proof that the implemented system is compliant.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={showPrompt} disabled={promptLoading} className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700 shadow-sm hover:bg-zinc-50 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
-              {promptLoading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Clipboard className="h-4 w-4" />}
-              Show AI prompt
-            </button>
-            <button type="button" onClick={runEvaluation} disabled={loading} className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand/90 disabled:opacity-60">
+            <button type="button" onClick={() => void loadReport()} disabled={loading} className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand/90 disabled:opacity-60">
               {loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-              {loading ? "Reviewing…" : "Run Annex 11 review"}
+              {loading ? "Reviewing…" : report ? "Re-run Annex 11 review" : "Run Annex 11 review"}
             </button>
           </div>
         </div>
@@ -86,14 +79,12 @@ export default function CompliancePage() {
 
       {error && <div className="page-panel mt-6 border-rose-200 bg-rose-50 text-sm text-rose-700">{error}</div>}
 
-      {!report && !loading && (
-        <section className="page-panel mt-6">
-          <div className="flex items-start gap-3">
-            <ShieldCheck className="mt-0.5 h-5 w-5 text-accent" />
-            <div>
-              <h2 className="font-semibold text-zinc-900 dark:text-zinc-50">Ready to check the current requirement set</h2>
-              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">RAVEN will review all active requirements as one LIMS system and name any Annex 11 topics that are missing or incomplete.</p>
-            </div>
+      {!report && loading && (
+        <section className="page-panel mt-6 flex items-center gap-3">
+          <LoaderCircle className="h-5 w-5 shrink-0 animate-spin text-accent" />
+          <div>
+            <h2 className="font-semibold text-zinc-900 dark:text-zinc-50">Reviewing the current requirement set…</h2>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">RAVEN is scanning all active requirements against EU GMP Annex 11.</p>
           </div>
         </section>
       )}
@@ -102,9 +93,12 @@ export default function CompliancePage() {
         <>
           <section className="mt-6 grid gap-3 sm:grid-cols-4">
             <Summary label="Requirements reviewed" value={report.requirement_count} />
-            <Summary label="Covered" value={report.summary.COVERED ?? 0} tone="green" />
-            <Summary label="Partially covered" value={report.summary.PARTIALLY_COVERED ?? 0} tone="amber" />
-            <Summary label="Absent" value={report.summary.ABSENT ?? 0} tone="rose" />
+            <Summary label="Clauses covered" value={report.summary.COVERED ?? 0} tone="green" />
+            <Summary label="Clauses partially covered" value={report.summary.PARTIALLY_COVERED ?? 0} tone="amber" />
+            <Summary label="Clauses absent" value={report.summary.ABSENT ?? 0} tone="rose" />
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 sm:col-span-4">
+              All {report.requirement_count} requirements are scanned against every clause below. A requirement appears under a clause only when its wording asks for that control — it can match several clauses or none.
+            </p>
           </section>
 
           <section className="page-panel mt-6">
@@ -147,7 +141,6 @@ export default function CompliancePage() {
         </>
       )}
 
-      {prompt && <section className="page-panel mt-6"><div className="flex items-center justify-between gap-3"><h2 className="font-semibold text-zinc-900 dark:text-zinc-50">Prompt for an AI reviewer</h2><button type="button" onClick={() => navigator.clipboard.writeText(prompt)} className="text-xs font-semibold text-accent hover:underline">Copy prompt</button></div><pre className="mt-4 max-h-[32rem] overflow-auto whitespace-pre-wrap rounded-xl bg-zinc-950 p-4 text-xs leading-5 text-zinc-200">{prompt}</pre></section>}
     </DashboardLayout>
   );
 }

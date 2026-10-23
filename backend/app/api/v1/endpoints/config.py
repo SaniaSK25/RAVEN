@@ -9,6 +9,8 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 
 from app.db.dependencies import DBSession
+from app.models.enums import RequirementStatus
+from app.models.requirement import Requirement
 from app.models.risk_assessment import RiskAssessment
 from app.models.requirement_version import RequirementVersion
 from app.models.stored_evidence import Evidence
@@ -25,25 +27,37 @@ router = APIRouter(prefix="/config", tags=["Config"])
 # -------------------------------------------------------------------------
 
 
-class BandConfig(BaseModel):
-    """RPN band thresholds on the points scale (20-100)."""
+class BandThresholds(BaseModel):
+    """Shared band-threshold contract for save/recompute requests.
+
+    Mirrors the rulebook the UI enforces: Low max starts at 20 points,
+    the Medium ceiling is 80 points, and at least 10 points are always
+    reserved for the Medium band (so Low max can never exceed 70).
+    """
 
     low_max: int = Field(
-        ge=20, le=100, description="Upper bound of Low band (points)"
+        ge=20, le=70, description="Upper bound of Low band (points)"
     )
     medium_max: int = Field(
-        ge=20, le=100, description="Upper bound of Medium band (points)"
+        ge=30, le=80, description="Upper bound of Medium band (points)"
     )
 
     @field_validator("medium_max")
     @classmethod
     def _validate_order(cls, v: int, info) -> int:
         low_max = info.data.get("low_max")
-        if low_max is not None and not (20 <= low_max < v <= 100):
+        if low_max is not None and not (
+            20 <= low_max < v <= 80 and v - low_max >= 10
+        ):
             raise ValueError(
-                "Require 20 <= low_max < medium_max <= 100"
+                "Require 20 <= low_max < medium_max <= 80 with at least "
+                "10 points reserved for the Medium band"
             )
         return v
+
+
+class BandConfig(BandThresholds):
+    """RPN band thresholds on the points scale (same limits as the UI)."""
 
 
 class BandConfigResponse(BaseModel):
@@ -57,9 +71,7 @@ class BandConfigResponse(BaseModel):
     rules: dict[str, str]
 
 
-class RecomputePreviewRequest(BaseModel):
-    low_max: int = Field(ge=20, le=100)
-    medium_max: int = Field(ge=20, le=100)
+class RecomputePreviewRequest(BandThresholds):
     dry_run: bool = True
 
 
@@ -71,9 +83,7 @@ class RecomputePreviewResponse(BaseModel):
     changes: list[dict[str, Any]]
 
 
-class RecomputeApplyRequest(BaseModel):
-    low_max: int = Field(ge=20, le=100)
-    medium_max: int = Field(ge=20, le=100)
+class RecomputeApplyRequest(BandThresholds):
     confirm: bool = Field(
         default=False, description="Must be true to actually persist changes"
     )
@@ -92,6 +102,21 @@ class RecomputeApplyResponse(BaseModel):
 # -------------------------------------------------------------------------
 # Helpers
 # -------------------------------------------------------------------------
+
+
+def _title_band(name: Any) -> str:
+    """Normalize a stored band value (LOW/High/None) to display casing."""
+    text = str(name or "").strip()
+    return text.title() if text else "Unknown"
+
+
+def _normalize_band_distribution(raw: dict[str, dict[str, Any]]) -> dict[str, dict[str, int]]:
+    """Before keys come back as enum values (LOW/MEDIUM/HIGH); after keys as
+    display strings (Low/High). Normalize both so the UI tables match."""
+    return {
+        side: {_title_band(key): count for key, count in counts.items()}
+        for side, counts in raw.items()
+    }
 
 
 def _serialize_band_config(config: dict) -> BandConfigResponse:
@@ -135,14 +160,22 @@ def _write_bands_yaml(low_max: int, medium_max: int) -> None:
 
 
 def _load_all_current_assessments(db: DBSession) -> list[tuple[EvidenceRecord, dict]]:
-    """Load all current (fresh) assessments with their frozen evidence."""
-    # Get all current requirement versions with their evidence and assessments
+    """Load current (fresh) assessments with their frozen evidence.
+
+    Retired requirements are skipped: retirement freezes the analysis
+    chain, so recompute targets active requirements only.
+    """
     assessments = (
         db.query(RiskAssessment)
         .join(
             RequirementVersion,
             RiskAssessment.requirement_version_id == RequirementVersion.id,
         )
+        .join(
+            Requirement,
+            RequirementVersion.requirement_id == Requirement.id,
+        )
+        .filter(Requirement.status != RequirementStatus.RETIRED)
         .filter(RiskAssessment.is_current.is_(True))
         .filter(RiskAssessment.freshness != "superseded")
         .all()
@@ -325,11 +358,12 @@ def recompute_preview(
     )
 
     # Convert band_distribution to match response model
-    band_dist = result["band_distribution"]
-    dist_response: dict[str, dict[str, int]] = {
-        "before": band_dist.get("before", {}),
-        "after": band_dist.get("after", {}),
-    }
+    dist_response = _normalize_band_distribution(
+        {
+            "before": result["band_distribution"].get("before", {}),
+            "after": result["band_distribution"].get("after", {}),
+        }
+    )
 
     return RecomputePreviewResponse(
         total=result["total"],
@@ -407,11 +441,19 @@ def recompute_apply(
 
         old_band = stored.get("band")
         new_band = fresh["band"]
-        before_bands[old_band] = before_bands.get(old_band, 0) + 1
-        after_bands[new_band] = after_bands.get(new_band, 0) + 1
+        old_band_display = _title_band(old_band)
+        new_band_display = _title_band(new_band)
+        before_bands[old_band_display] = (
+            before_bands.get(old_band_display, 0) + 1
+        )
+        after_bands[new_band_display] = after_bands.get(new_band_display, 0) + 1
 
         if new_band != old_band:
             changed_count += 1
+        else:
+            # Identical rows are left untouched — only differing rows get a
+            # new assessment row (contract in services/recompute.py).
+            continue
 
         # Create new risk assessment
         from app.models.engine_results import (

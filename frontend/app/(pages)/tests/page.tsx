@@ -2,14 +2,47 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { AlertCircle, FlaskConical, LoaderCircle, RefreshCw } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronDown,
+  Clock,
+  Code2,
+  FlaskConical,
+  LoaderCircle,
+  RefreshCw,
+} from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import RequirementSearch from "@/components/requirements/RequirementSearch";
+import { cn } from "@/lib/cn";
 import { backendFetch, type BackendTest } from "@/lib/backend-api";
+
+/** Freshness is the only health signal shown on this page. */
+function FreshnessBadge({ freshness }: { freshness: string }) {
+  const fresh = freshness.toLowerCase() === "fresh";
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs font-semibold whitespace-nowrap",
+        fresh
+          ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200"
+          : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200",
+      )}
+    >
+      {fresh ? (
+        <CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5" />
+      ) : (
+        <Clock aria-hidden="true" className="h-3.5 w-3.5" />
+      )}
+      {fresh ? "Fresh" : "Stale"}
+    </span>
+  );
+}
 
 export default function TestsPage() {
   const [tests, setTests] = useState<BackendTest[]>([]);
   const [query, setQuery] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -60,7 +93,7 @@ export default function TestsPage() {
       <section aria-label="Search tests" className="page-panel mt-6">
         <RequirementSearch value={query} onChange={setQuery} />
       </section>
-      <section aria-label="Backend tests" className="page-table-shell mt-4">
+      <section aria-label="Backend tests" className="page-panel mt-4 overflow-hidden">
         {loading ? (
           <div role="status" className="flex items-center justify-center gap-2 px-6 py-14 text-sm text-zinc-500"><LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" />Loading tests…</div>
         ) : error ? (
@@ -79,38 +112,63 @@ export default function TestsPage() {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-left text-sm">
-              <thead className="border-b border-zinc-200 bg-zinc-50 text-xs font-semibold tracking-wide text-zinc-500 uppercase dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
-                <tr><th scope="col" className="px-5 py-3">Test</th><th scope="col" className="px-5 py-3">Requirement</th><th scope="col" className="px-5 py-3">Origin</th><th scope="col" className="px-5 py-3">Status</th><th scope="col" className="px-5 py-3">Version</th></tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                {visible.map((test) => (
-                  <tr key={test.id}>
-                    <td className="max-w-lg px-5 py-4">
-                      <p className="font-medium text-zinc-900 dark:text-zinc-100">{test.title ?? test.external_code ?? "Test script"}</p>
-                      <details className="mt-2">
-                        <summary className="cursor-pointer text-xs font-medium text-accent">View persisted script</summary>
-                        <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-md bg-zinc-50 p-3 text-xs leading-5 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">{test.script}</pre>
-                      </details>
-                    </td>
-                    <td className="px-5 py-4">
-                      <Link href={`/requirements/${encodeURIComponent(test.requirement_key ?? test.requirement_id)}?tab=tests`} className="font-mono text-xs text-zinc-700 underline-offset-4 hover:underline dark:text-zinc-200">{test.requirement_key ?? test.requirement_id}</Link>
-                      <p className="mt-1 max-w-xs text-xs text-zinc-500">{test.requirement_title}</p>
-                    </td>
-                    <td className="px-5 py-4 text-xs capitalize text-zinc-600 dark:text-zinc-300">{test.origin}</td>
-                    <td className="px-5 py-4 text-xs text-zinc-600 dark:text-zinc-300">{test.freshness} · {test.status}</td>
-                    <td className="px-5 py-4 text-xs text-zinc-600 dark:text-zinc-300">v{test.version}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
+            {visible.map((test) => {
+              const expanded = expandedId === test.id;
+              return (
+                <li key={test.id}>
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-5 py-4 sm:px-6">
+                    <div className="min-w-0 flex-1 basis-64">
+                      <p className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+                        {test.title ?? test.external_code ?? "Test script"}
+                      </p>
+                      <Link
+                        href={`/requirements/${encodeURIComponent(test.requirement_key ?? test.requirement_id)}?tab=tests`}
+                        className="mt-0.5 flex min-w-0 flex-wrap items-baseline gap-x-2 text-sm hover:opacity-80"
+                      >
+                        <span className="shrink-0 font-mono font-medium text-accent">
+                          {test.requirement_key ?? test.requirement_id}
+                        </span>
+                        <span className="text-zinc-500 dark:text-zinc-400">{test.requirement_title}</span>
+                      </Link>
+                    </div>
+                    <FreshnessBadge freshness={test.freshness} />
+                    <span className="text-sm font-medium text-zinc-600 dark:text-zinc-300">v{test.version}</span>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedId(expanded ? null : test.id)}
+                      aria-expanded={expanded}
+                      className={cn(
+                        "inline-flex shrink-0 items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-accent",
+                        expanded
+                          ? "border-accent bg-accent/10 text-accent dark:text-accent"
+                          : "border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800",
+                      )}
+                    >
+                      <Code2 aria-hidden="true" className="h-4 w-4" />
+                      {expanded ? "Hide script" : "View script"}
+                      <ChevronDown
+                        aria-hidden="true"
+                        className={cn("h-4 w-4 transition-transform", expanded && "rotate-180")}
+                      />
+                    </button>
+                  </div>
+                  {expanded ? (
+                    <div className="border-t border-zinc-100 bg-zinc-50/80 px-5 py-4 sm:px-6 dark:border-zinc-800 dark:bg-zinc-900/60">
+                      <p className="text-xs font-semibold tracking-[0.14em] text-zinc-500 uppercase dark:text-zinc-400">
+                        Persisted test script
+                      </p>
+                      <pre className="mt-3 max-h-[32rem] overflow-auto rounded-lg border border-zinc-200 bg-white p-4 text-sm leading-6 break-words whitespace-pre-wrap text-zinc-800 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200">
+                        {test.script}
+                      </pre>
+                    </div>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
         )}
       </section>
-      <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
-        Live persisted scripts only. This page does not execute tests or record results.
-      </p>
     </DashboardLayout>
   );
 }

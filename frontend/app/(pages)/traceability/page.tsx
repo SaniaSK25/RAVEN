@@ -47,22 +47,61 @@ const GRAPH_EDGE_TYPES: Record<string, TraceEdge["type"]> = {
 };
 
 function adaptGraph(data: BackendTraceGraph): Traceability {
+  // A retired (soft-deleted) requirement is hidden from the graph. Its whole
+  // remaining chain — risks, assurance decisions, test scripts — renders as
+  // orphaned artifacts so nothing silently disappears without a trace.
+  const retired = new Set(
+    data.nodes
+      .filter(
+        (node) =>
+          node.type === "requirement" &&
+          String(node.meta?.status ?? "") === "deleted",
+      )
+      .map((node) => node.id),
+  );
+  // Flood-fill every node reachable from a retired requirement.
+  const orphanedByRetirement = new Set<string>();
+  let frontier = [...retired];
+  while (frontier.length > 0) {
+    const next: string[] = [];
+    for (const edge of data.edges) {
+      const gather = (from: string, to: string) => {
+        if (!frontier.includes(from)) return;
+        if (retired.has(to) || orphanedByRetirement.has(to)) return;
+        orphanedByRetirement.add(to);
+        next.push(to);
+      };
+      gather(edge.source, edge.target);
+      gather(edge.target, edge.source);
+    }
+    frontier = next;
+  }
   const nodes: TraceNode[] = data.nodes.flatMap((node) => {
+    if (retired.has(node.id)) return [];
     if (
       node.type !== "requirement" &&
       node.type !== "risk" &&
       node.type !== "assurance" &&
       node.type !== "test"
     ) return [];
-    const status =
-      node.stale
-        ? "stale"
-        : node.type === "requirement" && node.meta.status === "deleted"
-          ? "superseded"
-          : "current";
-    return [{ id: node.id, type: node.type, label: node.label, status, orphaned: node.orphaned ?? false }];
+    return [
+      {
+        id: node.id,
+        type: node.type,
+        label: node.label,
+        status: node.stale ? "stale" : "current",
+        // `orphaned` marks a superseded requirement version; `orphan` marks an
+        // O1/O2/O3 finding; otherwise the node was linked to a retired
+        // requirement.
+        orphaned:
+          node.orphaned === true ||
+          node.orphan === true ||
+          orphanedByRetirement.has(node.id),
+      },
+    ];
   });
   const edges: TraceEdge[] = data.edges.flatMap((edge) => {
+    if (retired.has(edge.source) || retired.has(edge.target)) return [];
     const type = GRAPH_EDGE_TYPES[edge.type];
     return type
       ? [{

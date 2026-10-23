@@ -1,13 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import {
   AlertCircle,
+  ChevronDown,
   HelpCircle,
   Loader2,
   RefreshCw,
   Save,
   Scale,
+  X,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { backendFetch } from "@/lib/backend-api";
@@ -47,6 +56,13 @@ interface RecomputeApplyResponse {
 
 const POINTS_MIN = 20;
 const POINTS_MAX = 100;
+/** Highest value the Medium cutoff may reach (points). */
+const MEDIUM_CEILING = 80;
+/** Narrowest Medium band the UI allows (points); a floor keeps every band meaningful. */
+const MIN_BAND_GAP = 10;
+
+/** Points → display RPN (points ÷ 20). */
+const toRpn = (points: number) => (points / 20).toFixed(2);
 
 export default function Settings() {
   const [config, setConfig] = useState<BandConfig | null>(null);
@@ -58,6 +74,8 @@ export default function Settings() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"bands" | "preview">("bands");
+  const [showExplainer, setShowExplainer] = useState(false);
+  const [confirmSave, setConfirmSave] = useState(false);
 
   // Form state
   const [formValues, setFormValues] = useState({ low_max: 45, medium_max: 67 });
@@ -128,22 +146,26 @@ export default function Settings() {
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
-    if (formValues.low_max < POINTS_MIN || formValues.low_max > POINTS_MAX) {
-      errors.low_max = `Must be between ${POINTS_MIN} and ${POINTS_MAX}`;
+    if (formValues.low_max < POINTS_MIN || formValues.low_max > MEDIUM_CEILING) {
+      errors.low_max = `Low max must be between ${POINTS_MIN} and ${MEDIUM_CEILING}`;
     }
-    if (formValues.medium_max < POINTS_MIN || formValues.medium_max > POINTS_MAX) {
-      errors.medium_max = `Must be between ${POINTS_MIN} and ${POINTS_MAX}`;
+    if (formValues.medium_max < POINTS_MIN || formValues.medium_max > MEDIUM_CEILING) {
+      errors.medium_max = `Medium max must be between ${POINTS_MIN} and ${MEDIUM_CEILING}`;
     }
-    if (formValues.low_max >= formValues.medium_max) {
-      errors.medium_max = "Medium max must be greater than Low max";
+    if (formValues.medium_max - formValues.low_max < MIN_BAND_GAP) {
+      errors.medium_max = `Medium max must be at least ${MIN_BAND_GAP} points above Low max`;
     }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
-  const handleSaveConfig = async () => {
+  const handleSaveConfig = () => {
     if (!validateForm()) return;
+    // Nothing is written until the confirmation dialog is accepted.
+    setConfirmSave(true);
+  };
 
+  const confirmSaveConfig = async () => {
     try {
       setSaving(true);
       setError(null);
@@ -152,11 +174,14 @@ export default function Settings() {
         body: JSON.stringify(formValues),
       });
       setConfig(data);
+      setFormValues({ low_max: data.low_max, medium_max: data.medium_max });
+      setConfirmSave(false);
       setSuccess(
-        "Thresholds saved for future assessments. Preview and apply a recompute to update existing assessments.",
+        "Thresholds saved for future assessments. Preview and apply a recompute to update existing assessments on non-retired requirements.",
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save configuration");
+      setConfirmSave(false);
     } finally {
       setSaving(false);
     }
@@ -302,10 +327,30 @@ export default function Settings() {
       {activeTab === "bands" && (
         <section className="space-y-6" aria-labelledby="bands-heading">
           <div className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-            <h2 className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-              <HelpCircle aria-hidden="true" className="h-5 w-5 text-accent" />
-              How a risk band is determined
-            </h2>
+            <button
+              type="button"
+              onClick={() => setShowExplainer((open) => !open)}
+              aria-expanded={showExplainer}
+              className="flex w-full items-center justify-between gap-3 text-left"
+            >
+              <span className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                <HelpCircle aria-hidden="true" className="h-5 w-5 text-accent" />
+                How a risk band is determined
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent">
+                {showExplainer ? "Hide details" : "Show details"}
+                <ChevronDown
+                  aria-hidden="true"
+                  className={`h-4 w-4 transition-transform ${showExplainer ? "rotate-180" : ""}`}
+                />
+              </span>
+            </button>
+            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+              Points = 12 × Severity + 5 × Probability + 3 × Detectability (range 20–100). Two
+              cutoffs split the points into Low / Medium / High; display RPN = points ÷ 20.
+            </p>
+            {showExplainer && (
+              <>
             <ol className="mt-4 grid gap-4 md:grid-cols-3">
               <li className="rounded-md border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
                 <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
@@ -399,6 +444,8 @@ export default function Settings() {
                 </span>
               </div>
             </div>
+              </>
+            )}
           </div>
 
           <div className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
@@ -406,7 +453,10 @@ export default function Settings() {
               Configure band cutoffs
             </h2>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              Choose the highest score allowed in Low and Medium. High starts at the next point.
+              Drag the two knobs to set the cutoffs. The Low cutoff moves between 20 and{" "}
+              {MEDIUM_CEILING} points, the Medium cutoff never rises above {MEDIUM_CEILING}, and a{" "}
+              {MIN_BAND_GAP}-point window is always reserved for Medium between the knobs — they
+              cannot cross. Each knob also responds to keyboard arrow keys.
             </p>
 
             {configLoading ? (
@@ -420,7 +470,7 @@ export default function Settings() {
               {[
                 {
                   name: "Low",
-                  range: `20–${formValues.low_max} points`,
+                  range: `0–${formValues.low_max} points`,
                   action: "Unscripted",
                 },
                 {
@@ -451,6 +501,20 @@ export default function Settings() {
               ))}
             </div>
 
+            <BandRangeSlider
+              className="mt-8"
+              lowMax={formValues.low_max}
+              mediumMax={formValues.medium_max}
+              disabled={
+                !config ||
+                configLoading ||
+                previewing ||
+                saving ||
+                loading
+              }
+              onChange={updateThresholds}
+            />
+
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               {/* Low Max */}
               <div>
@@ -461,26 +525,19 @@ export default function Settings() {
                   Low Band Max (points)
                 </label>
                 <div className="mt-1.5 relative">
-                  <input
+                  <BandNumberInput
                     id="low_max"
-                    type="number"
-                    min={POINTS_MIN}
-                    max={POINTS_MAX}
-                    disabled={!config || configLoading || previewing || saving || loading}
                     value={formValues.low_max}
-                    onChange={(e) =>
+                    min={POINTS_MIN}
+                    max={formValues.medium_max - MIN_BAND_GAP}
+                    disabled={!config || configLoading || previewing || saving || loading}
+                    describedBy={formErrors.low_max ? "low_max_error" : undefined}
+                    onCommit={(nextLow) =>
                       updateThresholds({
                         ...formValues,
-                        low_max: parseInt(e.target.value, 10) || 0,
+                        low_max: nextLow,
                       })
                     }
-                    className={`block w-full rounded-md border px-3 py-2 text-sm shadow-sm transition-colors ${
-                      formErrors.low_max
-                        ? "border-red-300 focus:border-red-500 focus:ring-red-500"
-                        : "border-zinc-300 focus:border-accent focus:ring-accent"
-                    } dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100`}
-                    aria-invalid={!!formErrors.low_max}
-                    aria-describedby={formErrors.low_max ? "low_max_error" : undefined}
                   />
                   {formErrors.low_max && (
                     <p id="low_max_error" className="mt-1 text-sm text-red-600 dark:text-red-400" role="alert">
@@ -489,7 +546,8 @@ export default function Settings() {
                   )}
                 </div>
                 <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
-                  Saved cutoff: ≤ {config ? config.low_max : "—"} points (RPN ≤{" "}
+                  Allowed {POINTS_MIN}–{formValues.medium_max - MIN_BAND_GAP} points. Saved cutoff: ≤{" "}
+                  {config ? config.low_max : "—"} points (RPN ≤{" "}
                   {config ? (config.low_max / 20).toFixed(2) : "—"})
                 </p>
               </div>
@@ -503,26 +561,19 @@ export default function Settings() {
                   Medium Band Max (points)
                 </label>
                 <div className="mt-1.5 relative">
-                  <input
+                  <BandNumberInput
                     id="medium_max"
-                    type="number"
-                    min={POINTS_MIN}
-                    max={POINTS_MAX}
-                    disabled={!config || configLoading || previewing || saving || loading}
                     value={formValues.medium_max}
-                    onChange={(e) =>
+                    min={formValues.low_max + MIN_BAND_GAP}
+                    max={MEDIUM_CEILING}
+                    disabled={!config || configLoading || previewing || saving || loading}
+                    describedBy={formErrors.medium_max ? "medium_max_error" : undefined}
+                    onCommit={(nextMedium) =>
                       updateThresholds({
                         ...formValues,
-                        medium_max: parseInt(e.target.value, 10) || 0,
+                        medium_max: nextMedium,
                       })
                     }
-                    className={`block w-full rounded-md border px-3 py-2 text-sm shadow-sm transition-colors ${
-                      formErrors.medium_max
-                        ? "border-red-300 focus:border-red-500 focus:ring-red-500"
-                        : "border-zinc-300 focus:border-accent focus:ring-accent"
-                    } dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100`}
-                    aria-invalid={!!formErrors.medium_max}
-                    aria-describedby={formErrors.medium_max ? "medium_max_error" : undefined}
                   />
                   {formErrors.medium_max && (
                     <p id="medium_max_error" className="mt-1 text-sm text-red-600 dark:text-red-400" role="alert">
@@ -531,7 +582,8 @@ export default function Settings() {
                   )}
                 </div>
                 <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
-                  Saved cutoff: ≤ {config ? config.medium_max : "—"} points (RPN ≤{" "}
+                  Allowed {formValues.low_max + MIN_BAND_GAP}–{MEDIUM_CEILING} points. Saved cutoff: ≤{" "}
+                  {config ? config.medium_max : "—"} points (RPN ≤{" "}
                   {config ? (config.medium_max / 20).toFixed(2) : "—"})
                 </p>
               </div>
@@ -791,7 +843,343 @@ export default function Settings() {
           </p>
         </div>
       )}
+
+      {/* Confirm-save dialog */}
+      {confirmSave && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirm-save-title"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setConfirmSave(false);
+          }}
+        >
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-zinc-950">
+            <div className="flex items-start justify-between gap-3">
+              <h2 id="confirm-save-title" className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                Confirm new band thresholds
+              </h2>
+              <button
+                type="button"
+                onClick={() => setConfirmSave(false)}
+                aria-label="Close"
+                className="rounded p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+              You are about to save the cutoffs set on the slider:
+            </p>
+            <dl className="mt-4 space-y-2 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <dt className="font-medium text-zinc-700 dark:text-zinc-300">Low</dt>
+                <dd className="font-mono text-xs text-zinc-700 dark:text-zinc-200">
+                  0–{formValues.low_max} pts · RPN up to {toRpn(formValues.low_max)}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="font-medium text-zinc-700 dark:text-zinc-300">Medium</dt>
+                <dd className="font-mono text-xs text-zinc-700 dark:text-zinc-200">
+                  {formValues.low_max + 1}–{formValues.medium_max} pts · RPN{" "}
+                  {toRpn(formValues.low_max + 1)}–{toRpn(formValues.medium_max)}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="font-medium text-zinc-700 dark:text-zinc-300">High</dt>
+                <dd className="font-mono text-xs text-zinc-700 dark:text-zinc-200">
+                  {formValues.medium_max + 1}–100 pts · RPN {toRpn(formValues.medium_max + 1)}–5.00
+                </dd>
+              </div>
+            </dl>
+            <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
+              Currently saved: Low up to {config?.low_max ?? "—"} / Medium up to{" "}
+              {config?.medium_max ?? "—"}.
+            </p>
+            <p className="mt-4 rounded-md bg-zinc-50 p-3 text-xs text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
+              Saving writes the new thresholds to bands.yaml and applies to future assessments.
+              Existing assessments keep their current band until you run Preview + Apply
+              Recompute, which re-bands every current assessment that belongs to a
+              non-retired requirement.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmSave(false)}
+                disabled={saving}
+                className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmSaveConfig()}
+                disabled={saving}
+                className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-accent/90 disabled:opacity-50"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Saving…
+                  </>
+                ) : (
+                  "Confirm and save"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
     </DashboardLayout>
+  );
+}
+/** Dual-knob slider for the two band cutoffs on the points scale (20-100). */
+function BandRangeSlider({
+  lowMax,
+  mediumMax,
+  disabled,
+  onChange,
+  className = "",
+}: {
+  lowMax: number;
+  mediumMax: number;
+  disabled: boolean;
+  onChange: (values: { low_max: number; medium_max: number }) => void;
+  className?: string;
+}) {
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const [dragging, setDragging] = useState<"low" | "medium" | null>(null);
+
+  const fractionOf = (points: number) =>
+    (points - POINTS_MIN) / (POINTS_MAX - POINTS_MIN);
+  const clampLow = (raw: number) =>
+    Math.min(Math.max(raw, POINTS_MIN), mediumMax - MIN_BAND_GAP);
+  const clampMedium = (raw: number) =>
+    Math.max(Math.min(raw, MEDIUM_CEILING), lowMax + MIN_BAND_GAP);
+
+  const pointFromClientX = (clientX: number) => {
+    const rect = trackRef.current?.getBoundingClientRect();
+    if (!rect || rect.width === 0) return null;
+    const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    return Math.round(POINTS_MIN + ratio * (POINTS_MAX - POINTS_MIN));
+  };
+
+  const startDrag = (which: "low" | "medium") =>
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (disabled) return;
+      event.preventDefault();
+      setDragging(which);
+      event.currentTarget.setPointerCapture(event.pointerId);
+    };
+
+  const moveDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!dragging) return;
+    const point = pointFromClientX(event.clientX);
+    if (point === null) return;
+    if (dragging === "low") {
+      onChange({ low_max: clampLow(point), medium_max: mediumMax });
+    } else {
+      onChange({ low_max: lowMax, medium_max: clampMedium(point) });
+    }
+  };
+
+  const endDrag = () => setDragging(null);
+
+  const stepWithKeyboard = (which: "low" | "medium") =>
+    (event: ReactKeyboardEvent<HTMLDivElement>) => {
+      if (disabled) return;
+      const delta =
+        event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : 0;
+      if (!delta) return;
+      event.preventDefault();
+      if (which === "low") {
+        onChange({ low_max: clampLow(lowMax + delta), medium_max: mediumMax });
+      } else {
+        onChange({ low_max: lowMax, medium_max: clampMedium(mediumMax + delta) });
+      }
+    };
+
+  const knobs: Array<{
+    which: "low" | "medium";
+    value: number;
+    label: string;
+    min: number;
+    max: number;
+    border: string;
+    dot: string;
+  }> = [
+    {
+      which: "low",
+      value: lowMax,
+      label: `Low band maximum — ${lowMax} points (RPN ${toRpn(lowMax)})`,
+      min: POINTS_MIN,
+      max: mediumMax - MIN_BAND_GAP,
+      border: "border-emerald-600 dark:border-emerald-400",
+      dot: "bg-emerald-500 dark:bg-emerald-400",
+    },
+    {
+      which: "medium",
+      value: mediumMax,
+      label: `Medium band maximum — ${mediumMax} points (RPN ${toRpn(mediumMax)})`,
+      min: lowMax + MIN_BAND_GAP,
+      max: MEDIUM_CEILING,
+      border: "border-red-600 dark:border-red-400",
+      dot: "bg-red-500 dark:bg-red-400",
+    },
+  ];
+
+  return (
+    <div className={`select-none ${className}`}>
+      <div className="flex flex-wrap items-baseline justify-between gap-2 text-xs font-semibold">
+        <span className="text-emerald-700 dark:text-emerald-400">
+          Low · 0–{lowMax} pts · RPN up to {toRpn(lowMax)}
+        </span>
+        <span className="text-amber-700 dark:text-amber-400">
+          Medium · {lowMax + 1}–{mediumMax} pts · RPN {toRpn(lowMax + 1)}–
+          {toRpn(mediumMax)}
+        </span>
+        <span className="text-red-700 dark:text-red-400">
+          High · {mediumMax + 1}–100 pts · RPN {toRpn(mediumMax + 1)}–5.00
+        </span>
+      </div>
+      <div
+        ref={trackRef}
+        className={`relative mt-5 h-9 touch-none ${
+          disabled ? "pointer-events-none opacity-60" : ""
+        }`}
+      >
+        <div className="absolute inset-x-0 top-1/2 flex h-2.5 -translate-y-1/2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
+          <div
+            className="bg-emerald-400 dark:bg-emerald-600"
+            style={{ width: `${fractionOf(lowMax) * 100}%` }}
+          />
+          <div
+            className="bg-amber-400 dark:bg-amber-600"
+            style={{
+              width: `${(fractionOf(mediumMax) - fractionOf(lowMax)) * 100}%`,
+            }}
+          />
+          <div
+            className="bg-red-400 dark:bg-red-600"
+            style={{ width: `${(1 - fractionOf(mediumMax)) * 100}%` }}
+          />
+        </div>
+        {knobs.map((knob) => (
+          <div
+            key={knob.which}
+            data-testid={`${knob.which}-knob`}
+            role="slider"
+            tabIndex={disabled ? -1 : 0}
+            aria-label={knob.label}
+            aria-valuemin={knob.min}
+            aria-valuemax={knob.max}
+            aria-valuenow={knob.value}
+            onPointerDown={startDrag(knob.which)}
+            onPointerMove={moveDrag}
+            onPointerUp={endDrag}
+            onPointerCancel={endDrag}
+            onKeyDown={stepWithKeyboard(knob.which)}
+            style={{ left: `${fractionOf(knob.value) * 100}%` }}
+            className={`absolute top-1/2 flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 cursor-grab items-center justify-center rounded-full border-2 bg-white shadow-sm outline-offset-2 focus-visible:outline-2 focus-visible:outline-accent active:cursor-grabbing dark:bg-zinc-950 ${
+              dragging === knob.which ? "scale-110 shadow-md" : ""
+            } ${knob.border}`}
+          >
+            <span className={`h-2 w-2 rounded-full ${knob.dot}`} />
+          </div>
+        ))}
+      </div>
+      <div
+        aria-hidden="true"
+        className="mt-1 flex justify-between font-mono text-[10px] text-zinc-400 dark:text-zinc-500"
+      >
+        <span>RPN 1.0</span>
+        <span>2.0</span>
+        <span>3.0</span>
+        <span>4.0</span>
+        <span>5.0</span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Digits-only band cutoff input. Anything that is not a digit is stripped
+ * while typing, and the committed value is clamp-corrected into [min, max]
+ * on blur or Enter, so an out-of-range or empty value can never reach the
+ * save step.
+ */
+function BandNumberInput({
+  id,
+  value,
+  min,
+  max,
+  disabled,
+  onCommit,
+  describedBy,
+}: {
+  id: string;
+  value: number;
+  min: number;
+  max: number;
+  disabled: boolean;
+  onCommit: (value: number) => void;
+  describedBy?: string;
+}) {
+  const [draft, setDraft] = useState(String(value));
+
+  // Follow external updates (slider drags, saved-value refreshes).
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  const draftNum = Number.parseInt(draft, 10);
+  const outOfRange = draft !== "" && !(draftNum >= min && draftNum <= max);
+
+  const commit = () => {
+    if (draft === "" || Number.isNaN(draftNum)) {
+      setDraft(String(value));
+      return;
+    }
+    const clamped = Math.min(Math.max(draftNum, min), max);
+    setDraft(String(clamped));
+    if (clamped !== value) onCommit(clamped);
+  };
+
+  return (
+    <div>
+      <input
+        id={id}
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        autoComplete="off"
+        disabled={disabled}
+        value={draft}
+        onChange={(event) => {
+          setDraft(event.target.value.replace(/[^0-9]/g, "").slice(0, 3));
+        }}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            event.currentTarget.blur();
+          }
+        }}
+        className={`block w-full rounded-md border px-3 py-2 text-sm shadow-sm transition-colors ${
+          outOfRange
+            ? "border-red-300 focus:border-red-500 focus:ring-red-500"
+            : "border-zinc-300 focus:border-accent focus:ring-accent"
+        } dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100`}
+        aria-invalid={outOfRange || undefined}
+        aria-describedby={describedBy}
+      />
+      {outOfRange && (
+        <p className="mt-1 text-xs text-red-600 dark:text-red-400" role="alert">
+          Allowed {min}–{max} points — it will be corrected to the nearest limit when you leave the
+          field.
+        </p>
+      )}
+    </div>
   );
 }

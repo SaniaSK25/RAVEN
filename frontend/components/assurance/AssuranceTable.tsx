@@ -103,7 +103,7 @@ export default function AssuranceTable({ items, sortKey, sortDir, onSortChange }
         <tbody>
           {items.map((item) => {
             const outdated = item.assessedVersion !== item.currentVersion;
-            const needsAttention = item.status === "needs-review" || item.status === "stale";
+            const needsAttention = item.status === "stale";
             const expanded = expandedId === item.decisionId;
             const note = nonScriptedNote(item.outcome);
             const rowId = `assurance-row-${item.decisionId}`;
