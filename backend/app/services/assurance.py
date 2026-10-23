@@ -1,7 +1,6 @@
-"""Layer 4 core — assurance decision from scores (deterministic).
+"""Layer 4 core — deterministic assurance decision from severity and risk band.
 
-The severity floor is checked FIRST and ignores the band: severity >= 4
-always means scripted testing. Otherwise the band decides:
+Severity 5 always requires scripted testing. Otherwise:
 High -> scripted, Medium -> exploratory, Low -> unscripted.
 Pure function: no LLM, no DB, no network.
 """
@@ -13,15 +12,12 @@ def decide_assurance(severity_score: int, band: str) -> dict:
     if band not in ("Low", "Medium", "High"):
         raise ValueError(f"band must be Low/Medium/High, got {band!r}.")
 
-    if severity_score >= 4:
+    if severity_score == 5:
         return {
             "assurance_level": "scripted",
             "generate_test": True,
-            "rule_id": "ASR-SEV-FLOOR",
-            "reason": (
-                f"Severity {severity_score} >= 4 forces scripted testing "
-                f"regardless of band ({band})."
-            ),
+            "rule_id": "ASR-SEV-5",
+            "reason": f"Severity 5 requires scripted testing regardless of band ({band}).",
         }
     if band == "High":
         return {

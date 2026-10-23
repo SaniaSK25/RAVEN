@@ -145,10 +145,10 @@ def seed_scenario(session):
     )
     # LIMS-004: never analysed.
     add_requirement("LIMS-004", "Reports shall export to PDF.")
-    # LIMS-005: severity-5 floor -> scripted despite MEDIUM band, 1 script.
+    # LIMS-005: HIGH band -> scripted, 1 script.
     r5, v5 = add_requirement("LIMS-005", "Sterile barrier integrity shall hold.")
     _, d5 = add_analysis(
-        v5, 5, 3, 3, RiskBand.MEDIUM, AssuranceLevel.SCRIPTED, "ASR-SEV-FLOOR"
+        v5, 5, 4, 4, RiskBand.HIGH, AssuranceLevel.SCRIPTED, "ASR-BAND-HIGH"
     )
     add_script(v5, d5, "Verify barrier integrity")
 

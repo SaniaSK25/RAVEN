@@ -9,11 +9,12 @@ import {
   FileSpreadsheet,
   FileUp,
   LoaderCircle,
+  Microscope,
   Upload,
   X,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
-import { RAVEN_BASE_PATH } from "@/lib/backend-api";
+import { backendFetch, RAVEN_BASE_PATH } from "@/lib/backend-api";
 import {
   parseRequirementsFile,
   type IngestionRow,
@@ -26,7 +27,37 @@ interface ImportResult {
   reqKey?: string;
 }
 
+interface BatchAssessmentItem {
+  requirement_id: string;
+  requirement_key: string | null;
+  status: "SUCCEEDED" | "FAILED";
+  error?: string;
+  risk_assessment?: {
+    rpn: number;
+    band: string;
+  };
+  assurance_decision?: {
+    assurance_level: string;
+    generate_test: boolean;
+    reason: string;
+  } | null;
+}
+
+interface BatchAssessmentResponse {
+  status: string;
+  requested_count: number;
+  succeeded_count: number;
+  failed_count: number;
+  token_usage: {
+    input_tokens: number;
+    output_tokens: number;
+    total_tokens: number;
+  };
+  items: BatchAssessmentItem[];
+}
+
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const ANALYSIS_BATCH_SIZE = 10;
 
 function detailFromResponse(body: unknown): string {
   if (
@@ -49,6 +80,15 @@ export default function IngestionPage() {
   const [isImporting, setIsImporting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<ImportResult[]>([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [analysisResults, setAnalysisResults] = useState<BatchAssessmentItem[]>([]);
+  const [analysisError, setAnalysisError] = useState("");
+  const [analysisTokenUsage, setAnalysisTokenUsage] = useState({
+    input_tokens: 0,
+    output_tokens: 0,
+    total_tokens: 0,
+  });
 
   const readyRows = useMemo(
     () => rows.filter((row) => row.status === "ready"),
@@ -65,11 +105,28 @@ export default function IngestionPage() {
           result.rowNumber === row.rowNumber && result.status === "imported",
       ),
   );
+  const riskDistribution = useMemo(
+    () =>
+      analysisResults.reduce(
+        (distribution, result) => {
+          const band = result.risk_assessment?.band;
+          if (result.status === "SUCCEEDED" && band) {
+            distribution[band] = (distribution[band] ?? 0) + 1;
+          }
+          return distribution;
+        },
+        {} as Record<string, number>,
+      ),
+    [analysisResults],
+  );
 
   async function loadFile(file: File) {
     setParseError("");
     setResults([]);
     setProgress(0);
+    setAnalysisResults([]);
+    setAnalysisError("");
+    setAnalysisTokenUsage({ input_tokens: 0, output_tokens: 0, total_tokens: 0 });
     if (file.size > MAX_FILE_SIZE) {
       setRows([]);
       setFileName("");
@@ -122,10 +179,19 @@ export default function IngestionPage() {
             typeof body.req_key === "string"
               ? body.req_key
               : undefined;
+          const reusedExisting =
+            typeof body === "object" &&
+            body !== null &&
+            "reused_existing" in body &&
+            body.reused_existing === true;
           completed.push({
             rowNumber: row.rowNumber,
             status: "imported",
-            message: reqKey ? `${reqKey} created` : "Requirement created",
+            message: reusedExisting
+              ? `${reqKey ?? "Requirement"} already exists; existing record reused`
+              : reqKey
+                ? `${reqKey} created`
+                : "Requirement created",
             reqKey,
           });
         }
@@ -141,13 +207,66 @@ export default function IngestionPage() {
     setIsImporting(false);
   }
 
+  async function analyzeImportedRequirements() {
+    const identifiers = results
+      .filter((result) => result.status === "imported" && result.reqKey)
+      .map((result) => result.reqKey as string);
+    if (identifiers.length === 0) return;
+
+    setIsAnalyzing(true);
+    setAnalysisProgress(0);
+    setAnalysisResults([]);
+    setAnalysisError("");
+    setAnalysisTokenUsage({ input_tokens: 0, output_tokens: 0, total_tokens: 0 });
+    const outcomes: BatchAssessmentItem[] = [];
+    const tokenTotals = { input_tokens: 0, output_tokens: 0, total_tokens: 0 };
+    const batches = Math.ceil(identifiers.length / ANALYSIS_BATCH_SIZE);
+
+    for (let start = 0; start < identifiers.length; start += ANALYSIS_BATCH_SIZE) {
+      const chunk = identifiers.slice(start, start + ANALYSIS_BATCH_SIZE);
+      try {
+        const response = await backendFetch<BatchAssessmentResponse>(
+          "assessments/batch-run",
+          {
+            method: "POST",
+            body: JSON.stringify({ requirement_ids: chunk }),
+          },
+        );
+        outcomes.push(...response.items);
+        tokenTotals.input_tokens += response.token_usage.input_tokens;
+        tokenTotals.output_tokens += response.token_usage.output_tokens;
+        tokenTotals.total_tokens += response.token_usage.total_tokens;
+      } catch (error) {
+        setAnalysisError((current) =>
+          [
+            current,
+            `Batch ${Math.floor(start / ANALYSIS_BATCH_SIZE) + 1} of ${batches}: ${
+              error instanceof Error ? error.message : "Analysis failed."
+            }`,
+          ]
+            .filter(Boolean)
+            .join("\n"),
+        );
+        setAnalysisProgress(outcomes.length);
+        break;
+      }
+      setAnalysisResults([...outcomes]);
+      setAnalysisTokenUsage({ ...tokenTotals });
+      setAnalysisProgress(outcomes.length);
+    }
+    setIsAnalyzing(false);
+  }
+
   function clearSelection() {
-    if (isImporting) return;
+    if (isImporting || isAnalyzing) return;
     setFileName("");
     setRows([]);
     setParseError("");
     setResults([]);
     setProgress(0);
+    setAnalysisResults([]);
+    setAnalysisError("");
+    setAnalysisTokenUsage({ input_tokens: 0, output_tokens: 0, total_tokens: 0 });
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
@@ -170,7 +289,7 @@ export default function IngestionPage() {
           <button
             type="button"
             onClick={clearSelection}
-            disabled={isImporting}
+            disabled={isImporting || isAnalyzing}
             className="inline-flex items-center justify-center gap-2 self-start rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 sm:self-auto dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
           >
             <X aria-hidden="true" className="h-4 w-4" />
@@ -208,7 +327,7 @@ export default function IngestionPage() {
               accept=".csv,.json,application/json,text/csv"
               aria-label="Choose a CSV or JSON requirements file"
               className="sr-only"
-              disabled={isImporting}
+              disabled={isImporting || isAnalyzing}
               onChange={(event) => {
                 const file = event.currentTarget.files?.[0];
                 if (file) void loadFile(file);
@@ -216,7 +335,7 @@ export default function IngestionPage() {
             />
             <button
               type="button"
-              disabled={isImporting}
+              disabled={isImporting || isAnalyzing}
               onClick={() => fileInputRef.current?.click()}
               onDragOver={(event) => {
                 event.preventDefault();
@@ -355,7 +474,7 @@ export default function IngestionPage() {
                 <button
                   type="button"
                   onClick={() => void importRequirements()}
-                  disabled={retryRows.length === 0 || isImporting}
+                  disabled={retryRows.length === 0 || isImporting || isAnalyzing}
                   className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-600 dark:disabled:bg-zinc-700 dark:disabled:text-zinc-400"
                 >
                   {isImporting ? (
@@ -405,6 +524,95 @@ export default function IngestionPage() {
                   </div>
                 ) : null}
               </section>
+              {importedCount > 0 ? (
+                <section
+                  aria-labelledby="analysis-heading"
+                  className="space-y-4 rounded-xl border border-zinc-200 bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] sm:p-6 dark:border-zinc-800 dark:bg-zinc-950"
+                >
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h2
+                        id="analysis-heading"
+                        className="text-base font-semibold text-zinc-900 dark:text-zinc-50"
+                      >
+                        4. Batch-assess imported requirements
+                      </h2>
+                      <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                        Up to 10 requirements are sent together for evidence
+                        extraction. Risk scoring and assurance decisions stay
+                        deterministic; test scripts are not generated here.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void analyzeImportedRequirements()}
+                      disabled={isAnalyzing || isImporting}
+                      className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-600 dark:disabled:bg-zinc-700 dark:disabled:text-zinc-400"
+                    >
+                      {isAnalyzing ? (
+                        <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Microscope aria-hidden="true" className="h-4 w-4" />
+                      )}
+                      {isAnalyzing ? "Analyzing…" : "Analyze imported requirements"}
+                    </button>
+                  </div>
+                  {isAnalyzing ? (
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400" aria-live="polite">
+                      Processed {analysisProgress} of {importedCount} imported requirements.
+                    </p>
+                  ) : null}
+                  {analysisError ? (
+                    <p className="whitespace-pre-line text-sm text-red-700 dark:text-red-300" role="alert">
+                      {analysisError}
+                    </p>
+                  ) : null}
+                  {analysisResults.length > 0 ? (
+                    <div className="space-y-4" aria-live="polite">
+                      <div className="flex flex-wrap gap-2 text-xs">
+                        {Object.entries(riskDistribution).map(([band, count]) => (
+                          <span
+                            key={band}
+                            className="rounded-full bg-zinc-100 px-2.5 py-1 font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+                          >
+                            {band}: {count}
+                          </span>
+                        ))}
+                        <span className="rounded-full bg-blue-50 px-2.5 py-1 text-blue-800 dark:bg-blue-950 dark:text-blue-200">
+                          Exact batch usage: {analysisTokenUsage.total_tokens} tokens
+                          {" · "}{analysisTokenUsage.input_tokens} in
+                          {" · "}{analysisTokenUsage.output_tokens} out
+                        </span>
+                      </div>
+                      <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                        {analysisResults.map((result) => (
+                          <li key={result.requirement_id} className="py-3 text-sm">
+                            <p className="font-medium text-zinc-900 dark:text-zinc-100">
+                              {result.requirement_key ?? result.requirement_id}
+                              {result.risk_assessment
+                                ? ` · ${result.risk_assessment.band} risk (RPN ${result.risk_assessment.rpn})`
+                                : ""}
+                            </p>
+                            {result.status === "FAILED" ? (
+                              <p className="mt-1 text-xs text-red-700 dark:text-red-300">
+                                {result.error ?? "Assessment failed."}
+                              </p>
+                            ) : result.assurance_decision ? (
+                              <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+                                {result.assurance_decision.assurance_level}:{" "}
+                                {result.assurance_decision.reason}
+                                {!result.assurance_decision.generate_test
+                                  ? " No scripted test was required."
+                                  : " Script generation is deferred."}
+                              </p>
+                            ) : null}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
             </>
           ) : null}
         </div>

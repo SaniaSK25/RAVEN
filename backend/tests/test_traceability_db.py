@@ -66,7 +66,7 @@ def make_session():
 def test_create_requirement_assigns_sequential_keys():
     session = make_session()
     try:
-        first = create_requirement(
+        first, first_created = create_requirement(
             session,
             title="First requirement",
             description="First requirement",
@@ -74,7 +74,7 @@ def test_create_requirement_assigns_sequential_keys():
             req_key=None,
             created_by="test",
         )
-        second = create_requirement(
+        second, second_created = create_requirement(
             session,
             title="Second requirement",
             description="Second requirement",
@@ -84,6 +84,41 @@ def test_create_requirement_assigns_sequential_keys():
         )
         assert first.req_key == "REQ-0001"
         assert second.req_key == "REQ-0002"
+        assert first_created is True
+        assert second_created is True
+    finally:
+        session.close()
+
+
+def test_create_requirement_reuses_existing_identical_text():
+    session = make_session()
+    try:
+        first, created = create_requirement(
+            session,
+            title="First requirement",
+            description="Unique requirement text",
+            text="Unique requirement text",
+            req_key=None,
+            created_by="test",
+        )
+        session.commit()
+
+        existing, created_again = create_requirement(
+            session,
+            title="Duplicate submission",
+            description="Unique requirement text",
+            text="Unique requirement text",
+            req_key=None,
+            created_by="test",
+        )
+        session.commit()
+
+        assert created is True
+        assert created_again is False
+        assert existing.id == first.id
+        assert existing.req_key == first.req_key
+        assert session.query(Requirement).count() == 1
+        assert session.query(RequirementVersion).count() == 1
     finally:
         session.close()
 
@@ -477,7 +512,7 @@ class TestAppWiring:
         from app.main import app
 
         session = make_session()
-        requirement = create_requirement(
+        requirement, created = create_requirement(
             session,
             title="Backend requirement",
             description="Persisted backend requirement.",
@@ -485,6 +520,7 @@ class TestAppWiring:
             req_key=None,
             created_by="test",
         )
+        assert created is True
         session.commit()
 
         def override_db():
@@ -517,6 +553,20 @@ class TestAppWiring:
                     "A complete requirement description."
                 )
                 assert created.json()["title"] == created.json()["description"]
+
+                duplicate = client.post(
+                    "/api/v1/requirements",
+                    json={
+                        "description": "A complete requirement description.",
+                        "text": "A complete requirement description.",
+                        "created_by": "test",
+                    },
+                )
+                assert duplicate.status_code == 200
+                assert duplicate.json()["id"] == created.json()["id"]
+                assert duplicate.json()["reused_existing"] is True
+                assert session.query(Requirement).count() == 2
+                assert session.query(RequirementVersion).count() == 2
         finally:
             app.dependency_overrides.pop(get_db, None)
             session.close()

@@ -25,6 +25,10 @@ class RequirementResponse(BaseModel):
     versions: list[RequirementVersionResponse]
 
 
+class RequirementCreateResponse(RequirementResponse):
+    reused_existing: bool = False
+
+
 class RequirementRiskResponse(BaseModel):
     id: str
     severity: int | None

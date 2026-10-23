@@ -162,7 +162,7 @@ def test_import_persists_linked_rows():
         script = session.query(StoredScript).one().script
         assert script.startswith("Preconditions:\nReady.")
         assert "\n\nTest Steps:\n1. Do X. Expected: X done." in script
-        assert session.query(ConfigurationVersion).one().version == "3.0.0"
+        assert session.query(ConfigurationVersion).one().version == "3.3.0"
         assert session.query(PromptVersion).count() == 2
 
 

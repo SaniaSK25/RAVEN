@@ -1,6 +1,13 @@
+import { Agent, fetch as undiciFetch } from "undici";
+
 interface RouteContext {
   params: Promise<{ path: string[] }>;
 }
+
+const backendAgent = new Agent({
+  headersTimeout: 15 * 60 * 1000,
+  bodyTimeout: 15 * 60 * 1000,
+});
 
 async function proxyToBackend(request: Request, context: RouteContext) {
   const { path } = await context.params;
@@ -11,13 +18,13 @@ async function proxyToBackend(request: Request, context: RouteContext) {
   const backendPath = path.map((part) => encodeURIComponent(part)).join("/");
   const url = `${backendUrl}/api/v1/${backendPath}${incomingUrl.search}`;
 
-  let backendResponse: Response;
+  let backendResponse: Awaited<ReturnType<typeof undiciFetch>>;
   try {
     const body =
       request.method === "GET" || request.method === "HEAD"
         ? undefined
         : await request.arrayBuffer();
-    backendResponse = await fetch(url, {
+    backendResponse = await undiciFetch(url, {
       method: request.method,
       headers: {
         ...(request.headers.get("content-type")
@@ -26,13 +33,15 @@ async function proxyToBackend(request: Request, context: RouteContext) {
       },
       body,
       cache: "no-store",
+      dispatcher: backendAgent,
     });
   } catch (error) {
     console.error(`RAVEN backend request failed (${request.method} ${url}):`, error);
     return Response.json(
       {
-        detail:
-          "Could not connect to the RAVEN backend. Check that it is running and RAVEN_BACKEND_URL is correct.",
+        detail: "The RAVEN backend request timed out or could not be completed. "
+          + "The backend may still be processing it; check assessment history "
+          + "before retrying.",
       },
       { status: 502 },
     );

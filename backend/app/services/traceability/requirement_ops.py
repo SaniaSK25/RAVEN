@@ -32,9 +32,30 @@ def create_requirement(
     text: str | None,
     req_key: str | None,
     created_by: str,
-) -> Requirement:
-    """Create a requirement with its first version, then sync."""
+) -> tuple[Requirement, bool]:
+    """Create a requirement or reuse an existing identical text version."""
     body = text if text is not None else description
+    content_hash = _hash(body)
+    existing_version = (
+        session.query(RequirementVersion)
+        .filter(RequirementVersion.hash_sha256 == content_hash)
+        .first()
+    )
+    if existing_version is not None:
+        existing_requirement = session.get(
+            Requirement, existing_version.requirement_id
+        )
+        if existing_requirement is None:
+            raise RuntimeError(
+                "Existing requirement text has no owning requirement record."
+            )
+        if req_key is not None and req_key != existing_requirement.req_key:
+            raise ValueError(
+                f"Requirement text already belongs to "
+                f"{existing_requirement.req_key or existing_requirement.id}."
+            )
+        return existing_requirement, False
+
     requirement = Requirement(
         title=title,
         description=description,
@@ -48,7 +69,7 @@ def create_requirement(
         requirement_id=requirement.id,
         version_number=1,
         text=body,
-        hash_sha256=_hash(body),
+        hash_sha256=content_hash,
         is_current=True,
     )
     session.add(version)
@@ -56,7 +77,7 @@ def create_requirement(
     requirement.current_version_id = version.id
     session.flush()
     sync_links(session, requirement_ids={str(requirement.id)}, created_by=created_by)
-    return requirement
+    return requirement, True
 
 
 def edit_requirement(

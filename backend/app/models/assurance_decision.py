@@ -2,8 +2,8 @@
 AssuranceDecision model (ORM).
 
 Immutable downstream verdict for one RiskAssessment: the testing rigour
-selected by the deterministic assurance rules (severity floor first,
-then band). Test scripts survive decision supersession via SET NULL on
+selected by the deterministic severity-5 floor and risk-band rule. Test scripts survive
+decision supersession via SET NULL on
 their side, so new verdicts are new rows here, never updates.
 """
 
@@ -65,7 +65,7 @@ class AssuranceDecision(Base, ImmutableBaseModel):
     """
 
     rule_id: Mapped[str] = mapped_column(String(20), nullable=False)
-    """Fired rule: ASR-SEV-FLOOR, ASR-BAND-HIGH/MEDIUM/LOW (non-empty)."""
+    """Fired rule: ASR-SEV-5 or ASR-BAND-HIGH/MEDIUM/LOW (non-empty)."""
 
     rule_version: Mapped[str] = mapped_column(String(20), nullable=False)
     """Rule snapshot version this verdict was computed with."""

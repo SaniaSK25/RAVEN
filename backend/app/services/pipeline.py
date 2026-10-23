@@ -70,7 +70,14 @@ def _usage_totals(entries):
 
 
 def save_token_usage(
-    session, version, extraction_entries, script_entries, status, error=None
+    session,
+    version,
+    extraction_entries,
+    script_entries,
+    status,
+    error=None,
+    batch_run_id=None,
+    usage_basis="actual",
 ):
     extraction = _usage_totals(extraction_entries)
     script = _usage_totals(script_entries)
@@ -78,6 +85,8 @@ def save_token_usage(
     output_tokens = extraction["output_tokens"] + script["output_tokens"]
     record = TokenUsage(
         requirement_version_id=version.id,
+        batch_run_id=batch_run_id,
+        usage_basis=usage_basis,
         status=status,
         extraction_input_tokens=extraction["input_tokens"],
         extraction_output_tokens=extraction["output_tokens"],

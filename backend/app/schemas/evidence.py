@@ -15,7 +15,7 @@ class EvidenceField(BaseModel, Generic[T]):
 
     value: T
     confidence: float = Field(ge=0.0, le=1.0)
-    evidence: str = Field(min_length=1)
+    evidence: str = Field(min_length=1, max_length=240)
 
 
 class SeverityEvidence(BaseModel):
@@ -51,7 +51,7 @@ class EvidenceRecord(BaseModel):
     requirement_version_id: str | None = None
     evidence_id: str | None = None
     gamp_category: Literal[1, 3, 4, 5]
-    gamp_reason: str = Field(min_length=1)
+    gamp_reason: str = Field(min_length=1, max_length=160)
     severity: SeverityEvidence
     probability: ProbabilityEvidence
     detectability: DetectabilityEvidence
@@ -61,4 +61,4 @@ class GampClassification(BaseModel):
     """Standalone GAMP verdict used to assemble an EvidenceRecord."""
 
     gamp_category: Literal[1, 3, 4, 5]
-    gamp_reason: str = Field(min_length=1)
+    gamp_reason: str = Field(min_length=1, max_length=160)

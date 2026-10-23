@@ -101,7 +101,7 @@ def test_reasoning_never_empty_and_rule_version_set():
         result = calculate_severity(evidence)
         assert len(result.reasoning) > 0
         assert len(result.rule_id) > 0
-        assert result.rule_version == "3.0.0"
+        assert result.rule_version == "3.3.0"
 
 
 def test_deterministic_across_repeats():

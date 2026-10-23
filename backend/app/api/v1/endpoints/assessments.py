@@ -12,22 +12,29 @@ from __future__ import annotations
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query
+from sqlalchemy.exc import SQLAlchemyError
 
-from app.agents.agent_analyzer import extract_evidence
+from app.agents.agent_analyzer import extract_evidence, extract_evidence_batch
 from app.agents.agent_script_writer import generate_test_script
 from app.db.dependencies import DBSession
 from app.models.assurance_decision import AssuranceDecision
+from app.models.batch_token_usage import BatchTokenUsage
 from app.models.requirement import Requirement
 from app.models.requirement_version import RequirementVersion
 from app.models.risk_assessment import RiskAssessment
 from app.models.test_script import TestScript
 from app.models.token_usage import TokenUsage
+from app.schemas.batch_assessments import BatchAssessmentRequest
 from app.schemas.responses import (
     AssessmentRunResponse,
     GenerateScriptResponse,
     RiskAssessmentPageResponse,
 )
+from app.services.assessment import assess_evidence
+from app.services.persistence import save_assessment
 from app.services.pipeline import (
+    PROMPTS,
+    ensure_prompt_version,
     generate_and_save_script,
     run_full_analysis,
     save_token_usage,
@@ -155,6 +162,282 @@ def _resolve_requirement(db, raw_id: str) -> Requirement:
             db.query(Requirement).filter(Requirement.req_key == raw_id).first()
         )
     return requirement
+
+
+def _allocate_tokens(total: int, weights: list[int]) -> list[int]:
+    """Allocate shared provider usage proportionally while conserving totals."""
+    denominator = sum(weights)
+    if denominator <= 0:
+        raise ValueError("Token allocation weights must have a positive sum.")
+    allocations = [(total * weight) // denominator for weight in weights]
+    remainder = total - sum(allocations)
+    for index in range(remainder):
+        allocations[index % len(allocations)] += 1
+    return allocations
+
+
+def _batch_usage_totals(entries: list[dict]) -> dict[str, int]:
+    input_tokens = sum(entry.get("input_tokens", 0) for entry in entries)
+    output_tokens = sum(entry.get("output_tokens", 0) for entry in entries)
+    return {
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "total_tokens": input_tokens + output_tokens,
+    }
+
+
+@router.post("/batch-run")
+def run_batch_assessment(payload: BatchAssessmentRequest, db: DBSession):
+    """Assess up to ten current requirement versions with batched LLM extraction.
+
+    Risk and assurance remain deterministic. Script generation is deliberately
+    deferred to the existing per-requirement action.
+    """
+    requirements_by_id: dict[str, Requirement] = {}
+    missing: list[str] = []
+    for raw_id in payload.requirement_ids:
+        requirement = _resolve_requirement(db, raw_id)
+        if requirement is None:
+            missing.append(raw_id)
+        else:
+            if str(requirement.id) in requirements_by_id:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Requirement {raw_id} duplicates another supplied identifier.",
+                )
+            requirements_by_id[str(requirement.id)] = requirement
+    if missing:
+        raise HTTPException(
+            status_code=404,
+            detail="Requirements not found: " + ", ".join(missing),
+        )
+
+    selected = list(requirements_by_id.values())
+    versions: dict[str, RequirementVersion] = {}
+    for requirement in selected:
+        version = (
+            db.get(RequirementVersion, requirement.current_version_id)
+            if requirement.current_version_id is not None
+            else None
+        )
+        if version is None:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Requirement {requirement.req_key or requirement.id} has no current version.",
+            )
+        versions[str(requirement.id)] = version
+
+    batch = BatchTokenUsage(status="RUNNING", requested_count=len(selected))
+    db.add(batch)
+    db.commit()
+    batch_id = batch.id
+    usage_log: list[dict] = []
+    inputs = [(str(req.id), versions[str(req.id)].text) for req in selected]
+    try:
+        evidence_by_id = extract_evidence_batch(inputs, usage_log=usage_log)
+    except RuntimeError as exc:
+        db.rollback()
+        batch = db.get(BatchTokenUsage, batch_id)
+        totals = _batch_usage_totals(usage_log)
+        batch.status = "FAILED"
+        batch.failed_count = len(selected)
+        batch.input_tokens = totals["input_tokens"]
+        batch.output_tokens = totals["output_tokens"]
+        batch.total_tokens = totals["total_tokens"]
+        batch.error = str(exc)
+        db.commit()
+        raise HTTPException(
+            status_code=503, detail=f"batch analysis provider unavailable: {exc}"
+        ) from exc
+    except Exception as exc:
+        db.rollback()
+        batch = db.get(BatchTokenUsage, batch_id)
+        totals = _batch_usage_totals(usage_log)
+        batch.status = "FAILED"
+        batch.failed_count = len(selected)
+        batch.input_tokens = totals["input_tokens"]
+        batch.output_tokens = totals["output_tokens"]
+        batch.total_tokens = totals["total_tokens"]
+        batch.error = str(exc)
+        db.commit()
+        raise HTTPException(
+            status_code=500, detail=f"batch evidence extraction failed: {exc}"
+        ) from exc
+
+    totals = _batch_usage_totals(usage_log)
+    batch = db.get(BatchTokenUsage, batch_id)
+    batch.input_tokens = totals["input_tokens"]
+    batch.output_tokens = totals["output_tokens"]
+    batch.total_tokens = totals["total_tokens"]
+    db.commit()
+
+    input_allocations = _allocate_tokens(
+        totals["input_tokens"], [max(1, len(version.text)) for version in versions.values()]
+    )
+    output_allocations = _allocate_tokens(
+        totals["output_tokens"],
+        [
+            max(1, len(evidence_by_id[requirement_id].model_dump_json()))
+            for requirement_id in versions
+        ],
+    )
+
+    items = []
+    succeeded = 0
+    failed = 0
+    for index, requirement in enumerate(selected):
+        requirement_id = str(requirement.id)
+        version = versions[requirement_id]
+        allocated_usage = [
+            {
+                "input_tokens": input_allocations[index],
+                "output_tokens": output_allocations[index],
+            }
+        ]
+        try:
+            _retire_current_analyses(db, version)
+            evidence = evidence_by_id[requirement_id].model_copy(
+                update={"requirement_version_id": str(version.id)}
+            )
+            assessment = assess_evidence(evidence)
+            ensure_prompt_version(
+                db,
+                PROMPTS["extractor_name"],
+                PROMPTS["extractor_version"],
+                PROMPTS["extractor_text"],
+            )
+            risk = save_assessment(
+                db,
+                version,
+                evidence,
+                assessment,
+                prompts=PROMPTS,
+                allow_deferred_script=True,
+            )
+            sync_links(db, requirement_ids={requirement_id}, created_by="batch-api")
+            save_token_usage(
+                db,
+                version,
+                allocated_usage,
+                [],
+                "SUCCEEDED",
+                batch_run_id=batch_id,
+                usage_basis="batch_estimate",
+            )
+            db.commit()
+            succeeded += 1
+            decision = (
+                db.query(AssuranceDecision)
+                .filter(AssuranceDecision.risk_assessment_id == risk.id)
+                .order_by(AssuranceDecision.created_at.desc())
+                .first()
+            )
+            items.append(
+                {
+                    "requirement_id": requirement_id,
+                    "requirement_key": requirement.req_key,
+                    "version": version.version_number,
+                    "status": "SUCCEEDED",
+                    "risk_assessment": {
+                        "id": str(risk.id),
+                        "severity": assessment["severity"]["score"],
+                        "probability": assessment["probability"]["score"],
+                        "detectability": assessment["detectability"]["score"],
+                        "rpn": assessment["rpn"],
+                        "rpn_points": assessment["rpn_points"],
+                        "band": assessment["band"].upper(),
+                    },
+                    "assurance_decision": (
+                        {
+                            "id": str(decision.id),
+                            "assurance_level": getattr(
+                                decision.assurance_level,
+                                "value",
+                                decision.assurance_level,
+                            ).upper(),
+                            "generate_test": decision.generate_test,
+                            "rule_id": decision.rule_id,
+                            "reason": decision.reasoning,
+                        }
+                        if decision is not None
+                        else None
+                    ),
+                    "test_script_generated": False,
+                    "token_usage": {
+                        "input_tokens": input_allocations[index],
+                        "output_tokens": output_allocations[index],
+                        "total_tokens": (
+                            input_allocations[index] + output_allocations[index]
+                        ),
+                        "basis": "estimated allocation of exact batch usage",
+                    },
+                }
+            )
+        except (
+            SQLAlchemyError,
+            ValueError,
+            TypeError,
+            KeyError,
+            AttributeError,
+            RuntimeError,
+        ) as exc:
+            db.rollback()
+            failed += 1
+            error = str(exc)
+            version = db.get(RequirementVersion, version.id)
+            save_token_usage(
+                db,
+                version,
+                allocated_usage,
+                [],
+                "FAILED",
+                error,
+                batch_run_id=batch_id,
+                usage_basis="batch_estimate",
+            )
+            db.commit()
+            items.append(
+                {
+                    "requirement_id": requirement_id,
+                    "requirement_key": requirement.req_key,
+                    "version": version.version_number,
+                    "status": "FAILED",
+                    "error": error,
+                    "token_usage": {
+                        "input_tokens": input_allocations[index],
+                        "output_tokens": output_allocations[index],
+                        "total_tokens": (
+                            input_allocations[index] + output_allocations[index]
+                        ),
+                        "basis": "estimated allocation of exact batch usage",
+                    },
+                }
+            )
+        batch = db.get(BatchTokenUsage, batch_id)
+        batch.succeeded_count = succeeded
+        batch.failed_count = failed
+        batch.status = (
+            "SUCCEEDED"
+            if failed == 0
+            else "FAILED"
+            if succeeded == 0
+            else "PARTIAL"
+        )
+        db.commit()
+
+    return {
+        "batch_id": str(batch_id),
+        "status": batch.status,
+        "requested_count": len(selected),
+        "succeeded_count": succeeded,
+        "failed_count": failed,
+        "script_generation": "deferred",
+        "token_usage": {
+            **totals,
+            "basis": "exact provider-reported batch total",
+        },
+        "items": items,
+    }
 
 
 def _retire_current_analyses(db, version: RequirementVersion) -> None:
@@ -413,6 +696,13 @@ def _token_usage_summary(db, version_id) -> dict:
         "input_tokens": sum(row.input_tokens for row in rows),
         "output_tokens": sum(row.output_tokens for row in rows),
         "total_tokens": sum(row.total_tokens for row in rows),
+        "usage_basis": (
+            "mixed"
+            if any(row.usage_basis != rows[0].usage_basis for row in rows[1:])
+            else rows[0].usage_basis
+            if rows
+            else "actual"
+        ),
     }
 
 

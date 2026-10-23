@@ -74,7 +74,7 @@ def _level(value, conf=0.8):
 
 
 def fake_record_scripted():
-    """Deterministic record: patient_safety flag -> severity floor -> scripted."""
+    """Deterministic evidence producing a scripted high-band decision."""
     return EvidenceRecord(
         gamp_category=5,
         gamp_reason="Custom access-control logic.",

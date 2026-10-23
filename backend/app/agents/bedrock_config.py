@@ -30,12 +30,13 @@ def _load_dotenv() -> None:
 _load_dotenv()
 
 
-def get_llm() -> ChatBedrock:
+def get_llm(max_tokens: int | None = None) -> ChatBedrock:
     """Build the shared Bedrock chat model from environment.
 
     Credentials are NEVER handled here: boto3 resolves them automatically
     from the default chain (IAM role / SSO profile / env keys).
-    Only model selection (model_id) and routing (region) come from env.
+    Model selection (model_id) and routing (region) come from env. Callers can
+    optionally set a maximum output-token allowance for a specific operation.
     """
     model_id = os.environ.get("BEDROCK_MODEL_ID", "")
     region_name = os.environ.get("AWS_REGION", "")
@@ -45,7 +46,11 @@ def get_llm() -> ChatBedrock:
     if not region_name:
         raise RuntimeError("AWS_REGION env var is not set.")
 
-    return ChatBedrock(model_id=model_id, region_name=region_name)
+    return ChatBedrock(
+        model_id=model_id,
+        region_name=region_name,
+        max_tokens=max_tokens,
+    )
 
 
 class TokenCollector(BaseCallbackHandler):

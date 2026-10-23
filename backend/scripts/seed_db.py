@@ -202,10 +202,10 @@ def seed(session: Session) -> None:
         config_hash=sha("raven-rules-3.1.0"),
     )
     cfg_new = ConfigurationVersion(
-        id=sid("config/3.2.0"),
-        version="3.2.0",
-        description="Current baseline: severity tree v7, probability weights v4.",
-        config_hash=sha("raven-rules-3.2.0"),
+        id=sid("config/3.3.0"),
+        version="3.3.0",
+        description="Current baseline: severity-5 assurance floor.",
+        config_hash=sha("raven-rules-3.3.0"),
     )
     session.add_all([cfg_old, cfg_new])
 
@@ -349,7 +349,7 @@ def seed(session: Session) -> None:
     new_subs = build_sub_results(
         "risk/r1v2/current",
         r1_new.id,
-        "3.2.0",
+        "3.3.0",
         (5, "Loss of audit trail is critical to patient safety."),
         (4, 10.5, 1.0, "Bespoke Category 5 logic is highly complex."),
         (4, 3, "Silent tampering evades routine review."),
@@ -363,9 +363,9 @@ def seed(session: Session) -> None:
         id=sid("assurance/r1"),
         risk_assessment_id=r1_new.id,
         assurance_level=AssuranceLevel.SCRIPTED,
-        rule_id="ASS-BAND-01",
-        rule_version="3.2.0",
-        reasoning="HIGH band requires scripted testing.",
+        rule_id="ASR-SEV-5",
+        rule_version="3.3.0",
+        reasoning="Severity 5 requires scripted testing.",
         decision_path={"band": "HIGH", "level": "SCRIPTED"},
     )
     session.add(r1_ad)
@@ -499,7 +499,7 @@ def seed(session: Session) -> None:
     r2_subs = build_sub_results(
         "risk/r2v1/current",
         r2_ra.id,
-        "3.2.0",
+        "3.3.0",
         (4, "Unauthorized access is a significant hazard."),
         (3, 7.5, 0.5, "Moderate configuration complexity."),
         (3, 2, "Idle sessions are visible on screen."),
@@ -513,8 +513,8 @@ def seed(session: Session) -> None:
         id=sid("assurance/r2"),
         risk_assessment_id=r2_ra.id,
         assurance_level=AssuranceLevel.EXPLORATORY,
-        rule_id="ASS-BAND-01",
-        rule_version="3.2.0",
+        rule_id="ASR-BAND-MEDIUM",
+        rule_version="3.3.0",
         reasoning="MEDIUM band warrants exploratory testing.",
         decision_path={"band": "MEDIUM", "level": "EXPLORATORY"},
     )
@@ -615,7 +615,7 @@ def seed(session: Session) -> None:
     r3_subs = build_sub_results(
         "risk/r3v1/current",
         r3_ra.id,
-        "3.2.0",
+        "3.3.0",
         (2, "Cosmetic defect at worst."),
         (2, 4.5, 0.0, "Trivial static text."),
         (2, 1, "Immediately visible in the UI."),
@@ -630,8 +630,8 @@ def seed(session: Session) -> None:
             id=sid("assurance/r3"),
             risk_assessment_id=r3_ra.id,
             assurance_level=AssuranceLevel.UNSCRIPTED,
-            rule_id="ASS-BAND-01",
-            rule_version="3.2.0",
+            rule_id="ASR-BAND-LOW",
+            rule_version="3.3.0",
             reasoning="LOW band needs no scripted testing.",
             decision_path={"band": "LOW", "level": "UNSCRIPTED"},
         )

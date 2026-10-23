@@ -114,7 +114,7 @@ def _serialize_band_config(config: dict) -> BandConfigResponse:
                 f"Points ≥ {medium_max + 1} "
                 f"(RPN ≥ {round((medium_max + 1) / 20, 2)}) → Scripted"
             ),
-            "severity_floor": "Severity ≥ 4 → Scripted (overrides band)",
+            "severity_floor": "Severity = 5 → Scripted (overrides band)",
         },
     )
 

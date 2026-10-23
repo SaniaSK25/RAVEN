@@ -7,6 +7,7 @@ Do NOT define another Base class in this file.
 
 from app.db.base_class import Base
 from app.models.assurance_decision import AssuranceDecision
+from app.models.batch_token_usage import BatchTokenUsage
 from app.models.change_event import ChangeEvent
 from app.models.compliance_result import ComplianceResult
 from app.models.configuration_version import ConfigurationVersion
@@ -29,6 +30,7 @@ from app.models.trace_link import TraceLink
 
 __all__ = [
     "AssuranceDecision",
+    "BatchTokenUsage",
     "Base",
     "ChangeEvent",
     "ComplianceResult",

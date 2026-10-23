@@ -7,6 +7,7 @@ on top of ``app.db.base_class.Base``.
 """
 
 from app.models.assurance_decision import AssuranceDecision
+from app.models.batch_token_usage import BatchTokenUsage
 from app.models.base_model import ImmutableBaseModel, MutableBaseModel
 from app.models.change_event import ChangeEvent
 from app.models.compliance_result import ComplianceResult
@@ -45,6 +46,7 @@ from app.models.trace_link import TraceLink
 __all__ = [
     "AssuranceDecision",
     "AssuranceLevel",
+    "BatchTokenUsage",
     "ChangeEvent",
     "ChangeKind",
     "ChangeStatus",

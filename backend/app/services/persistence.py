@@ -56,7 +56,9 @@ def ensure_configuration_version(session, version: str = RULE_VERSION):
     if row is None:
         row = ConfigurationVersion(
             version=version,
-            description=f"Rule snapshot {version} (weighted RPN, severity floor).",
+            description=(
+                f"Rule snapshot {version} (weighted RPN, severity-5 assurance floor)."
+            ),
             config_hash=_sha(f"raven-rules-{version}"),
         )
         session.add(row)

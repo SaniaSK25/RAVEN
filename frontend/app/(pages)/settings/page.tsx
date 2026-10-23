@@ -112,8 +112,8 @@ export default function Settings() {
         ? "Medium"
         : "High";
   const exampleAssurance =
-    exampleScores.severity >= 4
-      ? "Scripted — severity floor"
+    exampleScores.severity === 5
+      ? "Scripted — severity 5 floor"
       : exampleBand === "High"
         ? "Scripted"
         : exampleBand === "Medium"
@@ -336,8 +336,8 @@ export default function Settings() {
                 <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">
                   Low → Unscripted · Medium → Exploratory · High → Scripted.
                 </p>
-                <p className="mt-3 text-xs font-medium text-amber-700 dark:text-amber-300">
-                  Severity 4 or 5 always forces Scripted, regardless of band.
+                <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
+                  Severity 5 always requires Scripted; otherwise the risk band determines assurance.
                 </p>
               </li>
             </ol>
@@ -560,12 +560,6 @@ export default function Settings() {
                     <dt className="font-medium text-zinc-700 dark:text-zinc-300">High:</dt>
                     <dd className={`px-2 py-1 rounded text-xs font-medium ${getBandColor("high")}`}>
                       {config.rules.high}
-                    </dd>
-                  </div>
-                  <div className="flex flex-wrap gap-2 items-baseline">
-                    <dt className="font-medium text-zinc-700 dark:text-zinc-300">Severity Floor:</dt>
-                    <dd className="px-2 py-1 rounded text-xs font-medium bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
-                      {config.rules.severity_floor}
                     </dd>
                   </div>
                 </dl>

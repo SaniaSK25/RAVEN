@@ -77,7 +77,7 @@ def make_decision(
     risk="K1",
     freshness="fresh",
     level="scripted",
-    reason="ASR-SEV-FLOOR",
+    reason="ASR-BAND-HIGH",
 ):
     return DecisionInfo(
         id=did,

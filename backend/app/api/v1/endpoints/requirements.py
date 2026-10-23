@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Response
 
 from app.db.dependencies import DBSession
 from app.models.assurance_decision import AssuranceDecision
@@ -19,10 +19,10 @@ from app.models.test_script import TestScript
 from app.models.token_usage import TokenUsage
 from app.schemas.requirements import RequirementCreate, RequirementEdit
 from app.schemas.responses import (
+    RequirementCreateResponse,
     RequirementDetailResponse,
     RequirementMutationResponse,
     RequirementPageResponse,
-    RequirementResponse,
 )
 from app.services.traceability.requirement_ops import (
     create_requirement,
@@ -89,10 +89,10 @@ def list_requirements(
     }
 
 
-@router.post("", status_code=201, response_model=RequirementResponse)
-def create(payload: RequirementCreate, db: DBSession):
+@router.post("", status_code=201, response_model=RequirementCreateResponse)
+def create(payload: RequirementCreate, db: DBSession, response: Response):
     try:
-        requirement = create_requirement(
+        requirement, created = create_requirement(
             db,
             title=payload.req_key or "Requirement",
             description=payload.description,
@@ -101,10 +101,12 @@ def create(payload: RequirementCreate, db: DBSession):
             created_by=payload.created_by,
         )
         db.commit()
+        if not created:
+            response.status_code = 200
     except Exception as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return _serialise(requirement)
+    return {**_serialise(requirement), "reused_existing": not created}
 
 
 @router.get("/{requirement_id}", response_model=RequirementDetailResponse)

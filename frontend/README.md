@@ -17,6 +17,11 @@ Set `RAVEN_BACKEND_URL` in the frontend server environment when the backend is
 not at `http://127.0.0.1:8000`. The variable is server-only; requests to the
 FastAPI `/api/v1` routes go through the same-origin Next.js proxy under
 `/raven/api/v1`, avoiding browser CORS configuration.
+The proxy allows up to 15 minutes for backend response headers and body so
+long-running batch assessments are not cut off by Node's shorter default
+headers timeout. If a request does time out, the backend may still finish
+processing it; the ingestion workflow stops at that batch rather than
+submitting later batches, and saved assessments should be checked before retrying.
 
 ## Docker deployment
 

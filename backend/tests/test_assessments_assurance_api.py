@@ -202,10 +202,10 @@ def seed_assessed(session, key="LIMS-001", freshness="fresh"):
     decision = AssuranceDecision(
         risk_assessment_id=risk.id,
         assurance_level=AssuranceLevel.SCRIPTED,
-        rule_id="ASR-SEV-FLOOR",
+        rule_id="ASR-BAND-HIGH",
         rule_version="1.0.0",
         generate_test=True,
-        reasoning="severity floor reasoning",
+        reasoning="high band reasoning",
         decision_path={"severity": 4, "band": "High", "level": "scripted"},
         freshness=freshness,
     )
@@ -338,7 +338,7 @@ class TestAssuranceList:
                 assert item["current_requirement_version"] == 1
                 assert item["is_current_version"] is True
                 assert item["assurance_level"] == "SCRIPTED"
-                assert item["rule_id"] == "ASR-SEV-FLOOR"
+                assert item["rule_id"] == "ASR-BAND-HIGH"
                 assert item["rule_version"] == "1.0.0"
                 assert item["generate_test"] is True
                 assert item["freshness"] == "fresh"

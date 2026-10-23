@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-RULE_VERSION = "3.0.0"
+RULE_VERSION = "3.3.0"
 
 
 @dataclass(frozen=True)
