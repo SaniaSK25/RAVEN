@@ -42,11 +42,13 @@ export default class GraphErrorBoundary extends Component<
                 {node.type}
               </span>{" "}
               <a
-                href={
-                  node.type === "requirement"
-                    ? `/requirements/${requirementId}`
-                    : `/requirements/${requirementId}?tab=${node.type === "test" ? "tests" : node.type}`
-                }
+                href={node.type === "requirement"
+                  ? `/requirements/${encodeURIComponent(requirementId)}`
+                  : node.type === "test"
+                    ? `/requirements/${encodeURIComponent(requirementId)}#test-${encodeURIComponent(
+                        node.id.startsWith("test:") ? node.id.slice("test:".length) : node.id,
+                      )}`
+                    : `/requirements/${encodeURIComponent(requirementId)}#${node.type}`}
                 className="font-medium text-zinc-900 underline underline-offset-4 dark:text-zinc-50"
               >
                 {node.label}

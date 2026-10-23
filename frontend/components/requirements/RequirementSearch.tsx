@@ -28,7 +28,7 @@ export default function RequirementSearch({ value, onChange }: RequirementSearch
           onChange={(e) => onChange(e.target.value)}
           placeholder="Search by ID or text…"
           autoComplete="off"
-          className="w-full rounded-xl border border-zinc-300 bg-white py-2.5 pr-9 pl-9 text-sm text-zinc-900 shadow-[0_1px_2px_rgba(15,23,42,0.04)] placeholder:text-zinc-400 transition-colors focus:border-orange-300 focus:outline-none focus:ring-4 focus:ring-orange-100 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-orange-500 dark:focus:ring-orange-950/60"
+          className="search-input w-full rounded-xl border border-zinc-300 bg-white py-2.5 pr-9 pl-9 text-sm text-zinc-900 shadow-[0_1px_2px_rgba(15,23,42,0.04)] placeholder:text-zinc-400 transition-colors focus:border-orange-300 focus:outline-none focus:ring-4 focus:ring-orange-100 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-orange-500 dark:focus:ring-orange-950/60"
         />
         {value ? (
           <button

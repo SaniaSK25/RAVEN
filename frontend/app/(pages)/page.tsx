@@ -14,7 +14,6 @@ import {
   type BackendOrphans,
   type BackendPage,
   type BackendRequirement,
-  type BackendTraceMatrix,
 } from "@/lib/backend-api";
 
 interface DashboardNumbers {
@@ -27,7 +26,6 @@ interface DashboardNumbers {
   unscripted: number;
   needsReview: number;
   changed: number;
-  uncovered: number;
   attention: Array<{ id: string; title: string; description: string; count: number }>;
 }
 
@@ -35,7 +33,6 @@ function computeDashboard(
   requirements: BackendPage<BackendRequirement>,
   assessments: BackendPage<BackendAssessmentRecord>,
   assurance: BackendPage<BackendAssuranceRecord>,
-  matrix: BackendTraceMatrix,
   orphans: BackendOrphans,
   changes: BackendChangeEvent[],
 ): DashboardNumbers {
@@ -75,14 +72,6 @@ function computeDashboard(
     ["open", "reanalyzed"].includes(change.status.toLowerCase()),
   ).length;
 
-  // Coverage — rows are per test link; aggregate uncovered requirements.
-  const uncoveredReqs = new Set<string>();
-  for (const row of matrix.rows) {
-    if (row.coverage_status === "uncovered" && typeof row.requirement_id === "string") {
-      uncoveredReqs.add(row.requirement_id);
-    }
-  }
-
   const orphanReqs = orphans.orphans.filter((o) => o.entity_type === "requirement").length;
   const orphanTests = orphans.orphans.filter((o) => o.entity_type === "test").length;
 
@@ -96,7 +85,6 @@ function computeDashboard(
     unscripted,
     needsReview,
     changed,
-    uncovered: uncoveredReqs.size,
     attention: [
       {
         id: "stale-assessments",
@@ -140,13 +128,12 @@ export default function Home() {
       backendFetch<BackendPage<BackendRequirement>>("requirements?limit=500"),
       backendFetch<BackendPage<BackendAssessmentRecord>>("assessments?limit=500"),
       backendFetch<BackendPage<BackendAssuranceRecord>>("assurance?limit=500"),
-      backendFetch<BackendTraceMatrix>("traceability/matrix"),
       backendFetch<BackendOrphans>("traceability/orphans"),
       backendFetch<BackendChangeEvent[]>("changes"),
     ])
-      .then(([requirements, assessments, assurance, matrix, orphans, changes]) => {
+      .then(([requirements, assessments, assurance, orphans, changes]) => {
         if (active) {
-          setData(computeDashboard(requirements, assessments, assurance, matrix, orphans, changes));
+          setData(computeDashboard(requirements, assessments, assurance, orphans, changes));
           setError(null);
         }
       })
@@ -244,24 +231,6 @@ export default function Home() {
               value={data.unscripted}
               subtext="Low-risk requirements with unscripted testing."
               tone="slate"
-            />
-            <SummaryCard
-              label="Needs review"
-              value={data.needsReview}
-              subtext="Draft or outdated assessments awaiting review."
-              tone="warning"
-            />
-            <SummaryCard
-              label="Open changes"
-              value={data.changed}
-              subtext="Requirement changes awaiting follow-up."
-              tone="brand"
-            />
-            <SummaryCard
-              label="Uncovered requirements"
-              value={data.uncovered}
-              subtext="Requirements with no linked test coverage."
-              tone="danger"
             />
           </section>
 

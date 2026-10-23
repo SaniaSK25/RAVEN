@@ -106,6 +106,17 @@ export default function RequirementDetailPage() {
     };
   }, [id]);
 
+  useEffect(() => {
+    if (loadedFor !== id) return;
+
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    const targetId = window.location.hash.slice(1) ||
+      (tab === "risk" || tab === "assurance" || tab === "tests" ? tab : "");
+    if (targetId) {
+      document.getElementById(targetId)?.scrollIntoView({ block: "start" });
+    }
+  }, [id, loadedFor]);
+
   async function runAnalysis() {
     setIsAnalyzing(true);
     setAnalysisError("");
@@ -317,7 +328,7 @@ export default function RequirementDetailPage() {
           </section>
 
           <div className="mt-4 grid gap-4 md:grid-cols-3">
-            <section className="page-panel">
+            <section id="risk" className="page-panel scroll-mt-6">
               <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Risk</h2>
               {requirement.risk ? (
                 <dl className="mt-3 space-y-2 text-sm">
@@ -327,7 +338,7 @@ export default function RequirementDetailPage() {
                 </dl>
               ) : <p className="mt-2 text-sm text-zinc-500">No persisted risk assessment.</p>}
             </section>
-            <section className="page-panel">
+            <section id="assurance" className="page-panel scroll-mt-6">
               <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Assurance</h2>
               {requirement.assurance ? (
                 <>
@@ -337,12 +348,12 @@ export default function RequirementDetailPage() {
                 </>
               ) : <p className="mt-2 text-sm text-zinc-500">No persisted assurance decision.</p>}
             </section>
-            <section className="page-panel">
+            <section id="tests" className="page-panel scroll-mt-6">
               <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Current-version tests</h2>
               {requirement.tests.length > 0 ? (
                 <ul className="mt-2 space-y-2 text-sm">
                   {requirement.tests.map((test) => (
-                    <li key={test.id}>
+                    <li id={`test-${test.id}`} key={test.id} className="scroll-mt-6">
                       <span className="font-medium">{test.title ?? test.external_code ?? "Test script"}</span>
                       <span className="block text-xs text-zinc-500">{test.origin} · {test.freshness}</span>
                     </li>

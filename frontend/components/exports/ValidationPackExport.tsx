@@ -236,7 +236,7 @@ export default function ValidationPackExport() {
               onChange={(event) => setSearch(event.target.value)}
               aria-label="Search requirements by ID or title"
               placeholder="Search requirements by ID or title"
-              className="w-full rounded-lg border border-zinc-300 bg-white py-2.5 pl-9 pr-9 text-sm text-zinc-900 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              className="search-input w-full rounded-lg border border-zinc-300 bg-white py-2.5 pl-9 pr-9 text-sm text-zinc-900 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
             />
             {search && (
               <button

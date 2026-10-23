@@ -458,7 +458,10 @@ export default function TraceabilityPage() {
                         </div>
                       ) : graphState?.data ? (
                         <GraphErrorBoundary requirementId={row.requirementId} trace={graphState.data}>
-                          <TraceGraph trace={graphState.data} />
+                          <TraceGraph
+                            trace={graphState.data}
+                            requirementId={row.requirementId}
+                          />
                         </GraphErrorBoundary>
                       ) : (
                         <div className="flex h-[420px] items-center justify-center rounded-md border border-zinc-200 bg-zinc-50 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">

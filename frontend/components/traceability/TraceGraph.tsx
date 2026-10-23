@@ -1,12 +1,21 @@
 "use client";
 
 import { useMemo, useSyncExternalStore } from "react";
-import { Background, MarkerType, ReactFlow, type Edge, type Node } from "reactflow";
+import Link from "next/link";
+import {
+  Background,
+  MarkerType,
+  ReactFlow,
+  type Edge,
+  type Node,
+  type NodeProps,
+} from "reactflow";
 import "reactflow/dist/style.css";
 import type { Traceability, TraceEdgeType, TraceNodeType } from "@/lib/domain";
 
 interface TraceGraphProps {
   trace: Traceability;
+  requirementId: string;
 }
 
 const NODE_WIDTH = 220;
@@ -52,16 +61,44 @@ const TYPE_LABEL: Record<TraceNodeType, string> = {
   test: "Test script",
 };
 
+interface TraceGraphNodeData {
+  label: string;
+  href: string;
+}
+
+function TraceGraphNode({ data }: NodeProps<TraceGraphNodeData>) {
+  return (
+    <Link
+      href={data.href}
+      className="block whitespace-pre-line rounded-md text-inherit underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current"
+    >
+      {data.label}
+    </Link>
+  );
+}
+
+const NODE_TYPES = { traceNode: TraceGraphNode };
+
+function nodeHref(requirementId: string, nodeId: string, type: TraceNodeType) {
+  const requirementPath = `/requirements/${encodeURIComponent(requirementId)}`;
+  if (type === "requirement") return requirementPath;
+  if (type === "test") {
+    const testId = nodeId.startsWith("test:") ? nodeId.slice("test:".length) : nodeId;
+    return `${requirementPath}#test-${encodeURIComponent(testId)}`;
+  }
+  return `${requirementPath}#${type}`;
+}
+
 /**
- * Static, non-interactive graph for one requirement chain. All zoom, pan,
- * drag, and selection interactions are disabled so the graph is read-only.
+ * Static graph for one requirement chain. Nodes link to their corresponding
+ * requirement detail sections; zoom, pan, drag, and selection stay disabled.
  *
  * Orphaned nodes (artifacts from a superseded version) are styled with dashed
  * amber borders and amber edges. Columns are derived from the node types that
  * are actually present, so an orphan-only graph starts at the left edge
  * instead of leaving an empty requirement column.
  */
-export default function TraceGraph({ trace }: TraceGraphProps) {
+export default function TraceGraph({ trace, requirementId }: TraceGraphProps) {
   // React Flow measures the DOM, so render it only after client hydration.
   const mounted = useSyncExternalStore(
     () => () => {},
@@ -93,9 +130,11 @@ export default function TraceGraph({ trace }: TraceGraphProps) {
         : CURRENT_STYLE[node.type];
       return {
         id: node.id,
+        type: "traceNode",
         position: { x: column * COL_GAP, y: seen * ROW_GAP },
         data: {
           label: `${TYPE_LABEL[node.type]}\n${node.label}`,
+          href: nodeHref(requirementId, node.id, node.type),
         },
         style: {
           ...style,
@@ -131,7 +170,7 @@ export default function TraceGraph({ trace }: TraceGraphProps) {
       };
     });
     return { nodes: rfNodes, edges: rfEdges };
-  }, [trace]);
+  }, [requirementId, trace]);
 
   if (!mounted) {
     return (
@@ -192,6 +231,7 @@ export default function TraceGraph({ trace }: TraceGraphProps) {
         <ReactFlow
           nodes={nodes}
           edges={edges}
+          nodeTypes={NODE_TYPES}
           nodesDraggable={false}
           nodesConnectable={false}
           nodesFocusable={false}
@@ -206,7 +246,7 @@ export default function TraceGraph({ trace }: TraceGraphProps) {
           fitView
           fitViewOptions={{ padding: 0.2 }}
           attributionPosition="bottom-right"
-          className="raven-trace-flow [&_.react-flow__pane]:cursor-default [&_.react-flow__node]:cursor-default"
+          className="raven-trace-flow [&_.react-flow__pane]:cursor-default [&_.react-flow__node]:cursor-pointer"
         >
           <Background gap={20} color="#e4e4e7" />
         </ReactFlow>
