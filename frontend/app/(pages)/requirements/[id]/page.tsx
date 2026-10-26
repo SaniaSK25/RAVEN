@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AlertCircle, ArrowLeft, FileText, LoaderCircle, Archive, CheckCircle } from "lucide-react";
+import { AlertCircle, ArrowLeft, ChevronDown, FileText, LoaderCircle, Play, Archive, CheckCircle, ClipboardList } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import {
   backendFetch,
@@ -24,32 +24,98 @@ function splitScript(script: string): { preconditions: string; steps: string } |
   };
 }
 
+function formatScriptLines(text: string): string[] {
+  return text
+    .replace(/\r\n/g, "\n")
+    .split(/\n(?=\s*(?:[-•]|\d+[.)])\s+)/)
+    .map((line) => line.trim().replace(/^(?:[-•]|\d+[.)])\s+/, ""))
+    .filter(Boolean);
+}
+
 function ScriptBlock({ script }: { script: string }) {
   const sections = splitScript(script);
+  const [showPreconditions, setShowPreconditions] = useState(false);
+  const steps = formatScriptLines(sections?.steps ?? script);
+
+  function StepList({ items }: { items: string[] }) {
+    if (items.length === 0) {
+      return <p className="text-sm text-zinc-500 dark:text-zinc-400">No test steps were recorded.</p>;
+    }
+    return (
+      <ol className="space-y-3" aria-label="Test steps">
+        {items.map((step, index) => (
+          <li
+            key={`${index}-${step}`}
+            className="flex gap-3 rounded-lg border border-zinc-200 bg-white px-4 py-3.5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] dark:border-zinc-800 dark:bg-zinc-950"
+          >
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-50 text-xs font-bold text-accent dark:bg-orange-950/40 dark:text-orange-300">
+              {index + 1}
+            </span>
+            <p className="min-w-0 pt-0.5 text-sm leading-6 text-zinc-700 dark:text-zinc-200">
+              {step}
+            </p>
+          </li>
+        ))}
+      </ol>
+    );
+  }
+
   if (!sections) {
     return (
-      <pre className="mt-3 whitespace-pre-wrap rounded-md bg-zinc-50 p-4 text-sm leading-6 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
-        {script}
-      </pre>
+      <div className="mt-4">
+        <div className="mb-3 flex items-center gap-2 text-xs font-semibold tracking-[0.14em] text-zinc-500 uppercase dark:text-zinc-400">
+          <ClipboardList aria-hidden="true" className="h-4 w-4 text-accent" />
+          Test steps
+        </div>
+        <StepList items={steps} />
+      </div>
     );
   }
   return (
-    <div className="mt-3 space-y-4">
-      <div>
-        <h3 className="text-xs font-semibold tracking-[0.12em] text-zinc-500 uppercase dark:text-zinc-400">
-          Preconditions
-        </h3>
-        <pre className="mt-2 whitespace-pre-wrap rounded-md bg-zinc-50 p-4 text-sm leading-6 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
-          {sections.preconditions}
-        </pre>
+    <div className="mt-4 space-y-5">
+      <div className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800">
+        <button
+          type="button"
+          onClick={() => setShowPreconditions((visible) => !visible)}
+          aria-expanded={showPreconditions}
+          className="flex w-full items-center justify-between gap-3 bg-zinc-50 px-4 py-3 text-left transition-colors hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent dark:bg-zinc-900 dark:hover:bg-zinc-800"
+        >
+          <span>
+            <span className="block text-sm font-semibold text-zinc-800 dark:text-zinc-100">
+              Preconditions
+            </span>
+            <span className="mt-0.5 block text-xs text-zinc-500 dark:text-zinc-400">
+              {showPreconditions ? "Hide setup requirements" : "Show setup requirements before running this test"}
+            </span>
+          </span>
+          <ChevronDown
+            aria-hidden="true"
+            className={`h-4 w-4 shrink-0 text-zinc-400 transition-transform ${showPreconditions ? "rotate-180" : ""}`}
+          />
+        </button>
+        {showPreconditions ? (
+          <div className="border-t border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+            <ul className="space-y-2.5 text-sm leading-6 text-zinc-700 dark:text-zinc-200">
+              {formatScriptLines(sections.preconditions).map((condition, index) => (
+                <li key={`${index}-${condition}`} className="flex gap-2.5">
+                  <span aria-hidden="true" className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+                  <span>{condition}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </div>
+
       <div>
-        <h3 className="text-xs font-semibold tracking-[0.12em] text-zinc-500 uppercase dark:text-zinc-400">
-          Test Steps
-        </h3>
-        <pre className="mt-2 whitespace-pre-wrap rounded-md bg-zinc-50 p-4 text-sm leading-6 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
-          {sections.steps}
-        </pre>
+        <div className="mb-3 flex items-center gap-2 text-xs font-semibold tracking-[0.14em] text-zinc-500 uppercase dark:text-zinc-400">
+          <ClipboardList aria-hidden="true" className="h-4 w-4 text-accent" />
+          Test steps
+          <span className="ml-auto normal-case tracking-normal text-zinc-400">
+            {steps.length} {steps.length === 1 ? "step" : "steps"}
+          </span>
+        </div>
+        <StepList items={steps} />
       </div>
     </div>
   );
@@ -63,6 +129,9 @@ export default function RequirementDetailPage() {
   const [error, setError] = useState<{ id: string; message: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadedFor, setLoadedFor] = useState("");
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState("");
+  const [analysisMessage, setAnalysisMessage] = useState("");
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
   const [scriptError, setScriptError] = useState("");
   const [scriptMessage, setScriptMessage] = useState("");
@@ -113,6 +182,30 @@ export default function RequirementDetailPage() {
       document.getElementById(targetId)?.scrollIntoView({ block: "start" });
     }
   }, [id, loadedFor]);
+
+  async function runAnalysis() {
+    setIsAnalyzing(true);
+    setAnalysisError("");
+    setAnalysisMessage("");
+    try {
+      await backendFetch<unknown>(
+        `assessments/${encodeURIComponent(id)}/run`,
+        { method: "POST" },
+      );
+      const updated = await backendFetch<BackendRequirementDetail>(
+        `requirements/${encodeURIComponent(id)}`,
+      );
+      setRequirement(updated);
+      setLoadedFor(id);
+      setAnalysisMessage("Risk and assurance analysis completed.");
+    } catch (cause) {
+      setAnalysisError(
+        cause instanceof Error ? cause.message : "The analysis could not be completed.",
+      );
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }
 
   async function generateScript() {
     setIsGeneratingScript(true);
@@ -177,6 +270,13 @@ export default function RequirementDetailPage() {
   const canGenerateScript =
     requirement?.assurance?.level.toLowerCase() === "scripted" &&
     !hasGeneratedScript;
+  const needsAnalysis = Boolean(
+    requirement &&
+      (!requirement.risk ||
+        !requirement.assurance ||
+        requirement.risk.freshness.toLowerCase() !== "fresh" ||
+        requirement.assurance.freshness.toLowerCase() !== "fresh"),
+  );
 
   return (
     <DashboardLayout>
@@ -226,6 +326,21 @@ export default function RequirementDetailPage() {
                 {requirement.description}
               </h1>
             </div>
+            {needsAnalysis ? (
+              <button
+                type="button"
+                onClick={() => void runAnalysis()}
+                disabled={isAnalyzing || !requirement.current_version_id}
+                className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-600 dark:disabled:bg-zinc-700 dark:disabled:text-zinc-400"
+              >
+                {isAnalyzing ? (
+                  <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Play aria-hidden="true" className="h-4 w-4" />
+                )}
+                {isAnalyzing ? "Analyzing…" : "Run risk & assurance analysis"}
+              </button>
+            ) : null}
           </header>
 
           <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -246,6 +361,21 @@ export default function RequirementDetailPage() {
               ZIP with Risk Assessment, Assurance Rationale, Test Scripts, Gap Report, Traceability Matrix
             </span>
           </div>
+
+          {analysisMessage ? (
+            <p role="status" className="mt-4 text-sm text-emerald-700 dark:text-emerald-300">
+              {analysisMessage}
+            </p>
+          ) : null}
+          {analysisError ? (
+            <section role="alert" className="mt-4 rounded-lg border border-red-200 bg-white p-4 dark:border-red-900 dark:bg-zinc-950">
+              <p className="flex items-center gap-2 font-semibold text-red-800 dark:text-red-300">
+                <AlertCircle aria-hidden="true" className="h-4 w-4" />
+                Analysis could not be completed
+              </p>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{analysisError}</p>
+            </section>
+          ) : null}
 
           <section className="page-panel mt-6">
             <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">

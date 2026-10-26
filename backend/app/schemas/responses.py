@@ -311,6 +311,9 @@ class TraceGraphNodeResponse(BaseModel):
     label: str
     stale: bool
     orphan: bool
+    # True when this node belongs to a superseded requirement version (the
+    # per-version graph for an old version renders in orphan mode).
+    orphaned: bool = False
     meta: TraceGraphNodeMetaResponse
 
 

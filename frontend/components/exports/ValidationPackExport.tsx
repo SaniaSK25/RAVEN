@@ -2,8 +2,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
-  Check,
   Download,
   Loader2,
   RefreshCw,
@@ -98,6 +98,14 @@ export default function ValidationPackExport() {
     }
   }, []);
 
+  const updateSelection = (keys: string[]) => {
+    const unique = [...new Set(keys.map((key) => key.trim()).filter(Boolean))];
+    selectedRef.current = unique;
+    setSelected(unique);
+    setDataset(null);
+    setError("");
+  };
+
   const filtered = useMemo(
     () => filterRequirementSummaries(requirements, search),
     [requirements, search],
@@ -115,17 +123,17 @@ export default function ValidationPackExport() {
     const next = checked
       ? [...selectedRef.current, key]
       : selectedRef.current.filter((item) => item !== key);
-    void loadSelection(next);
+    updateSelection(next);
   };
 
   const selectAllFiltered = () => {
     if (busy || !filteredKeys.length) return;
-    void loadSelection([...new Set([...selectedRef.current, ...filteredKeys])]);
+    updateSelection([...new Set([...selectedRef.current, ...filteredKeys])]);
   };
 
   const clearSelection = () => {
     if (busy) return;
-    void loadSelection([]);
+    updateSelection([]);
   };
 
   const clearSearch = () => setSearch("");
@@ -178,7 +186,7 @@ export default function ValidationPackExport() {
     : null;
 
   const exportDisabled =
-    busy || loadingDataset || !dataset || selected.length === 0;
+    busy || loadingDataset || selected.length === 0;
 
   return (
     <div className="space-y-6">
@@ -313,7 +321,7 @@ export default function ValidationPackExport() {
               }`}
             >
               {selected.length
-                ? "Selection not loaded yet."
+                ? "Ready to load when you generate the pack."
                 : "No requirements selected."}
             </span>
           )}
@@ -402,46 +410,41 @@ export default function ValidationPackExport() {
               const key = requirementSelectionKey(requirement);
               const checked = selectedSet.has(key);
               return (
-                <label
+                <div
                   key={requirement.id}
-                  className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition ${
+                  className={`flex items-start gap-3 rounded-xl border p-3 transition ${
                     checked
                       ? "border-blue-300 bg-blue-50/60 dark:border-blue-800 dark:bg-blue-950/30"
                       : "border-zinc-200 hover:border-blue-200 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:border-blue-900 dark:hover:bg-zinc-900"
                   } ${busy ? "cursor-not-allowed opacity-70" : ""}`}
                 >
-                  <span
-                    className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
-                      checked
-                        ? "border-accent bg-accent text-white"
-                        : "border-zinc-300 bg-white dark:border-zinc-600 dark:bg-zinc-900"
-                    }`}
-                  >
-                    {checked && <Check aria-hidden="true" className="h-3.5 w-3.5" />}
-                  </span>
                   <input
-                    className="sr-only"
                     type="checkbox"
                     checked={checked}
                     disabled={busy}
+                    aria-label={`Select ${requirementListKey(requirement)} for export`}
                     onChange={(event) =>
                       toggleRequirement(key, event.target.checked)
                     }
+                    className="mt-1 h-5 w-5 shrink-0 cursor-pointer accent-accent disabled:cursor-not-allowed"
                   />
-                  <span className="min-w-0 flex-1">
+                  <Link
+                    href={`/requirements/${encodeURIComponent(key)}?tab=overview`}
+                    className="min-w-0 flex-1 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  >
                     <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                      <b className="text-zinc-900 dark:text-zinc-50">
+                      <b className="text-accent hover:underline">
                         {requirementListKey(requirement)}
                       </b>
                       <span className="text-xs text-zinc-500 dark:text-zinc-400">
                         {requirementVersionLabel(requirement)}
                       </span>
                     </span>
-                    <span className="mt-1 block text-sm text-zinc-600 dark:text-zinc-300">
+                    <span className="mt-1 block text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white">
                       {requirement.title || requirement.description || "Untitled requirement"}
                     </span>
-                  </span>
-                </label>
+                  </Link>
+                </div>
               );
             })}
           </div>
