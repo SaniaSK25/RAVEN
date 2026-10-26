@@ -1,5 +1,6 @@
 from typing import Literal
 
+from botocore.exceptions import ClientError
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field, ValidationError
 
@@ -278,8 +279,17 @@ def extract_evidence_batch(
         output = (first_prompt | structured).invoke(
             {"requirements": supplied}, config=config
         )
-    except Exception:
+    except Exception as exc:
         _log_usage(usage_log, group_name, model_id, 0, collector, ok=False)
+        if (
+            isinstance(exc, ClientError)
+            and exc.response.get("Error", {}).get("Code")
+            == "ServiceUnavailableException"
+        ):
+            raise RuntimeError(
+                "Amazon Bedrock is temporarily unavailable after its retries. "
+                "Please retry this batch in a few minutes."
+            ) from exc
         raise
     _log_usage(usage_log, group_name, model_id, 0, collector, ok=True)
 

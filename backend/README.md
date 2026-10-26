@@ -83,6 +83,11 @@ is a ceiling, and usage is based on tokens actually generated. Evidence notes
 are complete, grounded explanatory sentences, normally 8-12 words and at
 most 160 characters, to reduce output time while retaining context.
 
+If Bedrock returns `ServiceUnavailableException` after its SDK retries, the API
+marks the batch as failed and responds with HTTP 503; wait briefly and retry the
+batch from the ingestion page. This indicates temporary provider unavailability,
+not a problem with the imported requirements.
+
 The Next.js frontend proxy allows 15 minutes for a backend response. If that
 request times out, the backend may still finish processing; check persisted
 assessments before retrying the batch.

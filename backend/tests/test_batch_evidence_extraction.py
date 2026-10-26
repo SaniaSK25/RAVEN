@@ -1,4 +1,5 @@
 import pytest
+from botocore.exceptions import ClientError
 from langchain_core.runnables import RunnableLambda
 from pydantic import ValidationError
 
@@ -164,6 +165,44 @@ def test_batch_extraction_rejects_unknown_requirement_ids(monkeypatch):
 
     with pytest.raises(ValueError, match="unknown requirement ID"):
         extract_evidence_batch([("REQ-1", "text")])
+
+
+def test_batch_extraction_reports_bedrock_service_unavailable(monkeypatch):
+    import app.agents.agent_analyzer as analyzer
+
+    error = ClientError(
+        {
+            "Error": {
+                "Code": "ServiceUnavailableException",
+                "Message": "Bedrock is temporarily unavailable.",
+            }
+        },
+        "InvokeModel",
+    )
+    fake_llm = _FakeBatchLLM(_batch_output(["REQ-1"]))
+    monkeypatch.setattr(analyzer, "get_llm", lambda **_kwargs: fake_llm)
+
+    def fail_invoke(_prompt, _schema):
+        fake_llm.call_count += 1
+        raise error
+
+    fake_llm._invoke = fail_invoke
+    usage_log = []
+    with pytest.raises(RuntimeError, match="temporarily unavailable after its retries"):
+        extract_evidence_batch([("REQ-1", "requirement")], usage_log=usage_log)
+
+    assert fake_llm.call_count == 1
+    assert usage_log == [
+        {
+            "group": "BatchEvidenceRecord",
+            "model": "fake-batch-model",
+            "attempt": 1,
+            "ok": False,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_tokens": 0,
+        }
+    ]
 
 
 def test_evidence_schema_allows_explanatory_sentences():
