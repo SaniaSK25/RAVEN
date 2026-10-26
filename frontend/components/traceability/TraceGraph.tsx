@@ -4,7 +4,9 @@ import { useMemo, useSyncExternalStore } from "react";
 import Link from "next/link";
 import {
   Background,
+  Handle,
   MarkerType,
+  Position,
   ReactFlow,
   type Edge,
   type Node,
@@ -68,12 +70,27 @@ interface TraceGraphNodeData {
 
 function TraceGraphNode({ data }: NodeProps<TraceGraphNodeData>) {
   return (
-    <Link
-      href={data.href}
-      className="block whitespace-pre-line rounded-md text-inherit underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current"
-    >
-      {data.label}
-    </Link>
+    <>
+      {/* Custom nodes must render their own handles or React Flow has no
+          anchor point for edges and silently drops every edge. They are
+          styled invisible because the graph is read-only. */}
+      <Handle
+        type="target"
+        position={Position.Top}
+        className="!h-1.5 !w-1.5 !border-0 !bg-transparent"
+      />
+      <Link
+        href={data.href}
+        className="block whitespace-pre-line rounded-md text-inherit underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current"
+      >
+        {data.label}
+      </Link>
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        className="!h-1.5 !w-1.5 !border-0 !bg-transparent"
+      />
+    </>
   );
 }
 

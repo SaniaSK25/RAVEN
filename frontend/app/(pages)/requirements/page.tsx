@@ -168,9 +168,6 @@ export default function RequirementsPage() {
           </div>
         )}
       </section>
-      <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
-        Live records from the RAVEN backend. Analysis data is shown only when it has been persisted.
-      </p>
     </DashboardLayout>
   );
 }

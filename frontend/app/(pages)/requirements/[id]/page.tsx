@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AlertCircle, ArrowLeft, FileText, LoaderCircle, Play, Archive, CheckCircle } from "lucide-react";
+import { AlertCircle, ArrowLeft, FileText, LoaderCircle, Archive, CheckCircle } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import {
   backendFetch,
@@ -63,10 +63,7 @@ export default function RequirementDetailPage() {
   const [error, setError] = useState<{ id: string; message: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadedFor, setLoadedFor] = useState("");
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
-  const [analysisError, setAnalysisError] = useState("");
-  const [analysisMessage, setAnalysisMessage] = useState("");
   const [scriptError, setScriptError] = useState("");
   const [scriptMessage, setScriptMessage] = useState("");
   const [isExporting, setIsExporting] = useState(false);
@@ -116,41 +113,6 @@ export default function RequirementDetailPage() {
       document.getElementById(targetId)?.scrollIntoView({ block: "start" });
     }
   }, [id, loadedFor]);
-
-  async function runAnalysis() {
-    setIsAnalyzing(true);
-    setAnalysisError("");
-    setAnalysisMessage("");
-    try {
-      await backendFetch<unknown>(
-        `assessments/${encodeURIComponent(id)}/run`,
-        { method: "POST" },
-      );
-    } catch (cause) {
-      setAnalysisError(
-        cause instanceof Error ? cause.message : "The analysis could not be completed.",
-      );
-      setIsAnalyzing(false);
-      return;
-    }
-
-    try {
-      const updated = await backendFetch<BackendRequirementDetail>(
-        `requirements/${encodeURIComponent(id)}`,
-      );
-      setRequirement(updated);
-      setLoadedFor(id);
-      setAnalysisMessage("Analysis finished. The persisted results are up to date.");
-    } catch (cause) {
-      setAnalysisError(
-        `Analysis finished, but saved results could not be reloaded: ${
-          cause instanceof Error ? cause.message : "unknown refresh error"
-        }`,
-      );
-    } finally {
-      setIsAnalyzing(false);
-    }
-  }
 
   async function generateScript() {
     setIsGeneratingScript(true);
@@ -264,19 +226,6 @@ export default function RequirementDetailPage() {
                 {requirement.description}
               </h1>
             </div>
-            <button
-              type="button"
-              onClick={() => void runAnalysis()}
-              disabled={isAnalyzing || !requirement.current_version_id}
-              className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-600 dark:disabled:bg-zinc-700 dark:disabled:text-zinc-400"
-            >
-              {isAnalyzing ? (
-                <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" />
-              ) : (
-                <Play aria-hidden="true" className="h-4 w-4" />
-              )}
-              {isAnalyzing ? "Analyzing…" : "Run risk & assurance analysis"}
-            </button>
           </header>
 
           <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -297,26 +246,6 @@ export default function RequirementDetailPage() {
               ZIP with Risk Assessment, Assurance Rationale, Test Scripts, Gap Report, Traceability Matrix
             </span>
           </div>
-
-          {isAnalyzing ? (
-            <p role="status" className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
-              Running evidence extraction and analysis for the current requirement version. This may take some time; keep this page open.
-            </p>
-          ) : null}
-          {analysisMessage ? (
-            <p role="status" className="mt-4 text-sm text-emerald-700 dark:text-emerald-300">
-              {analysisMessage}
-            </p>
-          ) : null}
-          {analysisError ? (
-            <section role="alert" className="mt-4 rounded-lg border border-red-200 bg-white p-4 dark:border-red-900 dark:bg-zinc-950">
-              <p className="flex items-center gap-2 font-semibold text-red-800 dark:text-red-300">
-                <AlertCircle aria-hidden="true" className="h-4 w-4" />
-                Analysis could not be completed
-              </p>
-              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{analysisError}</p>
-            </section>
-          ) : null}
 
           <section className="page-panel mt-6">
             <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
@@ -368,7 +297,7 @@ export default function RequirementDetailPage() {
                   <button
                     type="button"
                     onClick={() => void generateScript()}
-                    disabled={isGeneratingScript || isAnalyzing}
+                    disabled={isGeneratingScript}
                     className="mt-3 inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-600 dark:disabled:bg-zinc-700 dark:disabled:text-zinc-400"
                   >
                     {isGeneratingScript ? (
@@ -420,41 +349,6 @@ export default function RequirementDetailPage() {
                 ))}
             </section>
           ) : null}
-
-          <section className="page-panel mt-4">
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-              AI token usage for v{requirement.version}
-            </h2>
-            <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-              <div>
-                <dt className="text-zinc-500">Total tokens</dt>
-                <dd className="mt-1 font-medium">
-                  {requirement.token_usage.total_tokens.toLocaleString()}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-zinc-500">Input tokens</dt>
-                <dd className="mt-1 font-medium">
-                  {requirement.token_usage.input_tokens.toLocaleString()}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-zinc-500">Output tokens</dt>
-                <dd className="mt-1 font-medium">
-                  {requirement.token_usage.output_tokens.toLocaleString()}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-zinc-500">Analysis runs</dt>
-                <dd className="mt-1 font-medium">
-                  {requirement.token_usage.run_count.toLocaleString()}
-                </dd>
-              </div>
-            </dl>
-            <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
-              Totals include recorded evidence-extraction and test-script-generation calls across successful and failed runs.
-            </p>
-          </section>
 
           <section className="page-panel mt-4">
             <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Version history</h2>

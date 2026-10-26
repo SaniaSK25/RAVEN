@@ -527,9 +527,6 @@ export default function ChangesPage() {
           );
         })}
       </section>
-      <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
-        Live change-event records. Use “Make a change” to edit or retire an active requirement; use the traceability matrix to review its linked artifacts.
-      </p>
     </DashboardLayout>
   );
 }

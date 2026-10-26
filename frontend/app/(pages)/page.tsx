@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { AlertCircle, AlertTriangle, LoaderCircle } from "lucide-react";
-import AttentionItem from "@/components/AttentionItem";
 import DashboardLayout from "@/components/DashboardLayout";
 import DistributionSection from "@/components/DistributionSection";
 import SummaryCard from "@/components/SummaryCard";
@@ -11,7 +10,6 @@ import {
   type BackendAssessmentRecord,
   type BackendAssuranceRecord,
   type BackendChangeEvent,
-  type BackendOrphans,
   type BackendPage,
   type BackendRequirement,
   type BackendTraceMatrix,
@@ -27,13 +25,11 @@ interface DashboardNumbers {
   unscripted: number;
   needsReview: number;
   changed: number;
-  attention: Array<{ id: string; title: string; description: string; count: number }>;
   uncovered: number;
 }
 
 const EMPTY_PAGE = { items: [], total: 0, skip: 0, limit: 0 };
 const EMPTY_MATRIX: BackendTraceMatrix = { total: 0, rows: [] };
-const EMPTY_ORPHANS: BackendOrphans = { orphans: [], summary: {} };
 const EMPTY_CHANGES: BackendChangeEvent[] = [];
 
 /** Human-readable labels for each dashboard data source, keyed to fetch order. */
@@ -42,7 +38,6 @@ const SOURCE_LABELS = [
   "risk assessments",
   "assurance decisions",
   "traceability matrix",
-  "traceability orphans",
   "change events",
 ] as const;
 
@@ -51,7 +46,6 @@ function computeDashboard(
   assessments: BackendPage<BackendAssessmentRecord>,
   assurance: BackendPage<BackendAssuranceRecord>,
   matrix: BackendTraceMatrix,
-  orphans: BackendOrphans,
   changes: BackendChangeEvent[],
 ): DashboardNumbers {
   // Risk distribution — count current-version assessments by band.
@@ -90,13 +84,6 @@ function computeDashboard(
     ["open", "reanalyzed"].includes(change.status.toLowerCase()),
   ).length;
 
-  const orphanReqs = orphans.orphans.filter(
-    (orphan) => orphan.entity_type === "requirement",
-  ).length;
-  const orphanTests = orphans.orphans.filter(
-    (orphan) => orphan.entity_type === "test",
-  ).length;
-
   // Coverage — rows are per test link; aggregate uncovered requirements.
   const uncoveredReqs = new Set<string>();
   for (const row of matrix.rows) {
@@ -115,32 +102,6 @@ function computeDashboard(
     unscripted,
     needsReview,
     changed,
-    attention: [
-      {
-        id: "stale-assessments",
-        title: "Assessments need review",
-        description: "Stale or draft assessments awaiting QA follow-up.",
-        count: needsReview,
-      },
-      {
-        id: "changed-since-assessment",
-        title: "Requirements changed since assessment",
-        description: "Open change events need re-assessment or acceptance.",
-        count: changed,
-      },
-      {
-        id: "orphan-requirements",
-        title: "Requirements without coverage",
-        description: "Orphan requirements have no fresh test or assurance.",
-        count: orphanReqs,
-      },
-      {
-        id: "orphan-tests",
-        title: "Tests without a requirement",
-        description: "Orphan tests verify no active requirement.",
-        count: orphanTests,
-      },
-    ],
     uncovered: uncoveredReqs.size,
   };
 }
@@ -164,7 +125,6 @@ export default function Home() {
         backendFetch<BackendPage<BackendAssessmentRecord>>("assessments?limit=500"),
         backendFetch<BackendPage<BackendAssuranceRecord>>("assurance?limit=500"),
         backendFetch<BackendTraceMatrix>("traceability/matrix"),
-        backendFetch<BackendOrphans>("traceability/orphans"),
         backendFetch<BackendChangeEvent[]>("changes"),
       ]);
       if (!active) return;
@@ -188,9 +148,7 @@ export default function Home() {
           : index === 3
             ? EMPTY_MATRIX
             : index === 4
-              ? EMPTY_ORPHANS
-              : index === 5
-                ? EMPTY_CHANGES
+              ? EMPTY_CHANGES
               : EMPTY_PAGE,
       );
       setData(
@@ -199,8 +157,7 @@ export default function Home() {
           values[1] as BackendPage<BackendAssessmentRecord>,
           values[2] as BackendPage<BackendAssuranceRecord>,
           values[3] as BackendTraceMatrix,
-          values[4] as BackendOrphans,
-          values[5] as BackendChangeEvent[],
+          values[4] as BackendChangeEvent[],
         ),
       );
       setFailedSources(
@@ -330,24 +287,6 @@ export default function Home() {
                   subtext="Low-risk requirements with unscripted testing."
                   tone="slate"
                 />
-                <SummaryCard
-                  label="Needs review"
-                  value={data.needsReview}
-                  subtext="Draft or outdated assessments awaiting review."
-                  tone="warning"
-                />
-                <SummaryCard
-                  label="Open changes"
-                  value={data.changed}
-                  subtext="Requirement changes awaiting follow-up."
-                  tone="brand"
-                />
-                <SummaryCard
-                  label="Uncovered requirements"
-                  value={data.uncovered}
-                  subtext="Requirements with no linked test coverage."
-                  tone="danger"
-                />
               </section>
 
               {/* Distributions */}
@@ -416,32 +355,6 @@ export default function Home() {
                 />
               </div>
 
-              <section
-                aria-label="Needs Attention"
-                className="mt-6 rounded-lg border border-zinc-200 bg-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:border-zinc-800 dark:bg-zinc-950"
-              >
-                <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
-                  Needs Attention
-                </h2>
-                <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                  Items currently requiring QA follow-up.
-                </p>
-                <ul className="mt-5 space-y-2.5">
-                  {data.attention.map((item) => (
-                    <AttentionItem
-                      key={item.id}
-                      title={`${item.count} ${item.title}`}
-                      description={item.description}
-                      count={item.count}
-                    />
-                  ))}
-                </ul>
-              </section>
-
-              <p className="mt-4 text-[13px] text-zinc-500 dark:text-zinc-400">
-                Live counts only — aggregated from requirements, assessments, assurance,
-                traceability and changes. This view does not run analysis.
-              </p>
             </>
           ) : null}
         </>
