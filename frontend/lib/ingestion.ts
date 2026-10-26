@@ -1,3 +1,5 @@
+import JSZip from "jszip";
+
 export type IngestionRowStatus = "ready" | "duplicate" | "invalid";
 
 export interface IngestionRow {
@@ -93,6 +95,80 @@ function rowsFromJson(
   });
 }
 
+function columnNumberFromReference(reference: string): number {
+  const letters = reference.match(/^[A-Z]+/i)?.[0].toUpperCase() ?? "";
+  return [...letters].reduce(
+    (column, letter) => column * 26 + letter.charCodeAt(0) - 64,
+    0,
+  ) - 1;
+}
+
+function rowsFromWorksheet(
+  worksheetSource: string,
+  sharedStrings: string[],
+): Array<{ rowNumber: number; text: string }> {
+  const document = new DOMParser().parseFromString(worksheetSource, "application/xml");
+  if (document.querySelector("parsererror")) {
+    throw new Error("The Excel worksheet could not be read.");
+  }
+
+  const records = [...document.getElementsByTagNameNS("*", "row")].map((row) => {
+    const values: string[] = [];
+    for (const cell of [...row.getElementsByTagNameNS("*", "c")]) {
+      const reference = cell.getAttribute("r") ?? "A1";
+      const column = columnNumberFromReference(reference);
+      const type = cell.getAttribute("t");
+      const value = cell.getElementsByTagNameNS("*", "v")[0]?.textContent ?? "";
+      const inlineValue = cell.getElementsByTagNameNS("*", "t")[0]?.textContent ?? "";
+      values[column] =
+        type === "s" ? (sharedStrings[Number(value)] ?? "") : type === "inlineStr" ? inlineValue : value;
+    }
+    return values;
+  });
+
+  const headers = records[0]?.map((header) => header.trim().toLowerCase()) ?? [];
+  const textColumn = headers.indexOf("text");
+  if (textColumn < 0) {
+    throw new Error('Excel files must include a column named "text" in the first worksheet.');
+  }
+
+  return records.slice(1).map((record, index) => ({
+    rowNumber: index + 2,
+    text: (record[textColumn] ?? "").trim(),
+  }));
+}
+
+async function rowsFromExcel(source: ArrayBuffer): Promise<Array<{ rowNumber: number; text: string }>> {
+  const archive = await JSZip.loadAsync(source);
+  const worksheetPath = Object.keys(archive.files).find((path) => /^xl\/worksheets\/sheet\d+\.xml$/i.test(path));
+  if (!worksheetPath) {
+    throw new Error("The Excel workbook does not contain a worksheet.");
+  }
+
+  const sharedStringsFile = archive.files["xl/sharedStrings.xml"];
+  const sharedStrings = sharedStringsFile
+    ? [...new DOMParser().parseFromString(await sharedStringsFile.async("text"), "application/xml").getElementsByTagNameNS("*", "si")].map(
+        (item) => [...item.getElementsByTagNameNS("*", "t")].map((text) => text.textContent ?? "").join(""),
+      )
+    : [];
+  return rowsFromWorksheet(await archive.files[worksheetPath].async("text"), sharedStrings);
+}
+
+function validateRows(rows: Array<{ rowNumber: number; text: string }>): IngestionRow[] {
+  const firstRowForText = new Map<string, number>();
+  return rows.map(({ rowNumber, text }) => {
+    if (!text) {
+      return { rowNumber, text, status: "invalid", message: "Requirement text is empty or missing." };
+    }
+    const duplicateOf = firstRowForText.get(text);
+    if (duplicateOf !== undefined) {
+      return { rowNumber, text, status: "duplicate", message: `Duplicate of row ${duplicateOf}; this copy will be skipped.` };
+    }
+    firstRowForText.set(text, rowNumber);
+    return { rowNumber, text, status: "ready" };
+  });
+}
+
 export function parseRequirementsFile(
   fileName: string,
   source: string,
@@ -104,29 +180,14 @@ export function parseRequirementsFile(
   } else if (extension === "json") {
     rows = rowsFromJson(source);
   } else {
-    throw new Error("Choose a CSV or JSON file.");
+    throw new Error("Choose a CSV, JSON, or Excel (.xlsx) file.");
   }
 
-  const firstRowForText = new Map<string, number>();
-  return rows.map(({ rowNumber, text }) => {
-    if (!text) {
-      return {
-        rowNumber,
-        text,
-        status: "invalid",
-        message: "Requirement text is empty or missing.",
-      };
-    }
-    const duplicateOf = firstRowForText.get(text);
-    if (duplicateOf !== undefined) {
-      return {
-        rowNumber,
-        text,
-        status: "duplicate",
-        message: `Duplicate of row ${duplicateOf}; this copy will be skipped.`,
-      };
-    }
-    firstRowForText.set(text, rowNumber);
-    return { rowNumber, text, status: "ready" };
-  });
+  return validateRows(rows);
+}
+
+export async function parseExcelRequirementsFile(
+  source: ArrayBuffer,
+): Promise<IngestionRow[]> {
+  return validateRows(await rowsFromExcel(source));
 }

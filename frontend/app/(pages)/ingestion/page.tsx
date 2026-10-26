@@ -5,6 +5,7 @@ import {
   AlertCircle,
   Check,
   CheckCircle2,
+  ChevronDown,
   FileJson,
   FileSpreadsheet,
   FileUp,
@@ -16,6 +17,7 @@ import {
 import DashboardLayout from "@/components/DashboardLayout";
 import { backendFetch, RAVEN_BASE_PATH } from "@/lib/backend-api";
 import {
+  parseExcelRequirementsFile,
   parseRequirementsFile,
   type IngestionRow,
 } from "@/lib/ingestion";
@@ -89,6 +91,8 @@ export default function IngestionPage() {
     output_tokens: 0,
     total_tokens: 0,
   });
+  const [isReviewExpanded, setIsReviewExpanded] = useState(false);
+  const [isFormatsExpanded, setIsFormatsExpanded] = useState(false);
 
   const readyRows = useMemo(
     () => rows.filter((row) => row.status === "ready"),
@@ -98,6 +102,12 @@ export default function IngestionPage() {
   const duplicateCount = rows.filter((row) => row.status === "duplicate").length;
   const importedCount = results.filter((result) => result.status === "imported").length;
   const failedCount = results.filter((result) => result.status === "failed").length;
+  const processedCount = isImporting
+    ? Math.min(Math.max(progress, importedCount + failedCount), readyRows.length)
+    : importedCount + failedCount;
+  const importProgressPercent = readyRows.length
+    ? Math.round((processedCount / readyRows.length) * 100)
+    : 0;
   const retryRows = readyRows.filter(
     (row) =>
       !results.some(
@@ -126,6 +136,7 @@ export default function IngestionPage() {
     setProgress(0);
     setAnalysisResults([]);
     setAnalysisError("");
+    setIsReviewExpanded(false);
     setAnalysisTokenUsage({ input_tokens: 0, output_tokens: 0, total_tokens: 0 });
     if (file.size > MAX_FILE_SIZE) {
       setRows([]);
@@ -135,7 +146,10 @@ export default function IngestionPage() {
     }
 
     try {
-      const parsed = parseRequirementsFile(file.name, await file.text());
+      const extension = file.name.split(".").pop()?.toLowerCase();
+      const parsed = extension === "xlsx"
+        ? await parseExcelRequirementsFile(await file.arrayBuffer())
+        : parseRequirementsFile(file.name, await file.text());
       setFileName(file.name);
       setRows(parsed);
     } catch (error) {
@@ -217,6 +231,8 @@ export default function IngestionPage() {
     setAnalysisProgress(0);
     setAnalysisResults([]);
     setAnalysisError("");
+    setIsReviewExpanded(false);
+    setIsFormatsExpanded(false);
     setAnalysisTokenUsage({ input_tokens: 0, output_tokens: 0, total_tokens: 0 });
     const outcomes: BatchAssessmentItem[] = [];
     const tokenTotals = { input_tokens: 0, output_tokens: 0, total_tokens: 0 };
@@ -272,7 +288,7 @@ export default function IngestionPage() {
 
   return (
     <DashboardLayout>
-      <div className="page-header-shell flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+      <div className="page-header-shell mx-auto flex w-full max-w-5xl flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <p className="text-xs font-semibold tracking-[0.18em] text-accent uppercase">
             Requirement workspace
@@ -281,7 +297,7 @@ export default function IngestionPage() {
             Ingest requirements
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-            Add a CSV or JSON file, review the records, then import them into
+            Add a CSV, JSON, or Excel file, review the records, then import them into
             your RAVEN workspace.
           </p>
         </div>
@@ -298,8 +314,8 @@ export default function IngestionPage() {
         ) : null}
       </div>
 
-      <div className="mt-7 grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <div className="space-y-5">
+      <div className="mx-auto mt-7 grid w-full max-w-5xl min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="min-w-0 space-y-5">
           <section
             aria-labelledby="upload-heading"
             className="page-panel sm:p-6"
@@ -324,8 +340,8 @@ export default function IngestionPage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".csv,.json,application/json,text/csv"
-              aria-label="Choose a CSV or JSON requirements file"
+              accept=".csv,.json,.xlsx,application/json,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              aria-label="Choose a CSV, JSON, or Excel requirements file"
               className="sr-only"
               disabled={isImporting || isAnalyzing}
               onChange={(event) => {
@@ -361,7 +377,7 @@ export default function IngestionPage() {
                 {fileName || "Drop your file here, or browse"}
               </span>
               <span className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                CSV and JSON files only
+                CSV, JSON, and Excel files only
               </span>
             </button>
             {parseError ? (
@@ -382,17 +398,29 @@ export default function IngestionPage() {
                 className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-zinc-800 dark:bg-zinc-950"
               >
                 <div className="flex flex-col gap-3 border-b border-zinc-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800">
-                  <div>
-                    <h2
-                      id="review-heading"
-                      className="text-base font-semibold text-zinc-900 dark:text-zinc-50"
-                    >
-                      2. Review before importing
-                    </h2>
-                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                      {fileName} · {rows.length} source rows
-                    </p>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsReviewExpanded((expanded) => !expanded)}
+                    aria-expanded={isReviewExpanded}
+                    aria-controls="requirements-review-table"
+                    className="group min-w-0 text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+                  >
+                    <span className="flex items-center gap-2">
+                      <ChevronDown
+                        aria-hidden="true"
+                        className={`h-4 w-4 shrink-0 text-zinc-400 transition-transform ${isReviewExpanded ? "rotate-180" : ""}`}
+                      />
+                      <span
+                        id="review-heading"
+                        className="text-base font-semibold text-zinc-900 group-hover:text-accent dark:text-zinc-50"
+                      >
+                        2. Review before importing
+                      </span>
+                    </span>
+                    <span className="mt-1 block pl-6 text-xs text-zinc-500 dark:text-zinc-400">
+                      {fileName} · {rows.length} source rows · {isReviewExpanded ? "Hide requirements" : "Show requirements"}
+                    </span>
+                  </button>
                   <div className="flex flex-wrap gap-2 text-xs font-medium">
                     <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
                       {readyRows.length} ready
@@ -409,7 +437,7 @@ export default function IngestionPage() {
                     ) : null}
                   </div>
                 </div>
-                <div className="max-h-80 overflow-auto">
+                {isReviewExpanded ? <div id="requirements-review-table" className="max-h-80 overflow-auto">
                   <table className="w-full min-w-[620px] text-left text-sm">
                     <thead className="sticky top-0 bg-zinc-50 text-xs font-semibold tracking-wide text-zinc-500 uppercase dark:bg-zinc-900 dark:text-zinc-400">
                       <tr>
@@ -449,12 +477,12 @@ export default function IngestionPage() {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </div> : null}
               </section>
 
               <section
                 aria-labelledby="import-heading"
-                className="flex flex-col gap-4 rounded-xl border border-zinc-200 bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] sm:flex-row sm:items-center sm:justify-between sm:p-6 dark:border-zinc-800 dark:bg-zinc-950"
+                className="grid min-w-0 gap-4 rounded-xl border border-zinc-200 bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:p-6 dark:border-zinc-800 dark:bg-zinc-950"
               >
                 <div>
                   <h2
@@ -468,9 +496,35 @@ export default function IngestionPage() {
                       ? `Saving row ${progress} of ${retryRows.length}…`
                       : failedCount > 0
                         ? `${failedCount} failed row${failedCount === 1 ? "" : "s"} can be retried.`
-                        : `${retryRows.length} requirement${retryRows.length === 1 ? "" : "s"} will be created.`}
+                        : importedCount > 0
+                          ? `${importedCount} requirement${importedCount === 1 ? "" : "s"} ingested successfully.`
+                          : `${retryRows.length} requirement${retryRows.length === 1 ? "" : "s"} will be created.`}
                   </p>
                 </div>
+                {(isImporting || importedCount > 0) && readyRows.length > 0 ? (
+                  <div className="mt-4 min-w-0 sm:col-span-2" aria-live="polite">
+                    <div className="mb-1.5 flex items-center justify-between text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                      <span>{isImporting ? "Import progress" : "Import complete"}</span>
+                      <span className="tabular-nums">{importProgressPercent}%</span>
+                    </div>
+                    <div
+                      className="h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800"
+                      role="progressbar"
+                      aria-label="Requirement import progress"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={importProgressPercent}
+                    >
+                      <div
+                        className="h-full rounded-full bg-accent transition-[width] duration-300"
+                        style={{ width: `${importProgressPercent}%` }}
+                      />
+                    </div>
+                    <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                      {processedCount} of {readyRows.length} requirements processed
+                    </p>
+                  </div>
+                ) : null}
                 <button
                   type="button"
                   onClick={() => void importRequirements()}
@@ -487,11 +541,11 @@ export default function IngestionPage() {
                     : failedCount > 0
                       ? "Retry failed rows"
                       : importedCount > 0
-                        ? "Import remaining rows"
+                        ? "Complete"
                         : "Import requirements"}
                 </button>
-                {results.length > 0 ? (
-                  <div aria-live="polite" className="basis-full text-sm">
+                {results.length > 0 && failedCount > 0 ? (
+                  <div aria-live="polite" className="min-w-0 text-sm sm:col-span-2">
                     <p className="font-medium text-zinc-800 dark:text-zinc-100">
                       {importedCount} imported · {failedCount} failed
                     </p>
@@ -499,21 +553,6 @@ export default function IngestionPage() {
                       <ul className="mt-2 space-y-1 text-xs text-red-700 dark:text-red-300">
                         {results
                           .filter((result) => result.status === "failed")
-                          .map((result) => (
-                            <li key={result.rowNumber}>
-                              Row {result.rowNumber}: {result.message}
-                            </li>
-                          ))}
-                      </ul>
-                    ) : (
-                      <p className="mt-1 text-xs text-emerald-700 dark:text-emerald-300">
-                        All validated rows were saved. Imported rows cannot be rolled back as a batch.
-                      </p>
-                    )}
-                    {importedCount > 0 ? (
-                      <ul className="mt-2 space-y-1 text-xs text-emerald-700 dark:text-emerald-300">
-                        {results
-                          .filter((result) => result.status === "imported")
                           .map((result) => (
                             <li key={result.rowNumber}>
                               Row {result.rowNumber}: {result.message}
@@ -619,10 +658,27 @@ export default function IngestionPage() {
 
         <aside className="space-y-4">
           <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-              Accepted formats
-            </h2>
-            <div className="mt-4 space-y-4">
+            <button
+              type="button"
+              onClick={() => setIsFormatsExpanded((expanded) => !expanded)}
+              aria-expanded={isFormatsExpanded}
+              aria-controls="accepted-formats"
+              className="flex w-full items-center justify-between gap-3 text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+            >
+              <span>
+                <span className="block text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                  Accepted formats
+                </span>
+                <span className="mt-1 block text-xs text-zinc-500 dark:text-zinc-400">
+                  {isFormatsExpanded ? "Hide file guidance" : "CSV · JSON · Excel"}
+                </span>
+              </span>
+              <ChevronDown
+                aria-hidden="true"
+                className={`h-4 w-4 shrink-0 text-zinc-400 transition-transform ${isFormatsExpanded ? "rotate-180" : ""}`}
+              />
+            </button>
+            {isFormatsExpanded ? <div id="accepted-formats" className="mt-4 space-y-4">
               <div className="flex gap-3">
                 <FileSpreadsheet aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
                 <div>
@@ -641,7 +697,16 @@ export default function IngestionPage() {
                   </p>
                 </div>
               </div>
-            </div>
+              <div className="flex gap-3">
+                <FileSpreadsheet aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                <div>
+                  <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">Excel</p>
+                  <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+                    Use the first worksheet with a header named <code className="rounded bg-zinc-100 px-1 py-0.5 dark:bg-zinc-800">text</code>.
+                  </p>
+                </div>
+              </div>
+            </div> : null}
           </section>
 
           {results.length > 0 && failedCount === 0 ? (
