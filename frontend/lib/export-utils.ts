@@ -15,10 +15,8 @@ import {
   SECTION_TITLES,
 } from "@/lib/pdf-sections";
 import {
-  buildMetadataCrosswalk,
   buildReportReferences,
   formatDateTime,
-  matrixToCsv,
   type ExportDataset,
   type ReportReferences,
 } from "@/lib/validation-pack";
@@ -176,7 +174,8 @@ function readmeForPack(data: ExportDataset, packReference: string): string {
     "04_Traceability_Matrix.pdf",
     "05_Gap_Report.pdf",
     "06_Evidence_Index.pdf",
-    "Traceability_Matrix.csv — optional machine-readable traceability export",
+    "Traceability_Matrix.csv — readable requirement-to-risk-to-assurance-to-test matrix",
+    "Traceability_Matrix_Data.csv — machine-readable traceability export",
     "export-metadata.json — report-reference and database-identifier crosswalk",
     "",
     "How to read this pack",
@@ -188,9 +187,9 @@ function readmeForPack(data: ExportDataset, packReference: string): string {
     "",
     "Test scripts",
     "------------",
-    "The Test Scripts section reports the stored lifecycle status and reproduces the stored script text.",
+    "The Test Scripts section reproduces the stored script text.",
     "Execution results, pass/fail outcomes, and approvals are not stored in the current export dataset.",
-    "A lifecycle status such as APPROVED is not evidence that a script was executed or passed.",
+    "Execution results, pass/fail outcomes, and approvals are not stored in the export dataset.",
     "",
     "Compliance",
     "----------",
@@ -233,12 +232,6 @@ export async function generateValidationPackZip(data: ExportDataset): Promise<Bl
   ];
   zip.file("RAVEN_Validation_Pack.pdf", generateValidationPackPDF(data, refs));
   for (const [filename, blob] of sectionFiles) zip.file(filename, blob);
-  zip.file("Traceability_Matrix.csv", matrixToCsv(data));
-  zip.file(
-    "export-metadata.json",
-    JSON.stringify(buildMetadataCrosswalk(data, refs), null, 2),
-  );
-  zip.file("README.md", readmeForPack(data, refs.packReference));
   return zip.generateAsync({ type: "blob", compression: "DEFLATE" });
 }
 

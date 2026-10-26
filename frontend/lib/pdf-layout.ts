@@ -24,8 +24,11 @@ export interface PdfBuilderOptions {
 const MARGIN = 14;
 const HEADER_HEIGHT = 12;
 const FOOTER_HEIGHT = 14;
-const BODY_FONT = 9.4;
-const BODY_LINE = 4.55;
+// Keep exported PDFs comfortable to read when printed or viewed at 100%.
+// The previous values made dense tables and narrative sections feel like
+// spreadsheet output, especially in the traceability matrix.
+const BODY_FONT = 10.2;
+const BODY_LINE = 5;
 
 function asText(value: unknown): string {
   if (value === null || value === undefined) return "";
@@ -166,7 +169,7 @@ export class PdfBuilder {
   subheading(title: string, options: { color?: [number, number, number] } = {}): void {
     this.ensureSpace(13);
     this.doc.setFont("helvetica", "bold");
-    this.doc.setFontSize(10.6);
+    this.doc.setFontSize(11.2);
     this.doc.setTextColor(...(options.color || [21, 35, 58]));
     const lines = this.doc.splitTextToSize(title, this.contentWidth);
     for (const line of lines) {
@@ -228,7 +231,7 @@ export class PdfBuilder {
   ): void {
     this.ensureSpace(18);
     this.doc.setFont("helvetica", "bold");
-    this.doc.setFontSize(9.6);
+    this.doc.setFontSize(10);
     this.doc.setTextColor(21, 35, 58);
     const labelLines = this.doc.splitTextToSize(label, this.contentWidth);
     for (const line of labelLines) {
@@ -238,7 +241,7 @@ export class PdfBuilder {
     }
     if (options.meta) {
       this.doc.setFont("helvetica", "normal");
-      this.doc.setFontSize(7.6);
+      this.doc.setFontSize(8.2);
       this.doc.setTextColor(96, 109, 128);
       const metaLines = this.doc.splitTextToSize(options.meta, this.contentWidth);
       for (const line of metaLines) {
@@ -257,12 +260,12 @@ export class PdfBuilder {
     const valueWidth = this.contentWidth - labelWidth;
     const valueText = asText(value) || "Not recorded";
     this.doc.setFont("helvetica", "normal");
-    this.doc.setFontSize(8.1);
+    this.doc.setFontSize(8.8);
     const lines = this.doc.splitTextToSize(valueText, valueWidth);
     const height = Math.max(5.2, lines.length * 3.8 + 1.4);
     this.ensureSpace(height);
     this.doc.setFont("helvetica", "bold");
-    this.doc.setFontSize(8.1);
+    this.doc.setFontSize(8.8);
     this.doc.setTextColor(96, 109, 128);
     this.doc.text(label, this.margin, this.y);
     this.doc.setFont("helvetica", "normal");
@@ -320,8 +323,8 @@ export class PdfBuilder {
     const naturalWidth = columns.reduce((sum, column) => sum + column.width, 0);
     const scale = this.contentWidth / naturalWidth;
     const widths = columns.map((column) => column.width * scale);
-    const fontSize = options.fontSize || 7;
-    const lineHeight = Math.max(2.8, fontSize * 0.42);
+    const fontSize = options.fontSize || 8;
+    const lineHeight = Math.max(3.2, fontSize * 0.45);
     const headerFill = options.headerFill || [225, 232, 240];
 
     const splitCells = (row: Record<string, unknown>): string[][] =>
@@ -459,7 +462,8 @@ export class PdfBuilder {
         this.doc.line(dotsStart, y - 0.7, dotsEnd, y - 0.7);
         this.doc.setLineDashPattern([], 0);
       }
-      this.doc.text("00", this.pageWidth - this.margin, y, { align: "right" });
+      // Section pages are not known until the body has been rendered. Leave the
+      // value blank here; fillToc writes the real page after all sections exist.
       result.push({ title, page, tocPage: this.currentPage, y, pageWidth: this.pageWidth });
       this.y += 7.2;
     }
@@ -472,7 +476,7 @@ export class PdfBuilder {
       if (!page) continue;
       this.doc.setPage(entry.tocPage);
       this.doc.setFillColor(255, 255, 255);
-      this.doc.rect(entry.pageWidth - this.margin - 12, entry.y - 4, 12, 5, "F");
+      this.doc.rect(entry.pageWidth - this.margin - 16, entry.y - 4, 16, 5, "F");
       this.doc.setFont("helvetica", "normal");
       this.doc.setFontSize(9.2);
       this.doc.setTextColor(42, 52, 68);

@@ -12,6 +12,7 @@ import {
   getEvidenceField,
   humanizeDecisionPath,
   matrixToCsv,
+  matrixToReadableCsv,
   parseTestScript,
   requirementHeading,
   riskReference,
@@ -69,6 +70,12 @@ describe("validation-pack references", () => {
     );
     expect(crosswalk).not.toHaveProperty("report_reference");
     expect(crosswalk.pack_reference).toBe("VP-TEST0001");
+  });
+
+  it("keeps RPN points distinct from normalized RPN in the matrix export", () => {
+    const csv = matrixToCsv(fixtureDataset);
+    expect(csv).toContain("rpn_points,rpn");
+    expect(csv).toContain(",84,4.2,");
   });
 });
 
@@ -151,12 +158,10 @@ describe("test script parsing", () => {
 });
 
 describe("gap derivation", () => {
-  it("derives test lifecycle and absent-compliance findings without inventing a verdict", () => {
+  it("derives substantive gaps without exposing test lifecycle status", () => {
     const refs = buildReportReferences(fixtureDataset);
     const findings = deriveGapFindings(fixtureDataset, refs);
-    expect(findings.some((finding) => finding.category === "Test lifecycle")).toBe(
-      true,
-    );
+    expect(findings.some((finding) => finding.category === "Test lifecycle")).toBe(false);
     const compliance = findings.find(
       (finding) => finding.category === "Compliance evaluation not recorded",
     );
@@ -263,6 +268,14 @@ describe("traceability and search", () => {
     expect(csv.split("\n")[0]).toContain("reason_code");
     expect(csv.split("\n")[0]).toContain("test_origin");
     expect(csv).toContain('"A title with a comma, and a ""quote"""');
+  });
+
+  it("provides a readable traceability matrix export", () => {
+    const csv = matrixToReadableCsv(fixtureDataset);
+    expect(csv.split("\n")[0]).toContain("RPN points");
+    expect(csv.split("\n")[0]).toContain("Normalized RPN");
+    expect(csv.split("\n")[0]).toContain("Coverage status");
+    expect(csv).toContain("84,4.2");
   });
 
   it("filters by requirement key and title and leaves selection keys stable", () => {

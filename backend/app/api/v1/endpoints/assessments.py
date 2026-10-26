@@ -73,7 +73,10 @@ def _serialise(assessment: RiskAssessment) -> dict:
         "id": str(assessment.id),
         "requirement_id": str(requirement.id) if requirement is not None else None,
         "requirement_key": requirement.req_key if requirement is not None else None,
-        "requirement_title": requirement.description if requirement is not None else None,
+        # Preserve the text from the version that was actually assessed. Using
+        # the requirement's current description here makes stale v1 rows look
+        # like v2 after the requirement is edited.
+        "requirement_title": version.text if version is not None else None,
         "requirement_version_id": str(assessment.requirement_version_id),
         "version": version.version_number if version is not None else None,
         "current_requirement_version": (

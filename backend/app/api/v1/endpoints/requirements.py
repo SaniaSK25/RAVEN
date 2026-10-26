@@ -14,6 +14,7 @@ from fastapi import APIRouter, HTTPException, Query, Response
 from app.db.dependencies import DBSession
 from app.models.assurance_decision import AssuranceDecision
 from app.models.requirement import Requirement
+from app.models.enums import RequirementStatus
 from app.models.risk_assessment import RiskAssessment
 from app.models.test_script import TestScript
 from app.models.token_usage import TokenUsage
@@ -78,7 +79,11 @@ def list_requirements(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=500),
 ):
-    query = db.query(Requirement).order_by(Requirement.created_at.desc())
+    query = (
+        db.query(Requirement)
+        .filter(Requirement.status != RequirementStatus.RETIRED)
+        .order_by(Requirement.created_at.desc())
+    )
     total = query.count()
     rows = query.offset(skip).limit(limit).all()
     return {
@@ -121,6 +126,10 @@ def get_one(requirement_id: str, db: DBSession):
             db.query(Requirement).filter(Requirement.req_key == requirement_id).first()
         )
     if requirement is None:
+        raise HTTPException(
+            status_code=404, detail=f"requirement {requirement_id} not found"
+        )
+    if requirement.status == RequirementStatus.RETIRED:
         raise HTTPException(
             status_code=404, detail=f"requirement {requirement_id} not found"
         )

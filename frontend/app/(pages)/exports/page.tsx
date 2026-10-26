@@ -48,7 +48,7 @@ export default function ExportsPage() {
             <div>
               <h2 className="text-xl font-semibold">Validation Pack</h2>
               <p className="mt-1 max-w-2xl text-sm leading-6 text-blue-100/80">
-                Search and select requirements above the list, then generate the pack. The ZIP includes the consolidated PDF, section PDFs, traceability CSV, evidence index, and README.
+                Search and select requirements above the list, then generate the pack. The ZIP contains the consolidated PDF and focused section PDFs, including the traceability graph and matrix.
               </p>
             </div>
           </div>

@@ -179,6 +179,10 @@ export default function AssessmentsTable({
                   >
                     {item.title}
                   </Link>
+                  <span className="mt-1 block text-xs text-zinc-500 dark:text-zinc-400">
+                    Assessed against {item.assessedVersion}
+                    {isStale ? ` · current ${item.currentVersion}` : ""}
+                  </span>
                   <Link
                     href={detailHref(item.requirementId)}
                     tabIndex={-1}

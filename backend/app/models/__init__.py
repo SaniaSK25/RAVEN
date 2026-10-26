@@ -42,6 +42,7 @@ from app.models.stored_evidence import Evidence
 from app.models.test_script import TestScript
 from app.models.token_usage import TokenUsage
 from app.models.trace_link import TraceLink
+from app.models.user import User
 
 __all__ = [
     "AssuranceDecision",
@@ -77,4 +78,5 @@ __all__ = [
     "TraceLinkType",
     "TraceNodeType",
     "TraceOrigin",
+    "User",
 ]

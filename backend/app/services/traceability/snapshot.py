@@ -39,6 +39,7 @@ class RiskInfo:
     severity: int | None = None
     probability: int | None = None
     detectability: int | None = None
+    rpn_points: int | float | None = None
     rpn: float | int | None = None
     band: str | None = None  # "Low" | "Medium" | "High"
 

@@ -87,6 +87,7 @@ def snapshot_from_db(session) -> TraceSnapshot:
             severity=severity,
             probability=probability,
             detectability=detectability,
+            rpn_points=assessment.rpn_points,
             rpn=assessment.rpn,
             band=band,
         )

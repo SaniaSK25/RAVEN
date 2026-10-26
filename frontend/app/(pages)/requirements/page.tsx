@@ -46,6 +46,7 @@ export default function RequirementsPage() {
 
   const search = query.trim().toLowerCase();
   const matches = (data?.items ?? [])
+    .filter((item) => item.status.toUpperCase() !== "RETIRED")
     .filter((item) =>
       !search ||
       `${item.req_key ?? ""} ${item.description}`.toLowerCase().includes(search),

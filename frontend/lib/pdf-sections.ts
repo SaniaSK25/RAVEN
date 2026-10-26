@@ -61,7 +61,6 @@ function requirementSummary(builder: PdfBuilder, requirement: PackRequirement): 
     "Requirement version",
     requirement.version ? `Version ${requirement.version}` : "Not recorded",
   );
-  builder.metaRow("Lifecycle status", requirement.status || "Not recorded");
 }
 
 function renderEvidenceGroup(
@@ -162,10 +161,10 @@ function renderFactorTrace(
     const lines = humanizeDecisionPath(trace.decision_path);
     if (lines.length && lines[0] !== "Not recorded") {
       builder.paragraph("Decision inputs", {
-        fontSize: 8.2,
+        fontSize: 8.8,
         color: [96, 109, 128],
       });
-      builder.bullets(lines, { fontSize: 8.4 });
+      builder.bullets(lines, { fontSize: 8.8 });
     }
   }
 }
@@ -181,7 +180,6 @@ function renderRiskRecord(
   const evidence = evidenceRecordForRisk(requirement, risk);
   builder.subheading(`Risk Assessment — ${key}, Version ${requirement.version ?? "Not recorded"}`);
   builder.metaRow("Report reference", riskRef);
-  builder.metaRow("Assessment lifecycle", risk.status || "Not recorded");
   builder.metaRow("Freshness", risk.freshness || "Not recorded");
   builder.metaRow("Current assessment", risk.is_current ? "Yes" : "No");
   builder.metaRow("Created", formatDateTime(risk.created_at));
@@ -190,13 +188,35 @@ function renderRiskRecord(
   builder.metaRow("GAMP category", formatValue(risk.gamp_category));
 
   builder.subheading("Risk score");
-  builder.metaRow("Severity", risk.severity ?? "Not recorded");
-  builder.metaRow("Probability", risk.probability ?? "Not recorded");
-  builder.metaRow("Detectability", risk.detectability ?? "Not recorded");
-  builder.metaRow("RPN points", risk.rpn_points ?? "Not recorded");
-  builder.metaRow("Normalized RPN", risk.rpn ?? "Not recorded");
-  builder.metaRow("Risk band", riskBandLabel(risk.band));
-  builder.metaRow("Configuration version", risk.configuration_version ?? "Not recorded");
+  builder.table(
+    [
+      { header: "Factor", key: "factor", width: 24 },
+      { header: "Score", key: "score", width: 12, align: "center" },
+      { header: "Rule", key: "rule", width: 28 },
+      { header: "Rule version", key: "rule_version", width: 18 },
+      { header: "Rationale", key: "rationale", width: 62 },
+    ],
+    [
+      ["Severity", risk.severity, risk.severity_result],
+      ["Probability", risk.probability, risk.probability_result],
+      ["Detectability", risk.detectability, risk.detectability_result],
+    ].map(([factor, score, trace]) => ({
+      factor,
+      score: score ?? "Not recorded",
+      rule: (trace as RiskRecord["severity_result"])?.rule_id || "Not recorded",
+      rule_version:
+        (trace as RiskRecord["severity_result"])?.rule_version || "Not recorded",
+      rationale:
+        (trace as RiskRecord["severity_result"])?.reasoning || "Not recorded",
+    })),
+    { fontSize: 8.6 },
+  );
+  builder.metadataGroup("Derived classification", [
+    ["RPN points", risk.rpn_points ?? "Not recorded"],
+    ["Normalized RPN", risk.rpn ?? "Not recorded"],
+    ["Risk band", riskBandLabel(risk.band)],
+    ["Configuration version", risk.configuration_version ?? "Not recorded"],
+  ]);
 
   builder.subheading("Scoring rule trace");
   renderFactorTrace(builder, "Severity", risk.severity, risk.severity_result);
@@ -301,9 +321,7 @@ function renderAssuranceRecord(
     for (const test of tests) {
       builder.labelParagraph(
         `${testReference(refs, test.id)} — ${testDisplayTitle(test, testReference(refs, test.id))}`,
-        `Lifecycle status: ${test.status || "Not recorded"} · Freshness: ${
-          test.freshness || "Not recorded"
-        }`,
+        `Freshness: ${test.freshness || "Not recorded"}`,
       );
     }
   }
@@ -354,7 +372,6 @@ function renderTestRecord(
   builder.metaRow("Report reference", testRef);
   builder.metaRow("Title", testDisplayTitle(test, testRef));
   builder.metaRow("External code", test.external_code || "Not recorded");
-  builder.metaRow("Lifecycle status", test.status || "Not recorded");
   builder.metaRow("Freshness", test.freshness || "Not recorded");
   builder.metaRow("Script revision", test.version ?? "Not recorded");
   builder.metaRow("Origin", test.origin || "Not recorded");
@@ -374,7 +391,7 @@ function renderTestRecord(
       : "Not recorded",
   );
   builder.paragraph(
-    "Execution status: not recorded. RAVEN stores the script lifecycle status shown above; it does not store an execution result, and no pass or fail result is implied.",
+    "Execution results are not recorded in the export dataset; no pass or fail result is implied.",
     { color: [120, 75, 20], fontSize: 8.5 },
   );
 
@@ -414,7 +431,7 @@ export function renderTestScriptsSection(
 ): void {
   builder.startSection(SECTION_TITLES.tests, { newPage: true, landscape: false });
   builder.paragraph(
-    "Test scripts are reproduced from the stored script text. Lifecycle status is shown separately from execution; no execution result is stored by RAVEN.",
+    "Test scripts are reproduced from the stored script text. Execution results are not stored by RAVEN.",
     { color: [96, 109, 128], fontSize: 8.6 },
   );
   orderedRequirements(data).forEach((requirement, index) => {
@@ -436,25 +453,165 @@ export function renderTestScriptsSection(
   });
 }
 
-const TRACE_COLUMNS: PdfTableColumn[] = [
+const TRACE_RISK_COLUMNS: PdfTableColumn[] = [
   { header: "Requirement", key: "requirement_id", width: 19 },
   { header: "Version", key: "requirement_version", width: 9 },
-  { header: "Risk", key: "risk_id", width: 25 },
+  { header: "Risk reference", key: "risk_id", width: 27 },
   { header: "Severity", key: "severity", width: 8, align: "center" },
   { header: "Probability", key: "probability", width: 9, align: "center" },
   { header: "Detectability", key: "detectability", width: 9, align: "center" },
-  { header: "RPN points", key: "rpn", width: 9, align: "center" },
-  { header: "Risk band", key: "band", width: 10 },
+  { header: "RPN points", key: "rpn_points", width: 11, align: "center" },
+  { header: "Normalized RPN", key: "rpn", width: 13, align: "center" },
+  { header: "Risk band", key: "band", width: 12 },
+  { header: "Stale", key: "stale", width: 8, align: "center" },
+];
+
+const TRACE_COVERAGE_COLUMNS: PdfTableColumn[] = [
+  { header: "Requirement", key: "requirement_id", width: 19 },
+  { header: "Version", key: "requirement_version", width: 9 },
   { header: "Assurance level", key: "assurance_level", width: 13 },
   { header: "Assurance label", key: "assurance_label", width: 23 },
   { header: "Reason code", key: "reason_code", width: 20 },
-  { header: "Test", key: "test_id", width: 30 },
-  { header: "Test title", key: "test_title", width: 27 },
+  { header: "Test reference", key: "test_id", width: 24 },
+  { header: "Test title", key: "test_title", width: 26 },
   { header: "Test origin", key: "test_origin", width: 12 },
-  { header: "Coverage", key: "coverage_status", width: 20 },
-  { header: "Stale", key: "stale", width: 8, align: "center" },
+  { header: "Coverage status", key: "coverage_status", width: 20 },
   { header: "Orphan flags", key: "orphan_flags", width: 14 },
 ];
+
+function traceabilityDisplayRows(data: ExportDataset): Array<Record<string, unknown>> {
+  return data.traceability.rows.map((row) => ({
+    ...row,
+    requirement_id: row.requirement_id || "Unlinked",
+    requirement_version: row.requirement_version || "—",
+    risk_id: row.risk_id || "—",
+    rpn_points: row.rpn_points ?? "—",
+    rpn: row.rpn ?? "—",
+    band: riskBandLabel(row.band),
+    assurance_level: assuranceLevelLabel(row.assurance_level),
+    assurance_label: row.assurance_label || "—",
+    reason_code: row.reason_code || "—",
+    test_title: row.test_title || "—",
+    test_id: row.test_id || "—",
+    test_origin: row.test_origin || "—",
+    coverage_status: coverageLabel(row.coverage_status),
+    stale: row.stale ? "Yes" : "No",
+    orphan_flags: String(row.orphan_flags || "").replace(/;/g, ", ") || "—",
+  }));
+}
+
+function renderTraceabilityGraph(builder: PdfBuilder, data: ExportDataset): void {
+  const graph = data.traceability.graph;
+  if (!graph || !graph.edges.length) {
+    builder.paragraph(
+      "No graph edges are available for the selected requirement versions. The matrix below preserves the available row-level traceability data.",
+      { color: [96, 109, 128], fontSize: 9 },
+    );
+    return;
+  }
+  const nodes = new Map(graph.nodes.map((node) => [node.id, node]));
+  const nodeLabel = (id: string): string => {
+    const node = nodes.get(id);
+    if (!node) return "Unresolved node";
+    const type = node.type.charAt(0).toUpperCase() + node.type.slice(1);
+    return `${type}: ${node.label}${node.orphan || node.orphaned ? " (orphaned)" : ""}`;
+  };
+  builder.subheading("Traceability graph");
+  builder.paragraph(
+    "The diagram below shows the directed traceability chain. The relationship table beneath it preserves every backend edge in a searchable, printable form.",
+    { color: [96, 109, 128], fontSize: 9 },
+  );
+  builder.ensureSpace(96);
+  const doc = builder.doc;
+  const graphTop = builder.y;
+  const graphHeight = 84;
+  const nodeWidth = 54;
+  const nodeHeight = 18;
+  const columnGap = (builder.contentWidth - nodeWidth * 4) / 3;
+  const types = ["requirement", "risk", "assurance", "test"];
+  const colors: Record<string, { fill: [number, number, number]; stroke: [number, number, number]; text: [number, number, number] }> = {
+    requirement: { fill: [245, 245, 245], stroke: [82, 82, 91], text: [24, 24, 27] },
+    risk: { fill: [254, 242, 242], stroke: [185, 28, 28], text: [127, 29, 29] },
+    assurance: { fill: [244, 244, 245], stroke: [113, 113, 122], text: [63, 63, 70] },
+    test: { fill: [239, 246, 255], stroke: [29, 78, 216], text: [30, 58, 138] },
+  };
+  const positions = new Map<string, { x: number; y: number; type: string }>();
+  types.forEach((type, column) => {
+    const columnNodes = graph.nodes.filter((node) => node.type === type);
+    const visibleNodes = columnNodes.slice(0, 4);
+    const x = builder.margin + column * (nodeWidth + columnGap);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(96, 109, 128);
+    doc.text(type.toUpperCase(), x, graphTop - 2);
+    visibleNodes.forEach((node, index) => {
+      const y = graphTop + 5 + index * 20;
+      positions.set(node.id, { x, y, type });
+      const style = colors[type];
+      doc.setFillColor(...style.fill);
+      doc.setDrawColor(...style.stroke);
+      doc.setLineWidth(0.5);
+      doc.roundedRect(x, y, nodeWidth, nodeHeight, 2.5, 2.5, "FD");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7.2);
+      doc.setTextColor(...style.text);
+      const label = `${node.label}${node.orphan || node.orphaned ? " · orphaned" : ""}`;
+      const lines = doc.splitTextToSize(label, nodeWidth - 4).slice(0, 3);
+      const lineHeight = 2.8;
+      const startY = y + nodeHeight / 2 - ((lines.length - 1) * lineHeight) / 2 + 1.8;
+      lines.forEach((line: string, lineIndex: number) => {
+        doc.text(line, x + nodeWidth / 2, startY + lineIndex * lineHeight, { align: "center" });
+      });
+    });
+    if (columnNodes.length > visibleNodes.length) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(96, 109, 128);
+      doc.text(`+ ${columnNodes.length - visibleNodes.length} more`, x, graphTop + 83);
+    }
+  });
+  graph.edges.forEach((edge) => {
+    const source = positions.get(edge.source);
+    const target = positions.get(edge.target);
+    if (!source || !target) return;
+    const x1 = source.x + nodeWidth;
+    const y1 = source.y + nodeHeight / 2;
+    const x2 = target.x;
+    const y2 = target.y + nodeHeight / 2;
+    const orphaned = edge.stale || nodes.get(edge.source)?.orphaned || nodes.get(edge.target)?.orphaned;
+    const edgeColor: [number, number, number] = orphaned ? [217, 119, 6] : [100, 116, 139];
+    doc.setDrawColor(...edgeColor);
+    doc.setLineWidth(0.45);
+    if (orphaned) doc.setLineDashPattern([1.5, 1.2], 0);
+    doc.line(x1, y1, x2 - 2, y2);
+    doc.setLineDashPattern([], 0);
+    doc.setFillColor(...edgeColor);
+    doc.triangle(x2 - 2, y2, x2 - 5, y2 - 1.5, x2 - 5, y2 + 1.5, "F");
+  });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.2);
+  doc.setTextColor(96, 109, 128);
+  doc.text("Solid line = current relationship", builder.margin, graphTop + graphHeight);
+  doc.text("Dashed amber line = stale or orphaned relationship", builder.margin + 52, graphTop + graphHeight);
+  builder.y = graphTop + graphHeight + 5;
+  builder.table(
+    [
+      { header: "From node", key: "from", width: 72 },
+      { header: "Relationship", key: "relationship", width: 30 },
+      { header: "To node", key: "to", width: 72 },
+      { header: "State", key: "state", width: 24 },
+    ],
+    graph.edges.map((edge) => ({
+      from: nodeLabel(edge.source),
+      relationship: edge.type.replace(/_/g, " "),
+      to: nodeLabel(edge.target),
+      state: edge.stale || nodes.get(edge.source)?.orphaned || nodes.get(edge.target)?.orphaned
+        ? "Stale / orphaned"
+        : "Current",
+    })),
+    { fontSize: 8.6 },
+  );
+}
 
 export function renderTraceabilitySection(
   builder: PdfBuilder,
@@ -468,22 +625,43 @@ export function renderTraceabilitySection(
   const summary = traceabilitySummary(data);
   builder.paragraph(
     "Coverage and orphan semantics are supplied by the backend traceability service. O2 orphan tests have no linked requirement and are shown as Unlinked.",
-    { color: [96, 109, 128], fontSize: 8.4 },
+    { color: [96, 109, 128], fontSize: 9 },
   );
   builder.subheading("Coverage summary");
-  builder.metaRow(
-    "Requirements · covered by tests · covered by assurance · uncovered · stale",
-    `${summary.requirements} · ${summary.covered_by_tests} · ${summary.covered_by_assurance} · ${summary.uncovered} · ${summary.stale}`,
+  builder.table(
+    [
+      { header: "Coverage category", key: "category", width: 38 },
+      { header: "Count", key: "count", width: 14, align: "center" },
+      { header: "Definition", key: "definition", width: 98 },
+    ],
+    [
+      { category: "Requirements", count: summary.requirements, definition: "Selected requirement versions" },
+      { category: "Covered by tests", count: summary.covered_by_tests, definition: "At least one active test covers the requirement" },
+      { category: "Covered by assurance", count: summary.covered_by_assurance, definition: "An assurance decision covers the requirement" },
+      { category: "Uncovered", count: summary.uncovered, definition: "No test or assurance coverage is recorded" },
+      { category: "Stale", count: summary.stale, definition: "Coverage is present but marked stale" },
+    ],
+    { fontSize: 8.8 },
   );
-  builder.metaRow(
-    "Traceability rows · stale rows",
-    `${summary.rows} · ${summary.stale_rows}`,
-  );
-  builder.metaRow(
-    "O1 · O2 · O3 · total orphan findings",
-    `${summary.orphans.O1} · ${summary.orphans.O2} · ${summary.orphans.O3} · ${summary.orphans.total}`,
+  builder.y += 3;
+  builder.table(
+    [
+      { header: "Traceability measure", key: "measure", width: 52 },
+      { header: "Count", key: "count", width: 14, align: "center" },
+      { header: "Orphan finding", key: "orphan", width: 84 },
+    ],
+    [
+      { measure: "Traceability rows", count: summary.rows, orphan: "O1 — requirement coverage issue" },
+      { measure: "Stale rows", count: summary.stale_rows, orphan: "O2 — test has no linked requirement" },
+      { measure: "Orphan findings", count: summary.orphans.total, orphan: "O3 — risk or assurance linkage issue" },
+      { measure: "O1 / O2 / O3 breakdown", count: `${summary.orphans.O1} / ${summary.orphans.O2} / ${summary.orphans.O3}`, orphan: "Counts are shown in O1 / O2 / O3 order" },
+    ],
+    { fontSize: 8.8 },
   );
   builder.y += 2;
+
+  renderTraceabilityGraph(builder, data);
+  builder.y += 3;
 
   if (!data.traceability.rows.length) {
     builder.paragraph(
@@ -492,22 +670,15 @@ export function renderTraceabilitySection(
     return;
   }
 
-  const rows = data.traceability.rows.map((row) => ({
-    ...row,
-    requirement_id: row.requirement_id || "Unlinked",
-    requirement_version: row.requirement_version || "—",
-    risk_id: row.risk_id || "—",
-    band: riskBandLabel(row.band),
-    test_title: row.test_title || "—",
-    test_id: row.test_id || "—",
-    coverage_status: coverageLabel(row.coverage_status),
-    stale: row.stale ? "Yes" : "No",
-    orphan_flags: String(row.orphan_flags || "").replace(/;/g, ", ") || "—",
-  }));
-  builder.table(TRACE_COLUMNS, rows, { fontSize: 6.7 });
+  const rows = traceabilityDisplayRows(data);
+  builder.subheading("Risk and scoring trace");
+  builder.table(TRACE_RISK_COLUMNS, rows, { fontSize: 8.8 });
+  builder.y += 4;
+  builder.subheading("Assurance and coverage trace");
+  builder.table(TRACE_COVERAGE_COLUMNS, rows, { fontSize: 8.5 });
   builder.paragraph(
     "The matrix is a point-in-time export. A row with no test is not evidence that the requirement is untestable; it means no test script was recorded against the selected current version.",
-    { color: [96, 109, 128], fontSize: 8.2 },
+    { color: [96, 109, 128], fontSize: 9 },
   );
 }
 
@@ -647,8 +818,7 @@ export function renderLimitationsSection(builder: PdfBuilder): void {
   builder.bullets([
     "Report references such as RA-001, ASR-001, TS-001, and EV-001 are scoped to this pack. They are not persistent database identifiers.",
     "The pack reflects the current requirement version selected at generation time. Historical versions are not substituted.",
-    "Freshness is preserved as fresh, stale, or superseded. Stale and superseded records remain visible with their status.",
-    "Test execution results are not stored in the current data model. A lifecycle status of DRAFT, IN_REVIEW, APPROVED, or SUPERSEDED is not an execution outcome.",
+    "Freshness is preserved as fresh, stale, or superseded. Stale and superseded records remain visible with their freshness.",
     "Where no ComplianceResult exists, the pack records an absence of the record. It does not present that absence as compliance.",
     "Findings labelled Derived finding are deterministic export-time calculations. They are not persisted CAPA records.",
     "No owners, mitigations, residual-risk values, approvals, signatures, or acceptance decisions are invented.",
@@ -671,39 +841,7 @@ export function renderConsolidatedPack(
     packReference: refs.packReference,
   });
 
-  builder.startSection("Document Control", { newPage: true });
-  builder.metadataGroup("Export scope", [
-    ["Scope", "Selected requirements"],
-    ["Version selection", "Current version per requirement"],
-    ["Requirements included", String(requirementCount)],
-    ["Pack reference", refs.packReference],
-    ["Generation date and time", formatDateTime(data.generated_at)],
-  ]);
   const summary = traceabilitySummary(data);
-  builder.metadataGroup("Record summary", [
-    ["Risk assessments", String(data.requirements.reduce((count, item) => count + item.risks.length, 0))],
-    ["Assurance decisions", String(data.requirements.reduce((count, item) => count + item.assurance.length, 0))],
-    ["Test scripts", String(data.requirements.reduce((count, item) => count + item.tests.length, 0))],
-    [
-      "Traceability coverage",
-      `${summary.covered_by_tests} by tests · ${summary.covered_by_assurance} by assurance · ${summary.uncovered} uncovered · ${summary.stale} stale`,
-    ],
-    ["Orphan findings", `O1 ${summary.orphans.O1} · O2 ${summary.orphans.O2} · O3 ${summary.orphans.O3}`],
-  ]);
-  builder.metadataGroup("Data availability", [
-    [
-      "Compliance evaluation",
-      data.compliance_evaluated
-        ? `${data.compliance_record_count ?? 0} persisted result(s) available`
-        : "Not evaluated / no persisted result available",
-    ],
-    ["Test execution", "Not stored in the current data model"],
-    ["Approvals and signatures", "Not stored in the export dataset"],
-  ]);
-  builder.paragraph(
-    "A reader-facing PDF does not display long database identifiers. The ZIP includes a separate machine-readable crosswalk for troubleshooting and provenance.",
-    { color: [96, 109, 128], fontSize: 8.4 },
-  );
 
   builder.startSection("Executive Summary", { newPage: true });
   builder.paragraph(
@@ -715,7 +853,7 @@ export function renderConsolidatedPack(
     data.compliance_evaluated
       ? "Persisted compliance results are included where available; their stored status is reproduced."
       : "Compliance was not evaluated: no persisted ComplianceResult is available for the selected requirements.",
-    "Test execution was not recorded. The test scripts section reports lifecycle status only.",
+    "Test execution was not recorded. The test scripts section reproduces script content only.",
   ]);
 
   const toc = builder.addToc([

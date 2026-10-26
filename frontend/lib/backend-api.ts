@@ -198,11 +198,15 @@ export async function backendFetch<T>(
   init?: RequestInit,
 ): Promise<T> {
   const normalizedPath = path.replace(/^\/+/, "");
+  const accessToken = typeof window !== "undefined"
+    ? window.localStorage.getItem("raven_access_token")
+    : null;
   const response = await fetch(`${RAVEN_BASE_PATH}/api/v1/${normalizedPath}`, {
     ...init,
     cache: "no-store",
     headers: {
       ...(init?.body ? { "Content-Type": "application/json" } : {}),
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...init?.headers,
     },
   });

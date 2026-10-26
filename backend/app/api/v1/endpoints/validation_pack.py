@@ -25,6 +25,7 @@ from app.models.risk_assessment import RiskAssessment
 from app.models.test_script import TestScript
 from app.services.traceability.io import snapshot_from_db
 from app.services.traceability.matrix import MATRIX_COLUMNS, build_matrix
+from app.services.traceability.graph import build_graph
 from app.services.traceability.orphans import find_orphans
 from app.services.traceability.snapshot import TraceSnapshot
 
@@ -490,6 +491,7 @@ def get_validation_pack(
             "columns": list(MATRIX_COLUMNS),
             "rows": rows,
             "summary": traceability_summary,
+            "graph": build_graph(snapshot, orphans),
         },
         "orphans": [asdict(orphan) for orphan in orphans],
         "changes": changes,

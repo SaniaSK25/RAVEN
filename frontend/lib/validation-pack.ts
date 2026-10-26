@@ -131,6 +131,7 @@ export interface TraceabilityRow {
   severity?: number | string;
   probability?: number | string;
   detectability?: number | string;
+  rpn_points?: number | string;
   rpn?: number | string;
   band?: string;
   assurance_level?: string;
@@ -143,6 +144,33 @@ export interface TraceabilityRow {
   stale?: boolean;
   orphan_flags?: string;
   [key: string]: unknown;
+}
+
+export interface TraceabilityGraphNode {
+  id: string;
+  type: string;
+  label: string;
+  stale?: boolean;
+  orphan?: boolean;
+  orphaned?: boolean;
+  meta?: Record<string, unknown>;
+}
+
+export interface TraceabilityGraphEdge {
+  id: string;
+  source: string;
+  target: string;
+  type: string;
+  origin?: string;
+  active?: boolean;
+  stale?: boolean;
+  suppressed?: boolean;
+}
+
+export interface TraceabilityGraph {
+  nodes: TraceabilityGraphNode[];
+  edges: TraceabilityGraphEdge[];
+  summary?: Record<string, number>;
 }
 
 export interface TraceabilitySummary {
@@ -188,6 +216,7 @@ export interface ExportDataset {
     columns: string[];
     rows: TraceabilityRow[];
     summary?: TraceabilitySummary;
+    graph?: TraceabilityGraph;
   };
   orphans: OrphanRecord[];
   changes: ChangeRecord[];
@@ -958,20 +987,6 @@ export function deriveGapFindings(
 
     for (const test of requirement.tests) {
       const testRef = testReference(refs, test.id);
-      const status = text(test.status).toUpperCase();
-      if (status !== "APPROVED" && status !== "SUPERSEDED") {
-        add({
-          category: "Test lifecycle",
-          requirementRef: reqRef,
-          requirementVersion: version,
-          related: [testRef],
-          finding: `Test lifecycle status is ${text(test.status) || "Not recorded"}. This is a lifecycle status, not an execution result.`,
-          source: `Test script ${testRef}`,
-          recommendation: "Complete the review lifecycle. Execution evidence must be captured separately; it is not stored by this export.",
-          status: "Derived finding",
-          closureEvidence: "TestScript.status is APPROVED. This does not imply that the script was executed or passed.",
-        });
-      }
       if (test.freshness === "stale" || test.freshness === "superseded") {
         if (!hasReason("stale_only")) {
           add({
@@ -1083,6 +1098,7 @@ export function matrixToCsv(data: ExportDataset): string {
         "severity",
         "probability",
         "detectability",
+        "rpn_points",
         "rpn",
         "band",
         "assurance_level",
@@ -1105,6 +1121,37 @@ export function matrixToCsv(data: ExportDataset): string {
     lines.push(columns.map((column) => escape(row[column])).join(","));
   }
   return `${lines.join("\n")}\n`;
+}
+
+/** Reader-friendly companion to the import-safe matrix CSV. */
+export function matrixToReadableCsv(data: ExportDataset): string {
+  const columns = [
+    ["Requirement", "requirement_id"], ["Version", "requirement_version"],
+    ["Risk reference", "risk_id"], ["Severity", "severity"],
+    ["Probability", "probability"], ["Detectability", "detectability"],
+    ["RPN points", "rpn_points"], ["Normalized RPN", "rpn"],
+    ["Risk band", "band"], ["Assurance level", "assurance_level"],
+    ["Assurance label", "assurance_label"], ["Reason code", "reason_code"],
+    ["Test reference", "test_id"], ["Test title", "test_title"],
+    ["Test origin", "test_origin"], ["Coverage status", "coverage_status"],
+    ["Stale", "stale"], ["Orphan flags", "orphan_flags"],
+  ] as const;
+  const escape = (value: unknown): string => {
+    const raw = typeof value === "boolean" ? (value ? "Yes" : "No") : text(value);
+    return /[",\r\n]/.test(raw) ? `"${raw.replace(/"/g, '""')}"` : raw;
+  };
+  const display = (key: string, value: unknown): unknown => {
+    if (key === "coverage_status") return coverageLabel(value);
+    if (key === "assurance_level") return assuranceLevelLabel(value);
+    if (key === "band") return riskBandLabel(value);
+    if (key === "orphan_flags") return text(value).replace(/;/g, ", ");
+    return value;
+  };
+  return [
+    columns.map(([header]) => escape(header)).join(","),
+    ...data.traceability.rows.map((row) => columns.map(([, key]) => escape(display(key, row[key]))).join(",")),
+    "",
+  ].join("\n");
 }
 
 export function buildMetadataCrosswalk(data: ExportDataset, refs: ReportReferences) {

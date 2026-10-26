@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     assessments,
     assurance,
+    auth,
     compliance,
     changes,
     config,
@@ -18,6 +19,7 @@ router = APIRouter(
 )
 
 router.include_router(test_db.router)
+router.include_router(auth.router)
 router.include_router(requirements.router)
 router.include_router(traceability.router)
 router.include_router(changes.router)

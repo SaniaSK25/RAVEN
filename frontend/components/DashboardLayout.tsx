@@ -16,6 +16,7 @@ import {
   Settings,
   ShieldCheck,
   Upload,
+  UserCircle,
   X,
 } from "lucide-react";
 
@@ -31,6 +32,7 @@ const NAV_ITEMS = [
   { label: "Compliance", icon: Scale, href: "/compliance" },
   { label: "Exports", icon: Download, href: "/exports" },
   { label: "Settings", icon: Settings, href: "/settings" },
+  { label: "Profile", icon: UserCircle, href: "/profile" },
 ];
 
 interface DashboardLayoutProps {

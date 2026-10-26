@@ -19,6 +19,7 @@ MATRIX_COLUMNS = (
     "severity",
     "probability",
     "detectability",
+    "rpn_points",
     "rpn",
     "band",
     "assurance_level",
@@ -248,6 +249,9 @@ def _requirement_cells(
         else "",
         "detectability": risk.detectability
         if risk and risk.detectability is not None
+        else "",
+        "rpn_points": risk.rpn_points
+        if risk and risk.rpn_points is not None
         else "",
         "rpn": risk.rpn if risk and risk.rpn is not None else "",
         "band": risk.band or "" if risk else "",

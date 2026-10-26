@@ -89,6 +89,34 @@ body {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
 }
+
+.raven-login-grid {
+  position: absolute;
+  inset: 0;
+  opacity: .34;
+  background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: radial-gradient(ellipse at 28% 48%, black 0%, transparent 68%);
+}
+.raven-orbit { position: absolute; border: 1px solid rgba(239,120,26,.16); border-radius: 999px; transform: rotate(-24deg); }
+.raven-orbit-one { width: 650px; height: 260px; left: -90px; top: 100px; animation: raven-drift 12s ease-in-out infinite; }
+.raven-orbit-two { width: 560px; height: 210px; left: 12px; top: 145px; border-color: rgba(255,255,255,.08); transform: rotate(22deg); animation: raven-drift 15s ease-in-out infinite reverse; }
+.raven-scanline { position: absolute; left: 0; top: 12%; width: 520px; height: 1px; background: linear-gradient(90deg, transparent, #ef781a, transparent); opacity: .7; animation: raven-scan 5s ease-in-out infinite; }
+.raven-signal-card { position: absolute; z-index: 2; display: grid; gap: 5px; min-width: 142px; padding: 13px 15px; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; background: rgba(20,20,20,.7); box-shadow: 0 18px 50px rgba(0,0,0,.25); backdrop-filter: blur(14px); animation: raven-float 7s ease-in-out infinite; }
+.raven-signal-card span, .raven-signal-card small { color: rgba(255,255,255,.38); font-size: 9px; letter-spacing: .16em; }
+.raven-signal-card strong { color: #f5f5f5; font-size: 15px; letter-spacing: .04em; }
+.raven-signal-card-a { right: 2%; top: 18%; animation-delay: -1s; }.raven-signal-card-b { right: 14%; bottom: 17%; animation-delay: -3.5s; }.raven-signal-card-c { left: 36%; bottom: 5%; animation-delay: -5s; }
+.raven-status-dot { width: 6px; height: 6px; border-radius: 50%; background: #ef781a; box-shadow: 0 0 0 5px rgba(239,120,26,.12); }
+.raven-field { display: flex; align-items: center; gap: 11px; border: 1px solid rgba(255,255,255,.13); border-radius: 13px; background: rgba(255,255,255,.045); padding: 0 14px; transition: border-color .2s, box-shadow .2s, background .2s; }
+.raven-field:focus-within { border-color: rgba(239,120,26,.75); background: rgba(255,255,255,.07); box-shadow: 0 0 0 4px rgba(239,120,26,.1); }
+.raven-field input { min-width: 0; flex: 1; height: 50px; border: 0; outline: 0; background: transparent; color: white; font-size: 14px; }.raven-field input::placeholder { color: rgba(255,255,255,.28); }.raven-field button { color: rgba(255,255,255,.38); }.raven-field button:hover { color: white; }
+.raven-submit { display: flex; width: 100%; height: 52px; align-items: center; justify-content: space-between; border-radius: 13px; padding: 0 17px 0 20px; background: #ef781a; color: #080808; font-size: 14px; font-weight: 700; transition: transform .2s, background .2s, box-shadow .2s; }.raven-submit:hover:not(:disabled) { background: #ff8b2d; box-shadow: 0 12px 30px rgba(239,120,26,.2); transform: translateY(-1px); }.raven-submit:disabled { cursor: wait; opacity: .72; }
+.raven-loader { width: 17px; height: 17px; border: 2px solid rgba(8,8,8,.3); border-top-color: #080808; border-radius: 50%; animation: raven-spin .7s linear infinite; }
+@keyframes raven-float { 0%,100% { transform: translate3d(0,0,0); } 50% { transform: translate3d(0,-10px,0); } }
+@keyframes raven-drift { 0%,100% { transform: rotate(-24deg) translateX(0); } 50% { transform: rotate(-20deg) translateX(20px); } }
+@keyframes raven-scan { 0%,100% { transform: translateY(0); opacity: 0; } 35%,65% { opacity: .75; } 80% { transform: translateY(390px); opacity: 0; } }
+@keyframes raven-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .raven-orbit, .raven-scanline, .raven-signal-card, .raven-loader { animation: none; } }
 .sidebar-nav::-webkit-scrollbar {
   width: 6px;
 }

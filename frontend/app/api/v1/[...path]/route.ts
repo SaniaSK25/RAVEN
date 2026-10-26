@@ -30,6 +30,9 @@ async function proxyToBackend(request: Request, context: RouteContext) {
         ...(request.headers.get("content-type")
           ? { "Content-Type": request.headers.get("content-type")! }
           : {}),
+        ...(request.headers.get("authorization")
+          ? { Authorization: request.headers.get("authorization")! }
+          : {}),
       },
       body,
       cache: "no-store",
