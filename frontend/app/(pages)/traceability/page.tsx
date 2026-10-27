@@ -422,6 +422,15 @@ export default function TraceabilityPage() {
                 versions.find((v) => v.is_current)?.version ??
                 req?.version ??
                 1;
+              const selectedVersionRecord = versions.find(
+                (version) => version.version === selectedVersion,
+              );
+              const selectedRequirementText = selectedVersionRecord?.text ?? row.title;
+              const isHistoricalVersion = selectedVersionRecord != null && !selectedVersionRecord.is_current;
+              const selectedMatrixRow = {
+                ...row,
+                title: selectedRequirementText,
+              };
               const isGraphVisible = graphVisible[row.requirementId] ?? false;
               const graphState = requirementGraphs[row.requirementId];
 
@@ -433,11 +442,16 @@ export default function TraceabilityPage() {
                 >
                   <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
-                        {row.requirementId}
+                      <h2 className="flex flex-wrap items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+                        <span>{row.requirementId}</span>
+                        {isHistoricalVersion ? (
+                          <span className="rounded-full border border-yellow-400 bg-yellow-200 px-2 py-0.5 text-[11px] font-medium text-yellow-900 dark:border-yellow-600 dark:bg-yellow-900/60 dark:text-yellow-100">
+                            Historical version
+                          </span>
+                        ) : null}
                       </h2>
                       <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                        {row.title}
+                        {selectedRequirementText}
                       </p>
                     </div>
                     <div className="flex items-center gap-3">
@@ -478,7 +492,7 @@ export default function TraceabilityPage() {
                     Matrix
                   </h3>
                   <TraceMatrix
-                    items={[row]}
+                    items={[selectedMatrixRow]}
                     onViewChain={() =>
                       document.getElementById(`trace-graph-${row.requirementId}`)?.scrollIntoView({ behavior: "smooth" })
                     }

@@ -50,7 +50,7 @@ const CURRENT_STYLE: Record<TraceNodeType, NodeStyle> = {
 };
 
 const ORPHAN_STYLE: Record<TraceNodeType, NodeStyle> = {
-  requirement: { background: "#fffbeb", border: "2px dashed #d97706", color: "#92400e" },
+  requirement: { background: "#fef08a", border: "2px solid #ca8a04", color: "#713f12" },
   risk: { background: "#fffbeb", border: "2px dashed #d97706", color: "#92400e" },
   assurance: { background: "#fffbeb", border: "2px dashed #d97706", color: "#92400e" },
   test: { background: "#fffbeb", border: "2px dashed #d97706", color: "#92400e" },

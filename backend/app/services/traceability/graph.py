@@ -19,10 +19,9 @@ def build_graph(
     the same version are dropped).
 
     When ``is_version_current`` is False the graph enters **orphan mode**:
-    no requirement node is emitted at all. The old version's risk, assurance
-    and test nodes are emitted as orphaned artifacts, still connected to each
-    other, so the graph shows a disconnected chain that belongs to a version
-    that has been superseded.
+    the selected historical requirement and its risk, assurance and test
+    nodes are emitted as orphaned artifacts. This keeps the historical chain
+    visible while allowing the frontend to style it as superseded.
     """
     orphans = orphans or []
     orphan_nodes = {(o.entity_type, o.entity_id) for o in orphans}
@@ -32,24 +31,26 @@ def build_graph(
     risk_requirements = {}
 
     # --- Requirement nodes -------------------------------------------------
-    # In orphan mode the requirement has been superseded, so it is not shown.
-    if not orphan_mode:
-        for req in snapshot.requirements.values():
-            if requirement_key and req.req_key != requirement_key:
-                continue
-            nodes[f"requirement:{req.id}"] = {
-                "id": f"requirement:{req.id}",
-                "type": "requirement",
-                "label": req.req_key,
-                "stale": False,
-                "orphan": ("requirement", req.id) in orphan_nodes,
-                "orphaned": False,
-                "meta": {
-                    "version": req.version,
-                    "status": req.status,
-                    "change_pending": req.id in snapshot.open_change_requirement_ids,
-                },
-            }
+    for req in snapshot.requirements.values():
+        if requirement_key and req.req_key != requirement_key:
+            continue
+        nodes[f"requirement:{req.id}"] = {
+            "id": f"requirement:{req.id}",
+            "type": "requirement",
+            "label": (
+                f"{req.req_key} · v{requirement_version_number}"
+                if orphan_mode
+                else req.req_key
+            ),
+            "stale": False,
+            "orphan": ("requirement", req.id) in orphan_nodes,
+            "orphaned": orphan_mode,
+            "meta": {
+                "version": requirement_version_number if orphan_mode else req.version,
+                "status": req.status,
+                "change_pending": req.id in snapshot.open_change_requirement_ids,
+            },
+        }
 
     # --- Risk nodes --------------------------------------------------------
     for risk in snapshot.risks.values():
@@ -176,11 +177,6 @@ def build_graph(
             continue
         if requirement_version_id is not None and (
             source not in nodes or target not in nodes
-        ):
-            continue
-        # Orphan artifacts are intentionally disconnected from the requirement.
-        if orphan_mode and (
-            source.startswith("requirement:") or target.startswith("requirement:")
         ):
             continue
         edges.append(
