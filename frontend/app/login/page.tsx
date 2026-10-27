@@ -29,7 +29,12 @@ export default function LoginPage() {
       if (!response.ok) throw new Error(body.detail || "Those credentials could not be verified.");
       localStorage.setItem("raven_access_token", body.access_token);
       localStorage.setItem("raven_user", JSON.stringify(body.user));
-      router.push("/");
+      // The proxy (Next 16's middleware replacement) only sees cookies, so the
+      // session marker is mirrored into one before navigating.
+      document.cookie = `raven_session=1; Path=/; Max-Age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+      const requested = new URLSearchParams(window.location.search).get("next");
+      const target = requested && requested.startsWith("/") && !requested.startsWith("//") ? requested : "/";
+      router.push(target);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Sign in failed. Try again.");
     } finally {

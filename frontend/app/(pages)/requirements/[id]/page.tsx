@@ -264,18 +264,18 @@ export default function RequirementDetailPage() {
     }
   }
 
-  const hasGeneratedScript = requirement?.tests.some(
+  const hasGeneratedScript = requirement?.tests?.some(
     (test) => test.origin === "generated" && test.freshness !== "superseded",
   ) ?? false;
   const canGenerateScript =
-    requirement?.assurance?.level.toLowerCase() === "scripted" &&
+    String(requirement?.assurance?.level ?? "").toLowerCase() === "scripted" &&
     !hasGeneratedScript;
   const needsAnalysis = Boolean(
     requirement &&
       (!requirement.risk ||
         !requirement.assurance ||
-        requirement.risk.freshness.toLowerCase() !== "fresh" ||
-        requirement.assurance.freshness.toLowerCase() !== "fresh"),
+        String(requirement.risk.freshness ?? "").toLowerCase() !== "fresh" ||
+        String(requirement.assurance.freshness ?? "").toLowerCase() !== "fresh"),
   );
 
   return (
@@ -409,9 +409,9 @@ export default function RequirementDetailPage() {
             </section>
             <section id="tests" className="page-panel scroll-mt-6">
               <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Current-version tests</h2>
-              {requirement.tests.length > 0 ? (
+              {requirement.tests?.length > 0 ? (
                 <ul className="mt-2 space-y-2 text-sm">
-                  {requirement.tests.map((test) => (
+                  {requirement.tests?.map((test) => (
                     <li id={`test-${test.id}`} key={test.id} className="scroll-mt-6">
                       <span className="font-medium">{test.title ?? test.external_code ?? "Test script"}</span>
                       <span className="block text-xs text-zinc-500">{test.origin} · {test.freshness}</span>
@@ -457,7 +457,7 @@ export default function RequirementDetailPage() {
             </section>
           </div>
 
-          {requirement.tests.some(
+          {requirement.tests?.some(
             (test) =>
               test.origin === "generated" &&
               test.freshness !== "superseded" &&
@@ -468,7 +468,7 @@ export default function RequirementDetailPage() {
                 Generated test script
               </h2>
               {requirement.tests
-                .filter(
+                ?.filter(
                   (test) =>
                     test.origin === "generated" &&
                     test.freshness !== "superseded" &&
@@ -482,9 +482,9 @@ export default function RequirementDetailPage() {
 
           <section className="page-panel mt-4">
             <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Version history</h2>
-            {requirement.versions.length > 0 ? (
+            {requirement.versions?.length > 0 ? (
               <ol className="mt-3 space-y-3">
-                {requirement.versions.map((version) => (
+                {requirement.versions?.map((version) => (
                   <li key={version.version} className="border-l-2 border-zinc-200 pl-3 dark:border-zinc-700">
                     <p className="text-sm font-medium">v{version.version}{version.is_current ? " · Current" : ""}</p>
                     <p className="mt-1 whitespace-pre-wrap text-sm text-zinc-600 dark:text-zinc-300">{version.text}</p>

@@ -90,13 +90,12 @@ function adaptGraph(data: BackendTraceGraph): Traceability {
         type: node.type,
         label: node.label,
         status: node.stale ? "stale" : "current",
-        // `orphaned` marks a superseded requirement version; `orphan` marks an
-        // O1/O2/O3 finding; otherwise the node was linked to a retired
-        // requirement.
+        // `orphaned` marks artifacts of a superseded version, or the whole
+        // chain of a retired requirement. O1/O2/O3 coverage findings are
+        // backend-internal logic and are deliberately not reflected in the
+        // graph — a requirement without a test script yet is not an orphan.
         orphaned:
-          node.orphaned === true ||
-          node.orphan === true ||
-          orphanedByRetirement.has(node.id),
+          node.orphaned === true || orphanedByRetirement.has(node.id),
       },
     ];
   });

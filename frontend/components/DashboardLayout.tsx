@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useRef, useState, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ClipboardCheck,
   Download,
@@ -10,6 +10,7 @@ import {
   FlaskConical,
   History,
   LayoutDashboard,
+  LogOut,
   Menu,
   Network,
   Scale,
@@ -41,14 +42,34 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [user, setUser] = useState<{ username: string; display_name: string } | null>(
+    null,
+  );
   const sidebarRef = useRef<HTMLElement>(null);
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
   const handleMouseEnter = () => setSidebarCollapsed(false);
   const handleMouseLeave = () => setSidebarCollapsed(true);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem("raven_user");
+      if (raw) setUser(JSON.parse(raw));
+    } catch {
+      // Ignore malformed session data; the proxy still gates the routes.
+    }
+  }, []);
+
+  function signOut() {
+    window.localStorage.removeItem("raven_access_token");
+    window.localStorage.removeItem("raven_user");
+    document.cookie = "raven_session=; Path=/; Max-Age=0; SameSite=Lax";
+    router.push("/login");
+  }
 
   return (
     <div className="flex min-h-screen bg-canvas text-ink dark:bg-black dark:text-zinc-100">
@@ -138,7 +159,25 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </ul>
         </nav>
 
-
+        <div className="border-t border-white/10 p-3">
+          {!sidebarCollapsed && user ? (
+            <div className="mb-2 px-3">
+              <p className="truncate text-sm font-medium text-white">
+                {user.display_name || user.username}
+              </p>
+              <p className="truncate text-[11px] text-zinc-500">{user.username}</p>
+            </div>
+          ) : null}
+          <button
+            type="button"
+            onClick={signOut}
+            title="Sign out"
+            className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-400 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-2 focus-visible:outline-accent ${sidebarCollapsed ? "justify-center" : ""}`}
+          >
+            <LogOut aria-hidden="true" className="h-4 w-4 shrink-0" />
+            {!sidebarCollapsed && "Sign out"}
+          </button>
+        </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -205,6 +244,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 );
               })}
             </ul>
+            <button
+              type="button"
+              onClick={() => {
+                setMobileNavOpen(false);
+                signOut();
+              }}
+              className="mt-1 flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-600 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-accent dark:text-zinc-300 dark:hover:bg-zinc-900"
+            >
+              <LogOut aria-hidden="true" className="h-4 w-4" />
+              Sign out
+            </button>
           </nav>
         ) : null}
 

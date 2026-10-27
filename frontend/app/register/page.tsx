@@ -28,6 +28,8 @@ export default function RegisterPage() {
       if (!response.ok) throw new Error(body.detail || "The account could not be created.");
       localStorage.setItem("raven_access_token", body.access_token);
       localStorage.setItem("raven_user", JSON.stringify(body.user));
+      // Mirror the session into a cookie so the proxy can gate page routes.
+      document.cookie = `raven_session=1; Path=/; Max-Age=${60 * 60 * 24 * 7}; SameSite=Lax`;
       router.push("/");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "The account could not be created.");
