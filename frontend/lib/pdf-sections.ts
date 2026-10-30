@@ -5,6 +5,8 @@ import {
   TRACE_GRAPH_CURRENT_STYLE,
   TRACE_GRAPH_EDGE_VISUALS,
   TRACE_GRAPH_NODE_WIDTH,
+  TRACE_GRAPH_NODE_RADIUS,
+  TRACE_GRAPH_ORPHAN_EDGE_COLOR,
   TRACE_GRAPH_ORPHAN_STYLE,
   TRACE_GRAPH_ROW_GAP,
   TRACE_GRAPH_TYPE_LABEL,
@@ -23,6 +25,7 @@ import {
   formatValue,
   getEvidenceField,
   humanizeDecisionPath,
+  humanizeKey,
   parseTestScript,
   relatedRiskForAssurance,
   riskBandLabel,
@@ -159,24 +162,83 @@ function renderFactorTrace(
   score: number | null,
   trace: RiskRecord["severity_result"],
 ): void {
-  builder.labelParagraph(
-    `${label} — ${score ?? "Not recorded"}`,
-    trace?.reasoning || "No scoring rationale was stored for this factor.",
-    {
-      meta: `Rule ${trace?.rule_id || "Not recorded"} · Rule version ${
-        trace?.rule_version || "Not recorded"
-      }`,
-    },
+  builder.subheading(`${label} — ${score ?? "Not recorded"}`);
+  builder.metaRow(
+    "Scoring rule",
+    `${trace?.rule_id || "Not recorded"} · Version ${trace?.rule_version || "Not recorded"}`,
   );
-  if (trace?.decision_path) {
-    const lines = humanizeDecisionPath(trace.decision_path);
-    if (lines.length && lines[0] !== "Not recorded") {
-      builder.paragraph("Decision inputs", {
-        fontSize: 8.8,
-        color: [82, 82, 82],
-      });
-      builder.bullets(lines, { fontSize: 8.8 });
-    }
+
+  const steps = Array.isArray(trace?.decision_path)
+    ? trace.decision_path.filter(
+        (step): step is Record<string, unknown> =>
+          step !== null && typeof step === "object" && !Array.isArray(step),
+      )
+    : [];
+  const inputSteps = steps.filter(
+    (step) => typeof step.check === "string" && step.check !== "computation",
+  );
+  const calculation = steps.find((step) => step.check === "computation");
+  const inputRows = inputSteps.map((step) => ({
+    input: humanizeKey(step.check as string),
+    result:
+      typeof step.result === "boolean"
+        ? step.result
+          ? "Yes"
+          : "No"
+        : step.result ?? "—",
+    points: step.points ?? "—",
+    weight: step.weight ?? "—",
+    evidence: step.evidence || "—",
+  }));
+  const calculationLabels: Record<string, string> = {
+    sum: "Input total",
+    mapped: "Mapped score",
+    mapped_score: "Mapped score",
+    gamp_category: "GAMP category",
+    gamp_modifier: "GAMP modifier",
+    controls_floor: "Controls floor",
+    floor_applied: "Controls floor applied",
+    final_score: "Final score",
+    outcome: "Outcome",
+  };
+  const calculationRows = calculation
+    ? Object.entries(calculation)
+        .filter(([key, value]) => key !== "check" && value !== null && value !== undefined)
+        .map(([key, value]) => ({
+          step: calculationLabels[key] || humanizeKey(key),
+          value: typeof value === "boolean" ? (value ? "Yes" : "No") : value,
+        }))
+    : [];
+
+  const rationale = trace?.reasoning?.replace(/\s+Supporting evidence:[\s\S]*$/, "");
+  builder.labelParagraph(
+    "Scoring rationale",
+    rationale || "No scoring rationale was stored for this factor.",
+    { gapAfter: 2 },
+  );
+
+  if (inputRows.length) {
+    builder.table(
+      [
+        { header: "Input", key: "input", width: 25 },
+        { header: "Result", key: "result", width: 15 },
+        { header: "Points", key: "points", width: 10, align: "center" },
+        { header: "Weight", key: "weight", width: 10, align: "center" },
+        { header: "Supporting evidence", key: "evidence", width: 90 },
+      ],
+      inputRows,
+      { fontSize: 8.8, headerFontSize: 9 },
+    );
+  }
+  if (calculationRows.length) {
+    builder.table(
+      [
+        { header: "Calculation", key: "step", width: 35 },
+        { header: "Value", key: "value", width: 25 },
+      ],
+      calculationRows,
+      { fontSize: 8.8, headerFontSize: 9 },
+    );
   }
 }
 
@@ -216,11 +278,10 @@ function renderRiskRecord(
   builder.subheading("Risk score");
   builder.table(
     [
-      { header: "Factor", key: "factor", width: 24 },
-      { header: "Score", key: "score", width: 12, align: "center" },
-      { header: "Rule", key: "rule", width: 28 },
-      { header: "Rule version", key: "rule_version", width: 18 },
-      { header: "Rationale", key: "rationale", width: 62 },
+      { header: "Factor", key: "factor", width: 30 },
+      { header: "Score", key: "score", width: 15, align: "center" },
+      { header: "Rule", key: "rule", width: 35 },
+      { header: "Rule version", key: "rule_version", width: 25 },
     ],
     [
       ["Severity", risk.severity, risk.severity_result],
@@ -232,8 +293,6 @@ function renderRiskRecord(
       rule: (trace as RiskRecord["severity_result"])?.rule_id || "Not recorded",
       rule_version:
         (trace as RiskRecord["severity_result"])?.rule_version || "Not recorded",
-      rationale:
-        (trace as RiskRecord["severity_result"])?.reasoning || "Not recorded",
     })),
     { fontSize: 8.6 },
   );
@@ -500,7 +559,7 @@ const TRACE_RISK_COLUMNS: PdfTableColumn[] = [
 
 const TRACE_COVERAGE_COLUMNS: PdfTableColumn[] = [
   { header: "Requirement", key: "requirement_id", width: 19 },
-  { header: "Version", key: "requirement_version", width: 9 },
+  { header: "Version", key: "requirement_version", width: 12 },
   { header: "Assurance level", key: "assurance_level", width: 13 },
   { header: "Assurance label", key: "assurance_label", width: 23 },
   { header: "Reason code", key: "reason_code", width: 20 },
@@ -635,7 +694,7 @@ function traceabilityGraphSvg(data: ExportDataset): string | null {
     if (!source || !target || !hasTraceEdgeVisual(edge.type)) return [];
     const color =
       source.orphaned || target.orphaned
-        ? "#F16C30"
+        ? TRACE_GRAPH_ORPHAN_EDGE_COLOR
         : TRACE_GRAPH_EDGE_VISUALS[edge.type].color;
     const x1 = transformX + (source.x + TRACE_GRAPH_NODE_WIDTH / 2) * scale;
     const y1 = transformY + (source.y + source.height) * scale;
@@ -668,7 +727,7 @@ function traceabilityGraphSvg(data: ExportDataset): string | null {
       height / 2 -
       ((lines.length + 1) * 18 * scale) / 2 +
       13 * scale;
-    return `<g><rect x="${x}" y="${y}" width="${width}" height="${height}" rx="8" fill="${style.background}" stroke="${border?.[3] ?? style.color}" stroke-width="${strokeWidth * scale}"${dash}/><text x="${x + width / 2}" y="${textY}" text-anchor="middle" fill="${style.color}" font-family="Arial, Helvetica, sans-serif" font-size="${12 * scale}" font-weight="600"><tspan x="${x + width / 2}" dy="0">${escapeSvgText(title)}</tspan>${lines
+    return `<g><rect x="${x}" y="${y}" width="${width}" height="${height}" rx="${TRACE_GRAPH_NODE_RADIUS * scale}" fill="${style.background}" stroke="${border?.[3] ?? style.color}" stroke-width="${strokeWidth * scale}"${dash}/><text x="${x + width / 2}" y="${textY}" text-anchor="middle" fill="${style.color}" font-family="Arial, Helvetica, sans-serif" font-size="${12 * scale}" font-weight="600"><tspan x="${x + width / 2}" dy="0">${escapeSvgText(title)}</tspan>${lines
       .map(
         (line) =>
           `<tspan x="${x + width / 2}" dy="${18 * scale}">${escapeSvgText(line)}</tspan>`,
@@ -701,7 +760,7 @@ function traceabilityGraphSvg(data: ExportDataset): string | null {
     .join("");
   const hasOrphans = nodes.some((node) => node.orphaned);
   const orphanLegend = hasOrphans
-    ? `<g><rect x="20" y="482" width="12" height="12" rx="2" fill="#FFECE5" stroke="#F16C30" stroke-width="2" stroke-dasharray="4 3"/><text x="39" y="492" fill="#111111" font-family="Arial, Helvetica, sans-serif" font-size="11">Orphaned artifact — superseded version or retired requirement</text></g>`
+    ? `<g><rect x="20" y="482" width="12" height="12" rx="2" fill="#FFFBEB" stroke="#D97706" stroke-width="2" stroke-dasharray="4 3"/><text x="39" y="492" fill="#111111" font-family="Arial, Helvetica, sans-serif" font-size="11">Orphaned artifact — superseded version or retired requirement</text></g>`
     : "";
   const markerTypes = [
     ...new Set(edgeTypes.map((type) => TRACE_GRAPH_EDGE_VISUALS[type].color)),
@@ -856,11 +915,15 @@ export async function renderTraceabilitySection(
   }
 
   const rows = traceabilityDisplayRows(data);
+  builder.newPage(builder.sectionTitle, true);
   builder.subheading("Risk and scoring trace");
-  builder.table(TRACE_RISK_COLUMNS, rows, { fontSize: 8.8 });
+  builder.table(TRACE_RISK_COLUMNS, rows, { fontSize: 8.8, headerFontSize: 8.5 });
   builder.y += 4;
   builder.subheading("Assurance and coverage trace");
-  builder.table(TRACE_COVERAGE_COLUMNS, rows, { fontSize: 8.5 });
+  builder.table(TRACE_COVERAGE_COLUMNS, rows, {
+    fontSize: 8.5,
+    headerFontSize: 8.5,
+  });
   builder.callout(
     "The matrix is a point-in-time export. A row with no test is not evidence that the requirement is untestable; it means no test script was recorded against the selected current version.",
   );

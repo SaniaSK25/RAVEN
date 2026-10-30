@@ -535,14 +535,18 @@ export class PdfBuilder {
   table(
     columns: PdfTableColumn[],
     rows: Array<Record<string, unknown>>,
-    options: { fontSize?: number; headerFill?: [number, number, number] } = {},
+    options: {
+      fontSize?: number;
+      headerFontSize?: number;
+      headerFill?: [number, number, number];
+    } = {},
   ): void {
     if (!columns.length) return;
     const naturalWidth = columns.reduce((sum, column) => sum + column.width, 0);
     const scale = this.contentWidth / naturalWidth;
     const widths = columns.map((column) => column.width * scale);
     const fontSize = Math.max(options.fontSize ?? 9.5, 9.5);
-    const headerFontSize = 10;
+    const headerFontSize = options.headerFontSize ?? 10;
     const lineHeight = Math.max(4.5, fontSize * 0.48);
     const headerLineHeight = Math.max(4.6, headerFontSize * 0.46);
     const headerFill = options.headerFill || ORANGE;

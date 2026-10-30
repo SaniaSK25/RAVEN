@@ -19,6 +19,8 @@ import {
   TRACE_GRAPH_CURRENT_STYLE,
   TRACE_GRAPH_EDGE_VISUALS,
   TRACE_GRAPH_NODE_WIDTH,
+  TRACE_GRAPH_NODE_RADIUS,
+  TRACE_GRAPH_ORPHAN_EDGE_COLOR,
   TRACE_GRAPH_ORPHAN_STYLE,
   TRACE_GRAPH_ROW_GAP,
   TRACE_GRAPH_TYPE_LABEL,
@@ -134,14 +136,16 @@ export default function TraceGraph({ trace, requirementId }: TraceGraphProps) {
           whiteSpace: "pre-line",
           width: TRACE_GRAPH_NODE_WIDTH,
           textAlign: "center",
-          borderRadius: 8,
+          borderRadius: TRACE_GRAPH_NODE_RADIUS,
           padding: "10px 14px",
         },
       };
     });
     const rfEdges: Edge[] = trace.edges.map((edge) => {
       const orphanEdge = orphanIds.has(edge.from) || orphanIds.has(edge.to);
-      const stroke = orphanEdge ? "#F16C30" : TRACE_GRAPH_EDGE_VISUALS[edge.type].color;
+      const stroke = orphanEdge
+        ? TRACE_GRAPH_ORPHAN_EDGE_COLOR
+        : TRACE_GRAPH_EDGE_VISUALS[edge.type].color;
       return {
         id: edge.id,
         source: edge.from,
