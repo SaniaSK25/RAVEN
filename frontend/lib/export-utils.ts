@@ -6,9 +6,7 @@ import { PdfBuilder } from "@/lib/pdf-layout";
 import {
   renderAssuranceSection,
   renderConsolidatedPack,
-  renderEvidenceIndexSection,
   renderGapReportSection,
-  renderLimitationsSection,
   renderRiskAssessmentSection,
   renderTestScriptsSection,
   renderTraceabilitySection,
@@ -23,7 +21,7 @@ import {
 
 export type { ExportDataset } from "@/lib/validation-pack";
 
-type SectionKey = "risk" | "assurance" | "tests" | "traceability" | "gaps" | "evidence";
+type SectionKey = "risk" | "assurance" | "tests" | "traceability" | "gaps";
 
 function assertDataset(data: ExportDataset): void {
   if (
@@ -58,13 +56,13 @@ function sectionPdf(
   data: ExportDataset,
   section: SectionKey,
   refs: ReportReferences,
-): Blob {
+): Promise<Blob> {
   assertDataset(data);
   const generatedAt = formatDateTime(data.generated_at);
   const builder = new PdfBuilder({
     packReference: refs.packReference,
     generatedAt,
-    title: "RAVEN — Validation Pack",
+    title: `RAVEN — ${SECTION_TITLES[section]}`,
   });
   builder.cover({
     subtitle: "Validation evidence and traceability",
@@ -73,6 +71,7 @@ function sectionPdf(
     requirementCount: data.requirements.length,
     generatedAt,
     packReference: refs.packReference,
+    contents: [SECTION_TITLES[section]],
   });
   switch (section) {
     case "risk":
@@ -85,152 +84,85 @@ function sectionPdf(
       renderTestScriptsSection(builder, data, refs);
       break;
     case "traceability":
-      renderTraceabilitySection(builder, data, refs);
-      break;
+      return renderTraceabilitySection(builder, data, refs).then(() =>
+        builder.finalize(),
+      );
     case "gaps":
       renderGapReportSection(builder, data, refs);
-      renderLimitationsSection(builder);
-      break;
-    case "evidence":
-      renderEvidenceIndexSection(builder, data, refs);
       break;
   }
-  return builder.finalize();
+  return Promise.resolve(builder.finalize());
 }
 
 export function generateRiskAssessmentPDF(
   data: ExportDataset,
   refs: ReportReferences = buildReportReferences(data),
-): Blob {
+): Promise<Blob> {
   return sectionPdf(data, "risk", refs);
 }
 
 export function generateAssuranceRationalePDF(
   data: ExportDataset,
   refs: ReportReferences = buildReportReferences(data),
-): Blob {
+): Promise<Blob> {
   return sectionPdf(data, "assurance", refs);
 }
 
 export function generateTestScriptsPDF(
   data: ExportDataset,
   refs: ReportReferences = buildReportReferences(data),
-): Blob {
+): Promise<Blob> {
   return sectionPdf(data, "tests", refs);
 }
 
 export function generateTraceabilityPDF(
   data: ExportDataset,
   refs: ReportReferences = buildReportReferences(data),
-): Blob {
+): Promise<Blob> {
   return sectionPdf(data, "traceability", refs);
 }
 
 export function generateGapReportPDF(
   data: ExportDataset,
   refs: ReportReferences = buildReportReferences(data),
-): Blob {
+): Promise<Blob> {
   return sectionPdf(data, "gaps", refs);
-}
-
-export function generateEvidenceIndexPDF(
-  data: ExportDataset,
-  refs: ReportReferences = buildReportReferences(data),
-): Blob {
-  return sectionPdf(data, "evidence", refs);
 }
 
 export function generateValidationPackPDF(
   data: ExportDataset,
   refs: ReportReferences = buildReportReferences(data),
-): Blob {
+): Promise<Blob> {
   assertDataset(data);
   const builder = new PdfBuilder({
     packReference: refs.packReference,
     generatedAt: formatDateTime(data.generated_at),
-    title: "RAVEN — Validation Pack",
+    title: "RAVEN — Validation Pack Summary",
   });
   return renderConsolidatedPack(builder, data, refs);
-}
-
-function readmeForPack(data: ExportDataset, packReference: string): string {
-  const summary = data.summary || {};
-  const traceability = data.traceability.summary;
-  return [
-    "RAVEN — Validation Pack",
-    "=======================",
-    "",
-    `Pack reference: ${packReference}`,
-    `Generated: ${formatDateTime(data.generated_at)}`,
-    "Scope: Selected requirements",
-    "Version selection: Current version per requirement",
-    "",
-    "Contents",
-    "--------",
-    "RAVEN_Validation_Pack.pdf — consolidated validation pack with all sections",
-    "01_Risk_Assessment.pdf",
-    "02_Assurance_Rationale.pdf",
-    "03_Test_Scripts.pdf",
-    "04_Traceability_Matrix.pdf",
-    "05_Gap_Report.pdf",
-    "06_Evidence_Index.pdf",
-    "Traceability_Matrix.csv — readable requirement-to-risk-to-assurance-to-test matrix",
-    "Traceability_Matrix_Data.csv — machine-readable traceability export",
-    "export-metadata.json — report-reference and database-identifier crosswalk",
-    "",
-    "How to read this pack",
-    "--------------------",
-    "Report references such as RA-001, ASR-001, TS-001, and EV-001 are scoped to this pack.",
-    "They are not persistent database identifiers.",
-    "Long database identifiers are intentionally omitted from the reader-facing PDFs and kept in the",
-    "machine-readable crosswalk for troubleshooting and provenance.",
-    "",
-    "Test scripts",
-    "------------",
-    "The Test Scripts section reproduces the stored script text.",
-    "Execution results, pass/fail outcomes, and approvals are not stored in the current export dataset.",
-    "Execution results, pass/fail outcomes, and approvals are not stored in the export dataset.",
-    "",
-    "Compliance",
-    "----------",
-    data.compliance_evaluated
-      ? "Persisted ComplianceResult records are available for the selected requirements. Their stored status is reproduced; this pack does not create a compliance verdict."
-      : "No persisted ComplianceResult records are available for the selected requirements. Compliance is recorded as not evaluated and is not inferred.",
-    "",
-    "Gap report",
-    "----------",
-    "Findings labelled Derived finding are deterministic export-time calculations. They are not persisted",
-    "CAPA records. Persisted compliance results, where present, are labelled separately.",
-    "",
-    "Dataset summary",
-    "---------------",
-    `Requirements: ${data.requirements.length}`,
-    `Risk assessments: ${String(summary.risk_assessments ?? data.requirements.reduce((count, item) => count + item.risks.length, 0))}`,
-    `Assurance decisions: ${data.requirements.reduce((count, item) => count + item.assurance.length, 0)}`,
-    `Test scripts: ${String(summary.test_scripts ?? data.requirements.reduce((count, item) => count + item.tests.length, 0))}`,
-    traceability
-      ? `Traceability: ${traceability.covered_by_tests} covered by tests, ${traceability.covered_by_assurance} covered by assurance, ${traceability.uncovered} uncovered, ${traceability.stale} stale`
-      : "Traceability: see Traceability_Matrix.csv",
-    "",
-    "This pack does not invent owners, mitigations, residual risk, approvals, execution results, or",
-    "compliance verdicts.",
-    "",
-  ].join("\n");
 }
 
 export async function generateValidationPackZip(data: ExportDataset): Promise<Blob> {
   assertDataset(data);
   const refs = buildReportReferences(data);
   const zip = new JSZip();
-  const sectionFiles: Array<[string, Blob]> = [
-    ["01_Risk_Assessment.pdf", generateRiskAssessmentPDF(data, refs)],
-    ["02_Assurance_Rationale.pdf", generateAssuranceRationalePDF(data, refs)],
-    ["03_Test_Scripts.pdf", generateTestScriptsPDF(data, refs)],
-    ["04_Traceability_Matrix.pdf", generateTraceabilityPDF(data, refs)],
-    ["05_Gap_Report.pdf", generateGapReportPDF(data, refs)],
-    ["06_Evidence_Index.pdf", generateEvidenceIndexPDF(data, refs)],
-  ];
-  zip.file("RAVEN_Validation_Pack.pdf", generateValidationPackPDF(data, refs));
+  const sectionFiles = await Promise.all([
+    generateRiskAssessmentPDF(data, refs).then(
+      (blob) => ["01_Risk_Assessment.pdf", blob] as const,
+    ),
+    generateAssuranceRationalePDF(data, refs).then(
+      (blob) => ["02_Assurance_Rationale.pdf", blob] as const,
+    ),
+    generateTestScriptsPDF(data, refs).then(
+      (blob) => ["03_Test_Scripts.pdf", blob] as const,
+    ),
+    generateTraceabilityPDF(data, refs).then(
+      (blob) => ["04_Traceability_Matrix.pdf", blob] as const,
+    ),
+    generateGapReportPDF(data, refs).then(
+      (blob) => ["05_Gap_Report.pdf", blob] as const,
+    ),
+  ]);
   for (const [filename, blob] of sectionFiles) zip.file(filename, blob);
   return zip.generateAsync({ type: "blob", compression: "DEFLATE" });
 }

@@ -3,13 +3,17 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AlertCircle, ArrowLeft, ChevronDown, FileText, LoaderCircle, Play, Archive, CheckCircle, ClipboardList } from "lucide-react";
+import { AlertCircle, ArrowLeft, ChevronDown, FileText, LoaderCircle, Play, CheckCircle, ClipboardList } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import {
   backendFetch,
   type BackendRequirementDetail,
 } from "@/lib/backend-api";
-import { fetchValidationDataset, generateValidationPackZip, downloadBlob } from "@/lib/export-utils";
+import {
+  downloadBlob,
+  fetchValidationDataset,
+  generateValidationPackZip,
+} from "@/lib/export-utils";
 
 const PRECONDITIONS_HEADER = "Preconditions:";
 const STEPS_HEADER = "Test Steps:";
@@ -251,7 +255,7 @@ export default function RequirementDetailPage() {
       const filename = `RAVEN_Validation_Pack_${label}_${timestamp}.zip`;
       downloadBlob(zipBlob, filename);
 
-      setExportSuccess(`Validation pack generated for ${label}.`);
+      setExportSuccess(`Validation pack ZIP generated for ${label}.`);
     } catch (err) {
       console.error("Export failed:", err);
       setExportError(
@@ -353,12 +357,12 @@ export default function RequirementDetailPage() {
               {isExporting ? (
                 <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" />
               ) : (
-                <Archive className="h-4 w-4" />
+                <FileText aria-hidden="true" className="h-4 w-4" />
               )}
-              {isExporting ? "Exporting…" : "Export validation pack"}
+              {isExporting ? "Generating report PDFs…" : "Export validation pack ZIP"}
             </button>
             <span className="text-xs text-zinc-500 dark:text-zinc-400">
-              ZIP with Risk Assessment, Assurance Rationale, Test Scripts, Gap Report, Traceability Matrix
+              Five separate PDFs: Risk Assessment, Assurance Rationale, Test Scripts, Traceability Matrix, and Gap Report
             </span>
           </div>
 

@@ -13,56 +13,27 @@ import {
   type NodeProps,
 } from "reactflow";
 import "reactflow/dist/style.css";
-import type { Traceability, TraceEdgeType, TraceNodeType } from "@/lib/domain";
+import type { Traceability, TraceNodeType } from "@/lib/domain";
+import {
+  TRACE_GRAPH_COLUMN_GAP,
+  TRACE_GRAPH_CURRENT_STYLE,
+  TRACE_GRAPH_EDGE_VISUALS,
+  TRACE_GRAPH_NODE_WIDTH,
+  TRACE_GRAPH_ORPHAN_STYLE,
+  TRACE_GRAPH_ROW_GAP,
+  TRACE_GRAPH_TYPE_LABEL,
+} from "@/lib/traceability-graph-visuals";
 
 interface TraceGraphProps {
   trace: Traceability;
   requirementId: string;
 }
 
-const NODE_WIDTH = 220;
-const COL_GAP = 320;
-const ROW_GAP = 120;
-
 /**
  * Edge labels rendered at the midpoint of every edge collide when a back edge
  * (test -> requirement) crosses the forward chain. Edges are therefore
  * colour-coded and explained by a legend instead of carrying inline text.
  */
-const EDGE_VISUALS: Record<TraceEdgeType, { color: string; label: string }> = {
-  has_risk: { color: "#dc2626", label: "Has risk" },
-  assessed_as: { color: "#71717a", label: "Assessed as" },
-  mitigated_by: { color: "#2563eb", label: "Mitigated by" },
-  verifies: { color: "#059669", label: "Verifies" },
-};
-
-interface NodeStyle {
-  background: string;
-  border: string;
-  color: string;
-}
-
-const CURRENT_STYLE: Record<TraceNodeType, NodeStyle> = {
-  requirement: { background: "#fafafa", border: "2px solid #52525b", color: "#18181b" },
-  risk: { background: "#fef2f2", border: "2px solid #b91c1c", color: "#7f1d1d" },
-  assurance: { background: "#f4f4f5", border: "2px solid #a1a1aa", color: "#3f3f46" },
-  test: { background: "#eff6ff", border: "2px solid #1d4ed8", color: "#1e3a8a" },
-};
-
-const ORPHAN_STYLE: Record<TraceNodeType, NodeStyle> = {
-  requirement: { background: "#fef08a", border: "2px solid #ca8a04", color: "#713f12" },
-  risk: { background: "#fffbeb", border: "2px dashed #d97706", color: "#92400e" },
-  assurance: { background: "#fffbeb", border: "2px dashed #d97706", color: "#92400e" },
-  test: { background: "#fffbeb", border: "2px dashed #d97706", color: "#92400e" },
-};
-
-const TYPE_LABEL: Record<TraceNodeType, string> = {
-  requirement: "Requirement",
-  risk: "Risk assessment",
-  assurance: "Assurance decision",
-  test: "Test script",
-};
-
 interface TraceGraphNodeData {
   label: string;
   href: string;
@@ -143,14 +114,17 @@ export default function TraceGraph({ trace, requirementId }: TraceGraphProps) {
       const seen = columns.get(node.type) ?? 0;
       columns.set(node.type, seen + 1);
       const style = node.orphaned
-        ? ORPHAN_STYLE[node.type]
-        : CURRENT_STYLE[node.type];
+        ? TRACE_GRAPH_ORPHAN_STYLE[node.type]
+        : TRACE_GRAPH_CURRENT_STYLE[node.type];
       return {
         id: node.id,
         type: "traceNode",
-        position: { x: column * COL_GAP, y: seen * ROW_GAP },
+        position: {
+          x: column * TRACE_GRAPH_COLUMN_GAP,
+          y: seen * TRACE_GRAPH_ROW_GAP,
+        },
         data: {
-          label: `${TYPE_LABEL[node.type]}\n${node.label}`,
+          label: `${TRACE_GRAPH_TYPE_LABEL[node.type]}\n${node.label}`,
           href: nodeHref(requirementId, node.id, node.type),
         },
         style: {
@@ -158,7 +132,7 @@ export default function TraceGraph({ trace, requirementId }: TraceGraphProps) {
           fontSize: 12,
           fontWeight: 600,
           whiteSpace: "pre-line",
-          width: NODE_WIDTH,
+          width: TRACE_GRAPH_NODE_WIDTH,
           textAlign: "center",
           borderRadius: 8,
           padding: "10px 14px",
@@ -167,7 +141,7 @@ export default function TraceGraph({ trace, requirementId }: TraceGraphProps) {
     });
     const rfEdges: Edge[] = trace.edges.map((edge) => {
       const orphanEdge = orphanIds.has(edge.from) || orphanIds.has(edge.to);
-      const stroke = orphanEdge ? "#d97706" : EDGE_VISUALS[edge.type].color;
+      const stroke = orphanEdge ? "#F16C30" : TRACE_GRAPH_EDGE_VISUALS[edge.type].color;
       return {
         id: edge.id,
         source: edge.from,
@@ -209,9 +183,9 @@ export default function TraceGraph({ trace, requirementId }: TraceGraphProps) {
             <span
               aria-hidden="true"
               className="h-0.5 w-5 rounded-full"
-              style={{ background: EDGE_VISUALS[type].color }}
+              style={{ background: TRACE_GRAPH_EDGE_VISUALS[type].color }}
             />
-            {EDGE_VISUALS[type].label}
+            {TRACE_GRAPH_EDGE_VISUALS[type].label}
           </span>
         ))}
         {hasOrphans ? (
@@ -265,7 +239,7 @@ export default function TraceGraph({ trace, requirementId }: TraceGraphProps) {
           attributionPosition="bottom-right"
           className="raven-trace-flow [&_.react-flow__pane]:cursor-default [&_.react-flow__node]:cursor-pointer"
         >
-          <Background gap={20} color="#e4e4e7" />
+          <Background gap={20} color="#FFECE5" />
         </ReactFlow>
       </div>
     </div>

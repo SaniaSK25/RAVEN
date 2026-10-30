@@ -48,7 +48,9 @@ export default function ExportsPage() {
             <div>
               <h2 className="text-xl font-semibold">Validation Pack</h2>
               <p className="mt-1 max-w-2xl text-sm leading-6 text-blue-100/80">
-                Search and select requirements above the list, then generate the pack. The ZIP contains the consolidated PDF and focused section PDFs, including the traceability graph and matrix.
+                Search and select requirements above the list, then download a
+                ZIP containing separate PDFs for the risk assessment, assurance
+                rationale, test scripts, traceability matrix, and gap report.
               </p>
             </div>
           </div>

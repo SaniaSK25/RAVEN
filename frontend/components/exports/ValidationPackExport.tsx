@@ -143,8 +143,8 @@ export default function ValidationPackExport() {
     setBusy(true);
     setError("");
     try {
-      // Re-read the selected records immediately before generation. A PDF is
-      // never produced from a stale or partially loaded selection.
+      // Re-read the selected records immediately before generation. An export
+      // is never produced from a stale or partially loaded selection.
       const fresh = await fetchValidationDataset(selectedRef.current);
       if (fresh.requirements.length !== selectedRef.current.length) {
         throw new Error(
@@ -200,8 +200,8 @@ export default function ValidationPackExport() {
               Build an audit-ready pack
             </h2>
             <p className="mt-1 max-w-2xl text-sm text-zinc-500 dark:text-zinc-400">
-              Select one or more requirements. The pack is generated only after
-              the selected records load successfully.
+              Select one or more requirements to download a ZIP containing a
+              separate PDF for each validation report.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -232,7 +232,7 @@ export default function ValidationPackExport() {
               ) : (
                 <Download aria-hidden="true" className="h-4 w-4" />
               )}
-              {busy ? "Generating PDFs and ZIP..." : "Generate Validation Pack"}
+              {busy ? "Generating report PDFs..." : "Download report PDFs (ZIP)"}
             </button>
           </div>
         </div>

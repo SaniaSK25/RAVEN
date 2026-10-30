@@ -1,4 +1,14 @@
+import html2canvas from "html2canvas";
 import { PdfBuilder, type PdfTableColumn } from "@/lib/pdf-layout";
+import {
+  TRACE_GRAPH_COLUMN_GAP,
+  TRACE_GRAPH_CURRENT_STYLE,
+  TRACE_GRAPH_EDGE_VISUALS,
+  TRACE_GRAPH_NODE_WIDTH,
+  TRACE_GRAPH_ORPHAN_STYLE,
+  TRACE_GRAPH_ROW_GAP,
+  TRACE_GRAPH_TYPE_LABEL,
+} from "@/lib/traceability-graph-visuals";
 import {
   assuranceLevelLabel,
   assuranceReference,
@@ -36,6 +46,7 @@ export const SECTION_TITLES = {
   tests: "Test Scripts",
   traceability: "Traceability Matrix",
   gaps: "Gap Report",
+  appendices: "Appendices",
   evidence: "Evidence Index",
   limitations: "Limitations and Methodology",
 } as const;
@@ -162,10 +173,25 @@ function renderFactorTrace(
     if (lines.length && lines[0] !== "Not recorded") {
       builder.paragraph("Decision inputs", {
         fontSize: 8.8,
-        color: [96, 109, 128],
+        color: [82, 82, 82],
       });
       builder.bullets(lines, { fontSize: 8.8 });
     }
+  }
+}
+
+function riskBandColor(value: string): [number, number, number] | undefined {
+  switch (value.toLowerCase()) {
+    case "low":
+      return [241, 108, 48];
+    case "medium":
+      return [204, 81, 35];
+    case "high":
+      return [157, 57, 23];
+    case "critical":
+      return [17, 17, 17];
+    default:
+      return undefined;
   }
 }
 
@@ -211,12 +237,17 @@ function renderRiskRecord(
     })),
     { fontSize: 8.6 },
   );
-  builder.metadataGroup("Derived classification", [
-    ["RPN points", risk.rpn_points ?? "Not recorded"],
-    ["Normalized RPN", risk.rpn ?? "Not recorded"],
-    ["Risk band", riskBandLabel(risk.band)],
-    ["Configuration version", risk.configuration_version ?? "Not recorded"],
-  ]);
+  const riskBand = riskBandLabel(risk.band);
+  builder.metadataGroup(
+    "Derived classification",
+    [
+      ["RPN points", risk.rpn_points ?? "Not recorded"],
+      ["Normalized RPN", risk.rpn ?? "Not recorded"],
+      ["Risk band", riskBand],
+      ["Configuration version", risk.configuration_version ?? "Not recorded"],
+    ],
+    { valueColors: { "Risk band": riskBandColor(riskBand) } },
+  );
 
   builder.subheading("Scoring rule trace");
   renderFactorTrace(builder, "Severity", risk.severity, risk.severity_result);
@@ -245,12 +276,10 @@ export function renderRiskAssessmentSection(
   refs: ReportReferences,
 ): void {
   builder.startSection(SECTION_TITLES.risk, { newPage: true, landscape: false });
-  builder.paragraph(
+  builder.callout(
     "Each assessment below is scoped to the selected current requirement version. Scores, classifications, and rationales are reproduced from the stored record.",
-    { color: [96, 109, 128], fontSize: 8.6 },
   );
-  orderedRequirements(data).forEach((requirement, index) => {
-    if (index > 0) builder.newPage(SECTION_TITLES.risk, false);
+  orderedRequirements(data).forEach((requirement) => {
     requirementSummary(builder, requirement);
     if (!requirement.risks.length) {
       builder.paragraph(
@@ -263,7 +292,9 @@ export function renderRiskAssessmentSection(
     );
     sorted.forEach((risk) => {
       builder.divider();
+      builder.beginCard();
       renderRiskRecord(builder, requirement, risk, refs);
+      builder.endCard();
     });
   });
 }
@@ -288,7 +319,8 @@ function renderAssuranceRecord(
   builder.metaRow("Recorded", formatDateTime(assurance.created_at));
   builder.metaRow("Related risk assessment", riskRef);
   if (risk) {
-    builder.metaRow("Risk band", riskBandLabel(risk.band));
+    const riskBand = riskBandLabel(risk.band);
+    builder.metaRow("Risk band", riskBand, { valueColor: riskBandColor(riskBand) });
     builder.metaRow("Severity score", risk.severity ?? "Not recorded");
   }
 
@@ -333,12 +365,10 @@ export function renderAssuranceSection(
   refs: ReportReferences,
 ): void {
   builder.startSection(SECTION_TITLES.assurance, { newPage: true, landscape: false });
-  builder.paragraph(
+  builder.callout(
     "The assurance level and rule below are stored decisions. The explanation is derived from the current deterministic assurance implementation; it does not replace the stored rationale.",
-    { color: [96, 109, 128], fontSize: 8.6 },
   );
-  orderedRequirements(data).forEach((requirement, index) => {
-    if (index > 0) builder.newPage(SECTION_TITLES.assurance, false);
+  orderedRequirements(data).forEach((requirement) => {
     requirementSummary(builder, requirement);
     if (!requirement.assurance.length) {
       builder.paragraph(
@@ -350,8 +380,9 @@ export function renderAssuranceSection(
       (a.created_at || "").localeCompare(b.created_at || "", "en"),
     );
     sorted.forEach((assurance) => {
-      builder.divider();
+      builder.beginCard();
       renderAssuranceRecord(builder, requirement, assurance, refs);
+      builder.endCard();
     });
   });
 }
@@ -390,9 +421,9 @@ function renderTestRecord(
       ? `${test.prompt_version.agent_name} · version ${test.prompt_version.version}`
       : "Not recorded",
   );
-  builder.paragraph(
+  builder.callout(
     "Execution results are not recorded in the export dataset; no pass or fail result is implied.",
-    { color: [120, 75, 20], fontSize: 8.5 },
+    "warning",
   );
 
   const parsed = parseTestScript(test.script);
@@ -432,10 +463,9 @@ export function renderTestScriptsSection(
   builder.startSection(SECTION_TITLES.tests, { newPage: true, landscape: false });
   builder.paragraph(
     "Test scripts are reproduced from the stored script text. Execution results are not stored by RAVEN.",
-    { color: [96, 109, 128], fontSize: 8.6 },
+    { color: [82, 82, 82], fontSize: 8.6 },
   );
-  orderedRequirements(data).forEach((requirement, index) => {
-    if (index > 0) builder.newPage(SECTION_TITLES.tests, false);
+  orderedRequirements(data).forEach((requirement) => {
     requirementSummary(builder, requirement);
     if (!requirement.tests.length) {
       builder.paragraph(
@@ -448,7 +478,9 @@ export function renderTestScriptsSection(
     );
     sorted.forEach((test) => {
       builder.divider();
+      builder.beginCard();
       renderTestRecord(builder, requirement, test, refs);
+      builder.endCard();
     });
   });
 }
@@ -500,100 +532,250 @@ function traceabilityDisplayRows(data: ExportDataset): Array<Record<string, unkn
   }));
 }
 
-function renderTraceabilityGraph(builder: PdfBuilder, data: ExportDataset): void {
+const TRACE_GRAPH_NODE_TYPES = ["requirement", "risk", "assurance", "test"] as const;
+const TRACE_GRAPH_WIDTH = 1240;
+const TRACE_GRAPH_HEIGHT = 500;
+
+function wrapGraphLabel(value: string, maxLength: number): string[] {
+  const words = value.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let line = "";
+  for (const word of words) {
+    if (line && `${line} ${word}`.length > maxLength) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = line ? `${line} ${word}` : word;
+    }
+  }
+  if (line) lines.push(line);
+  return lines.length ? lines : [""];
+}
+
+function escapeSvgText(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function hasTraceEdgeVisual(
+  type: string,
+): type is keyof typeof TRACE_GRAPH_EDGE_VISUALS {
+  return Object.prototype.hasOwnProperty.call(TRACE_GRAPH_EDGE_VISUALS, type);
+}
+
+function traceabilityGraphSvg(data: ExportDataset): string | null {
   const graph = data.traceability.graph;
-  if (!graph || !graph.edges.length) {
+  if (!graph || !graph.edges.length) return null;
+
+  const nodes = graph.nodes.filter((node) =>
+    TRACE_GRAPH_NODE_TYPES.includes(
+      node.type as (typeof TRACE_GRAPH_NODE_TYPES)[number],
+    ),
+  );
+  const nodePositions = new Map<
+    string,
+    {
+      x: number;
+      y: number;
+      height: number;
+      labelLines: string[];
+      type: (typeof TRACE_GRAPH_NODE_TYPES)[number];
+      orphaned: boolean;
+    }
+  >();
+  const columnCounts = new Map<string, number>();
+  const presentTypes = TRACE_GRAPH_NODE_TYPES.filter((type) =>
+    nodes.some((node) => node.type === type),
+  );
+
+  for (const node of nodes) {
+    const type = node.type as (typeof TRACE_GRAPH_NODE_TYPES)[number];
+    const column = presentTypes.indexOf(type);
+    const row = columnCounts.get(type) ?? 0;
+    columnCounts.set(type, row + 1);
+    const labelLines = wrapGraphLabel(node.label, 26);
+    nodePositions.set(node.id, {
+      x: column * TRACE_GRAPH_COLUMN_GAP,
+      y: row * TRACE_GRAPH_ROW_GAP,
+      height: 24 + (labelLines.length + 1) * 18,
+      labelLines,
+      type,
+      orphaned: node.orphaned === true,
+    });
+  }
+
+  const maxX = Math.max(
+    TRACE_GRAPH_NODE_WIDTH,
+    ...[...nodePositions.values()].map(
+      (position) => position.x + TRACE_GRAPH_NODE_WIDTH,
+    ),
+  );
+  const maxY = Math.max(
+    66,
+    ...[...nodePositions.values()].map(
+      (position) => position.y + position.height,
+    ),
+  );
+  const graphArea = { x: 24, y: 20, width: TRACE_GRAPH_WIDTH - 48, height: 390 };
+  const scale = Math.min(
+    2,
+    graphArea.width / maxX,
+    graphArea.height / maxY,
+  );
+  const transformX = graphArea.x + (graphArea.width - maxX * scale) / 2;
+  const transformY = graphArea.y + (graphArea.height - maxY * scale) / 2;
+
+  const edgesSvg = graph.edges.flatMap((edge) => {
+    const source = nodePositions.get(edge.source);
+    const target = nodePositions.get(edge.target);
+    if (!source || !target || !hasTraceEdgeVisual(edge.type)) return [];
+    const color =
+      source.orphaned || target.orphaned
+        ? "#F16C30"
+        : TRACE_GRAPH_EDGE_VISUALS[edge.type].color;
+    const x1 = transformX + (source.x + TRACE_GRAPH_NODE_WIDTH / 2) * scale;
+    const y1 = transformY + (source.y + source.height) * scale;
+    const x2 = transformX + (target.x + TRACE_GRAPH_NODE_WIDTH / 2) * scale;
+    const y2 = transformY + target.y * scale;
+    const curve = Math.max(28, Math.abs(y2 - y1) / 2);
+    const dashed = source.orphaned || target.orphaned;
+    return [
+      `<path d="M ${x1} ${y1} C ${x1} ${y1 + curve}, ${x2} ${y2 - curve}, ${x2} ${y2}" fill="none" stroke="${color}" stroke-width="1.8"${dashed ? ' stroke-dasharray="6 4"' : ""} marker-end="url(#arrow-${color.slice(1)})"/>`,
+    ];
+  });
+
+  const nodesSvg = nodes.map((node) => {
+    const position = nodePositions.get(node.id);
+    if (!position) return "";
+    const style = position.orphaned
+      ? TRACE_GRAPH_ORPHAN_STYLE[position.type]
+      : TRACE_GRAPH_CURRENT_STYLE[position.type];
+    const border = style.border.match(/(\d+)px (solid|dashed) (#[0-9a-f]+)/i);
+    const strokeWidth = Number(border?.[1] ?? 2);
+    const dash = border?.[2] === "dashed" ? ' stroke-dasharray="6 4"' : "";
+    const x = transformX + position.x * scale;
+    const y = transformY + position.y * scale;
+    const width = TRACE_GRAPH_NODE_WIDTH * scale;
+    const height = position.height * scale;
+    const title = TRACE_GRAPH_TYPE_LABEL[position.type];
+    const lines = position.labelLines;
+    const textY =
+      y +
+      height / 2 -
+      ((lines.length + 1) * 18 * scale) / 2 +
+      13 * scale;
+    return `<g><rect x="${x}" y="${y}" width="${width}" height="${height}" rx="8" fill="${style.background}" stroke="${border?.[3] ?? style.color}" stroke-width="${strokeWidth * scale}"${dash}/><text x="${x + width / 2}" y="${textY}" text-anchor="middle" fill="${style.color}" font-family="Arial, Helvetica, sans-serif" font-size="${12 * scale}" font-weight="600"><tspan x="${x + width / 2}" dy="0">${escapeSvgText(title)}</tspan>${lines
+      .map(
+        (line) =>
+          `<tspan x="${x + width / 2}" dy="${18 * scale}">${escapeSvgText(line)}</tspan>`,
+      )
+      .join("")}</text></g>`;
+  });
+
+  const edgeTypes = [
+    ...new Set(
+      graph.edges
+        .map((edge) => edge.type)
+        .filter(hasTraceEdgeVisual),
+    ),
+  ];
+  let legendX = 20;
+  let legendY = 464;
+  const legendSvg = edgeTypes
+    .map((type) => {
+      const visual = TRACE_GRAPH_EDGE_VISUALS[type];
+      const label = escapeSvgText(visual.label);
+      const entryWidth = 27 + visual.label.length * 7 + 20;
+      if (legendX + entryWidth > TRACE_GRAPH_WIDTH - 20) {
+        legendX = 20;
+        legendY += 20;
+      }
+      const entry = `<g><line x1="${legendX}" y1="${legendY}" x2="${legendX + 20}" y2="${legendY}" stroke="${visual.color}" stroke-width="2"/><text x="${legendX + 27}" y="${legendY + 4}" fill="#111111" font-family="Arial, Helvetica, sans-serif" font-size="11">${label}</text></g>`;
+      legendX += entryWidth;
+      return entry;
+    })
+    .join("");
+  const hasOrphans = nodes.some((node) => node.orphaned);
+  const orphanLegend = hasOrphans
+    ? `<g><rect x="20" y="482" width="12" height="12" rx="2" fill="#FFECE5" stroke="#F16C30" stroke-width="2" stroke-dasharray="4 3"/><text x="39" y="492" fill="#111111" font-family="Arial, Helvetica, sans-serif" font-size="11">Orphaned artifact — superseded version or retired requirement</text></g>`
+    : "";
+  const markerTypes = [
+    ...new Set(edgeTypes.map((type) => TRACE_GRAPH_EDGE_VISUALS[type].color)),
+  ]
+    .map(
+      (color) =>
+        `<marker id="arrow-${color.slice(1)}" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse"><path d="M 0 0 L 12 6 L 0 12 z" fill="${color}"/></marker>`,
+    )
+    .join("");
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${TRACE_GRAPH_WIDTH}" height="${TRACE_GRAPH_HEIGHT}" viewBox="0 0 ${TRACE_GRAPH_WIDTH} ${TRACE_GRAPH_HEIGHT}"><defs><pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#FFECE5"/></pattern>${markerTypes}</defs><rect width="100%" height="100%" fill="#ffffff"/><rect width="100%" height="430" fill="url(#dots)"/>${edgesSvg.join("")}${nodesSvg.join("")}${legendSvg}${orphanLegend}</svg>`;
+}
+
+async function renderTraceabilityGraph(builder: PdfBuilder, data: ExportDataset): Promise<void> {
+  const svg = traceabilityGraphSvg(data);
+  if (!svg) {
     builder.paragraph(
       "No graph edges are available for the selected requirement versions. The matrix below preserves the available row-level traceability data.",
-      { color: [96, 109, 128], fontSize: 9 },
+      { color: [82, 82, 82], fontSize: 9 },
     );
     return;
   }
-  const nodes = new Map(graph.nodes.map((node) => [node.id, node]));
+
+  builder.newPage(builder.sectionTitle, true);
+  builder.subheading("Relationship graph");
+  builder.paragraph(
+    "This image uses the same relationship graph design shown in the RAVEN traceability workspace.",
+    { color: [82, 82, 82], fontSize: 9 },
+  );
+  const imageWidth = builder.contentWidth;
+  const imageHeight = (imageWidth * TRACE_GRAPH_HEIGHT) / TRACE_GRAPH_WIDTH;
+  builder.ensureSpace(imageHeight + 2);
+  const snapshotRoot = document.createElement("div");
+  snapshotRoot.style.position = "fixed";
+  snapshotRoot.style.left = "0";
+  snapshotRoot.style.top = "0";
+  snapshotRoot.style.zIndex = "-1";
+  snapshotRoot.style.pointerEvents = "none";
+  snapshotRoot.style.width = `${TRACE_GRAPH_WIDTH}px`;
+  snapshotRoot.style.height = `${TRACE_GRAPH_HEIGHT}px`;
+  snapshotRoot.innerHTML = svg;
+  document.body.appendChild(snapshotRoot);
+  let canvas: HTMLCanvasElement;
+  try {
+    canvas = await html2canvas(snapshotRoot, {
+      background: "#ffffff",
+      height: TRACE_GRAPH_HEIGHT,
+      logging: false,
+      width: TRACE_GRAPH_WIDTH,
+    });
+  } finally {
+    snapshotRoot.remove();
+  }
+  builder.doc.addImage(
+    canvas,
+    "PNG",
+    builder.margin,
+    builder.y,
+    imageWidth,
+    imageHeight,
+    "raven-traceability-graph",
+  );
+  builder.y += imageHeight + 2;
+  builder.newPage(builder.sectionTitle, false);
+  const graph = data.traceability.graph;
+  if (!graph) return;
+  const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
   const nodeLabel = (id: string): string => {
-    const node = nodes.get(id);
+    const node = nodeById.get(id);
     if (!node) return "Unresolved node";
     const type = node.type.charAt(0).toUpperCase() + node.type.slice(1);
-    return `${type}: ${node.label}${node.orphan || node.orphaned ? " (orphaned)" : ""}`;
+    return `${type}: ${node.label}${node.orphaned ? " (orphaned)" : ""}`;
   };
-  builder.subheading("Traceability graph");
-  builder.paragraph(
-    "The diagram below shows the directed traceability chain. The relationship table beneath it preserves every backend edge in a searchable, printable form.",
-    { color: [96, 109, 128], fontSize: 9 },
-  );
-  builder.ensureSpace(96);
-  const doc = builder.doc;
-  const graphTop = builder.y;
-  const graphHeight = 84;
-  const nodeWidth = 54;
-  const nodeHeight = 18;
-  const columnGap = (builder.contentWidth - nodeWidth * 4) / 3;
-  const types = ["requirement", "risk", "assurance", "test"];
-  const colors: Record<string, { fill: [number, number, number]; stroke: [number, number, number]; text: [number, number, number] }> = {
-    requirement: { fill: [245, 245, 245], stroke: [82, 82, 91], text: [24, 24, 27] },
-    risk: { fill: [254, 242, 242], stroke: [185, 28, 28], text: [127, 29, 29] },
-    assurance: { fill: [244, 244, 245], stroke: [113, 113, 122], text: [63, 63, 70] },
-    test: { fill: [239, 246, 255], stroke: [29, 78, 216], text: [30, 58, 138] },
-  };
-  const positions = new Map<string, { x: number; y: number; type: string }>();
-  types.forEach((type, column) => {
-    const columnNodes = graph.nodes.filter((node) => node.type === type);
-    const visibleNodes = columnNodes.slice(0, 4);
-    const x = builder.margin + column * (nodeWidth + columnGap);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.setTextColor(96, 109, 128);
-    doc.text(type.toUpperCase(), x, graphTop - 2);
-    visibleNodes.forEach((node, index) => {
-      const y = graphTop + 5 + index * 20;
-      positions.set(node.id, { x, y, type });
-      const style = colors[type];
-      doc.setFillColor(...style.fill);
-      doc.setDrawColor(...style.stroke);
-      doc.setLineWidth(0.5);
-      doc.roundedRect(x, y, nodeWidth, nodeHeight, 2.5, 2.5, "FD");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7.2);
-      doc.setTextColor(...style.text);
-      const label = `${node.label}${node.orphan || node.orphaned ? " · orphaned" : ""}`;
-      const lines = doc.splitTextToSize(label, nodeWidth - 4).slice(0, 3);
-      const lineHeight = 2.8;
-      const startY = y + nodeHeight / 2 - ((lines.length - 1) * lineHeight) / 2 + 1.8;
-      lines.forEach((line: string, lineIndex: number) => {
-        doc.text(line, x + nodeWidth / 2, startY + lineIndex * lineHeight, { align: "center" });
-      });
-    });
-    if (columnNodes.length > visibleNodes.length) {
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(7);
-      doc.setTextColor(96, 109, 128);
-      doc.text(`+ ${columnNodes.length - visibleNodes.length} more`, x, graphTop + 83);
-    }
-  });
-  graph.edges.forEach((edge) => {
-    const source = positions.get(edge.source);
-    const target = positions.get(edge.target);
-    if (!source || !target) return;
-    const x1 = source.x + nodeWidth;
-    const y1 = source.y + nodeHeight / 2;
-    const x2 = target.x;
-    const y2 = target.y + nodeHeight / 2;
-    const orphaned = edge.stale || nodes.get(edge.source)?.orphaned || nodes.get(edge.target)?.orphaned;
-    const edgeColor: [number, number, number] = orphaned ? [217, 119, 6] : [100, 116, 139];
-    doc.setDrawColor(...edgeColor);
-    doc.setLineWidth(0.45);
-    if (orphaned) doc.setLineDashPattern([1.5, 1.2], 0);
-    doc.line(x1, y1, x2 - 2, y2);
-    doc.setLineDashPattern([], 0);
-    doc.setFillColor(...edgeColor);
-    doc.triangle(x2 - 2, y2, x2 - 5, y2 - 1.5, x2 - 5, y2 + 1.5, "F");
-  });
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7.2);
-  doc.setTextColor(96, 109, 128);
-  doc.text("Solid line = current relationship", builder.margin, graphTop + graphHeight);
-  doc.text("Dashed amber line = stale or orphaned relationship", builder.margin + 52, graphTop + graphHeight);
-  builder.y = graphTop + graphHeight + 5;
+  builder.subheading("Directed relationships");
   builder.table(
     [
       { header: "From node", key: "from", width: 72 },
@@ -605,27 +787,30 @@ function renderTraceabilityGraph(builder: PdfBuilder, data: ExportDataset): void
       from: nodeLabel(edge.source),
       relationship: edge.type.replace(/_/g, " "),
       to: nodeLabel(edge.target),
-      state: edge.stale || nodes.get(edge.source)?.orphaned || nodes.get(edge.target)?.orphaned
-        ? "Stale / orphaned"
-        : "Current",
+      state:
+        edge.stale ||
+        nodeById.get(edge.source)?.orphaned ||
+        nodeById.get(edge.target)?.orphaned
+          ? "Stale / orphaned"
+          : "Current",
     })),
     { fontSize: 8.6 },
   );
 }
 
-export function renderTraceabilitySection(
+export async function renderTraceabilitySection(
   builder: PdfBuilder,
   data: ExportDataset,
   _refs: ReportReferences,
-): void {
+): Promise<void> {
+  void _refs;
   builder.startSection(SECTION_TITLES.traceability, {
     newPage: true,
-    landscape: true,
+    landscape: false,
   });
   const summary = traceabilitySummary(data);
-  builder.paragraph(
+  builder.callout(
     "Coverage and orphan semantics are supplied by the backend traceability service. O2 orphan tests have no linked requirement and are shown as Unlinked.",
-    { color: [96, 109, 128], fontSize: 9 },
   );
   builder.subheading("Coverage summary");
   builder.table(
@@ -660,7 +845,7 @@ export function renderTraceabilitySection(
   );
   builder.y += 2;
 
-  renderTraceabilityGraph(builder, data);
+  await renderTraceabilityGraph(builder, data);
   builder.y += 3;
 
   if (!data.traceability.rows.length) {
@@ -676,9 +861,8 @@ export function renderTraceabilitySection(
   builder.y += 4;
   builder.subheading("Assurance and coverage trace");
   builder.table(TRACE_COVERAGE_COLUMNS, rows, { fontSize: 8.5 });
-  builder.paragraph(
+  builder.callout(
     "The matrix is a point-in-time export. A row with no test is not evidence that the requirement is untestable; it means no test script was recorded against the selected current version.",
-    { color: [96, 109, 128], fontSize: 9 },
   );
 }
 
@@ -689,9 +873,9 @@ export function renderGapReportSection(
 ): void {
   builder.startSection(SECTION_TITLES.gaps, { newPage: true, landscape: false });
   const findings = deriveGapFindings(data, refs);
-  builder.paragraph(
+  builder.callout(
     "Findings are deterministic export-time calculations from the selected records. They are not persisted approvals, CAPA records, or compliance verdicts. Persisted compliance results are labelled separately.",
-    { color: [96, 109, 128], fontSize: 8.6 },
+    "warning",
   );
   builder.metadataGroup("Finding summary", [
     ["Total findings", String(findings.length)],
@@ -717,6 +901,7 @@ export function renderGapReportSection(
     return;
   }
   findings.forEach((finding) => {
+    builder.beginCard();
     builder.subheading(`${finding.id} — ${finding.category}`);
     builder.metaRow("Requirement", finding.requirementRef);
     builder.metaRow("Requirement version", finding.requirementVersion);
@@ -726,7 +911,7 @@ export function renderGapReportSection(
     builder.labelParagraph("Finding", finding.finding);
     builder.labelParagraph("Recommendation", finding.recommendation);
     builder.labelParagraph("Closure evidence", finding.closureEvidence);
-    builder.divider();
+    builder.endCard();
   });
 }
 
@@ -785,10 +970,9 @@ export function renderEvidenceIndexSection(
   builder.startSection(SECTION_TITLES.evidence, { newPage: true, landscape: false });
   builder.paragraph(
     "Evidence references are scoped to this export pack. Supporting sentences are reproduced in full; confidence values are shown as percentages.",
-    { color: [96, 109, 128], fontSize: 8.6 },
+    { color: [82, 82, 82], fontSize: 8.6 },
   );
-  orderedRequirements(data).forEach((requirement, index) => {
-    if (index > 0) builder.newPage(SECTION_TITLES.evidence, false);
+  orderedRequirements(data).forEach((requirement) => {
     requirementSummary(builder, requirement);
     if (!requirement.evidence.length) {
       builder.paragraph(
@@ -811,8 +995,8 @@ export function renderEvidenceIndexSection(
 }
 
 export function renderLimitationsSection(builder: PdfBuilder): void {
-  builder.startSection(SECTION_TITLES.limitations, { newPage: true, landscape: false });
-  builder.paragraph(
+  builder.startSection(SECTION_TITLES.appendices, { newPage: true, landscape: false });
+  builder.callout(
     "This pack is a faithful presentation of the selected records. It is not a substitute for an approved validation dossier, and it does not create approval, execution, or compliance evidence.",
   );
   builder.bullets([
@@ -826,11 +1010,11 @@ export function renderLimitationsSection(builder: PdfBuilder): void {
   ]);
 }
 
-export function renderConsolidatedPack(
+export async function renderConsolidatedPack(
   builder: PdfBuilder,
   data: ExportDataset,
   refs: ReportReferences,
-): Blob {
+): Promise<Blob> {
   const requirementCount = data.requirements.length;
   builder.cover({
     subtitle: "Validation evidence, assurance decisions, test scripts, and traceability",
@@ -839,12 +1023,28 @@ export function renderConsolidatedPack(
     requirementCount,
     generatedAt: formatDateTime(data.generated_at),
     packReference: refs.packReference,
+    contents: [
+      SECTION_TITLES.risk,
+      SECTION_TITLES.assurance,
+      SECTION_TITLES.tests,
+      SECTION_TITLES.traceability,
+      SECTION_TITLES.gaps,
+    ],
   });
 
   const summary = traceabilitySummary(data);
 
+  const toc = builder.addToc([
+    "Executive Summary",
+    SECTION_TITLES.risk,
+    SECTION_TITLES.assurance,
+    SECTION_TITLES.tests,
+    SECTION_TITLES.traceability,
+    SECTION_TITLES.gaps,
+    SECTION_TITLES.appendices,
+  ]);
   builder.startSection("Executive Summary", { newPage: true });
-  builder.paragraph(
+  builder.callout(
     `${requirementCount} selected requirement version(s) are included. The pack contains ${summary.requirements} requirement record(s), ${data.requirements.reduce((count, item) => count + item.risks.length, 0)} risk assessment(s), ${data.requirements.reduce((count, item) => count + item.assurance.length, 0)} assurance decision(s), and ${data.requirements.reduce((count, item) => count + item.tests.length, 0)} test script(s).`,
   );
   builder.bullets([
@@ -856,21 +1056,11 @@ export function renderConsolidatedPack(
     "Test execution was not recorded. The test scripts section reproduces script content only.",
   ]);
 
-  const toc = builder.addToc([
-    SECTION_TITLES.risk,
-    SECTION_TITLES.assurance,
-    SECTION_TITLES.tests,
-    SECTION_TITLES.traceability,
-    SECTION_TITLES.gaps,
-    SECTION_TITLES.evidence,
-    SECTION_TITLES.limitations,
-  ]);
   renderRiskAssessmentSection(builder, data, refs);
   renderAssuranceSection(builder, data, refs);
   renderTestScriptsSection(builder, data, refs);
-  renderTraceabilitySection(builder, data, refs);
+  await renderTraceabilitySection(builder, data, refs);
   renderGapReportSection(builder, data, refs);
-  renderEvidenceIndexSection(builder, data, refs);
   renderLimitationsSection(builder);
   builder.fillToc(toc);
   return builder.finalize();
