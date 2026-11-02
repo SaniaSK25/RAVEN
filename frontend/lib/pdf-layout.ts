@@ -438,10 +438,11 @@ export class PdfBuilder {
     this.doc.setFont("helvetica", "normal");
     this.doc.setFontSize(fontSize);
     this.doc.setTextColor(...TEXT);
+    this.doc.setFillColor(...TEXT);
     for (const item of items) {
       const lines = this.doc.splitTextToSize(asText(item), this.contentWidth - 5);
       this.ensureSpace(Math.max(5, lines.length * lineHeight));
-      this.doc.text("-", this.margin, this.y);
+      this.doc.circle(this.margin + 1, this.y - 1.2, 0.65, "F");
       for (const line of lines) {
         if (this.y + lineHeight > this.bottomLimit()) {
           this.newPage(this.sectionTitle, this.landscape);
@@ -454,6 +455,34 @@ export class PdfBuilder {
       }
       this.y += 2.2;
     }
+    this.y += 1;
+  }
+
+  numberedList(items: string[]): void {
+    const fontSize = BODY_FONT;
+    const lineHeight = BODY_LINE;
+    this.doc.setFont("helvetica", "normal");
+    this.doc.setFontSize(fontSize);
+    this.doc.setTextColor(...TEXT);
+    items.forEach((item, index) => {
+      const number = `${index + 1}.`;
+      const lines = this.doc.splitTextToSize(asText(item), this.contentWidth - 8);
+      this.ensureSpace(Math.max(lineHeight, lines.length * lineHeight));
+      this.doc.setFont("helvetica", "bold");
+      this.doc.text(number, this.margin, this.y);
+      this.doc.setFont("helvetica", "normal");
+      lines.forEach((line: string) => {
+        if (this.y + lineHeight > this.bottomLimit()) {
+          this.newPage(this.sectionTitle, this.landscape);
+          this.doc.setFont("helvetica", "normal");
+          this.doc.setFontSize(fontSize);
+          this.doc.setTextColor(...TEXT);
+        }
+        this.doc.text(line, this.margin + 8, this.y);
+        this.y += lineHeight;
+      });
+      this.y += 2;
+    });
     this.y += 1;
   }
 
@@ -476,10 +505,10 @@ export class PdfBuilder {
     this.doc.setFontSize(fontSize);
     const lines = this.doc.splitTextToSize(raw, this.contentWidth - inset * 2);
     const textHeight = (fontSize * 25.4) / 72;
+    this.ensureSpace((lines.length - 1) * BODY_LINE + verticalPadding + 3);
     const boxTop = this.y - textHeight - verticalPadding;
     const height =
       textHeight + (lines.length - 1) * BODY_LINE + verticalPadding * 2;
-    this.ensureSpace((lines.length - 1) * BODY_LINE + verticalPadding + 2);
     const colors = CALLOUT_COLORS[tone];
     this.doc.setFillColor(...colors.fill);
     this.doc.setDrawColor(...colors.border);
@@ -529,7 +558,7 @@ export class PdfBuilder {
       width: this.activeCard.width,
     });
     this.activeCard = null;
-    this.y += 4;
+    this.y += CARD_VERTICAL_PADDING + 3;
   }
 
   table(
@@ -646,6 +675,7 @@ export class PdfBuilder {
     requirementCount: number;
     generatedAt: string;
     packReference: string;
+    requirementKeys: string[];
     contents?: string[];
   }): void {
     const width = this.pageWidth;
@@ -665,7 +695,31 @@ export class PdfBuilder {
 
     const panelWidth = width * 0.75;
     const panelTop = 25;
-    const panelHeight = 151;
+    this.doc.setFont("helvetica", "normal");
+    this.doc.setFontSize(11);
+    const requirementLines = this.doc.splitTextToSize(
+      options.requirementKeys.join(", "),
+      panelWidth - this.margin * 2 - 8,
+    ) as string[];
+    const subtitleLines = this.doc.splitTextToSize(
+      options.subtitle,
+      panelWidth - this.margin * 2 - 8,
+    ) as string[];
+    const requirementTop = panelTop + 42;
+    const requirementLineHeight = 5.5;
+    const subtitleTop =
+      requirementTop + requirementLines.length * requirementLineHeight + 4;
+    const dividerY = subtitleTop + subtitleLines.length * 5 + 4;
+    const contents = options.contents || [];
+    const contentLineHeight = 8;
+    const panelHeight = Math.max(
+      90,
+      dividerY -
+        panelTop +
+        13 +
+        Math.max(0, contents.length - 1) * contentLineHeight +
+        8,
+    );
     this.doc.setFillColor(...ORANGE);
     this.doc.rect(0, panelTop, panelWidth, panelHeight, "F");
     this.doc.setFillColor(...PEACH);
@@ -681,31 +735,46 @@ export class PdfBuilder {
     this.doc.setTextColor(...TEXT);
     this.doc.setFont("helvetica", "bold");
     this.doc.setFontSize(24);
-    const coverTitle = this.title
-      .replace(/^RAVEN — /, "")
-      .replace(/ Summary$/, "");
-    this.doc.text(coverTitle, this.margin + 4, panelTop + 29);
+    this.doc.text("Requirement No.", this.margin + 4, panelTop + 29);
     this.doc.setFont("helvetica", "normal");
     this.doc.setFontSize(11);
     this.doc.setTextColor(...TEXT);
-    const subtitleLines = this.doc.splitTextToSize(
-      options.subtitle,
-      panelWidth - this.margin * 2 - 8,
-    );
-    subtitleLines.forEach((line: string, index: number) => {
-      this.doc.text(line, this.margin + 4, panelTop + 42 + index * 5);
+    requirementLines.forEach((line: string, index: number) => {
+      this.doc.text(line, this.margin + 4, requirementTop + index * requirementLineHeight);
     });
-    const dividerY = panelTop + 52 + Math.max(0, subtitleLines.length - 1) * 5;
+    subtitleLines.forEach((line: string, index: number) => {
+      this.doc.text(line, this.margin + 4, subtitleTop + index * 5);
+    });
     this.doc.setDrawColor(...ORANGE);
     this.doc.setLineWidth(0.5);
     this.doc.line(this.margin + 4, dividerY, panelWidth - this.margin - 4, dividerY);
     this.doc.setFontSize(9);
-    (options.contents || []).forEach((item, index) => {
-      this.doc.text(item, this.margin + 5, dividerY + 13 + index * 10);
+    contents.forEach((item, index) => {
+      this.doc.text(item, this.margin + 5, dividerY + 13 + index * contentLineHeight);
     });
     this.doc.setTextColor(...TEXT);
     const cardTop = panelTop + panelHeight + 10;
-    const cardHeight = this.pageHeight - cardTop - FOOTER_HEIGHT - 5;
+    const rows: Array<[string, string]> = [
+      ["Project Name", "LIMS"],
+      ["Requirements Included", String(options.requirementCount)],
+      ["Version Selection", options.versionPolicy],
+      ["Generated Date", options.generatedAt],
+      ["Pack Reference", options.packReference],
+      ["Scope", options.scope],
+    ];
+    const controlFontSize = 11;
+    const rowLineHeight = 5.5;
+    const valueWidth = this.contentWidth - 82;
+    this.doc.setFont("helvetica", "normal");
+    this.doc.setFontSize(controlFontSize);
+    const rowData = rows.map(([label, value]) => ({
+      label,
+      valueLines: this.doc.splitTextToSize(value, valueWidth) as string[],
+    }));
+    const rowHeights = rowData.map(({ valueLines }) =>
+      Math.max(rowLineHeight, valueLines.length * rowLineHeight) + 2,
+    );
+    const cardHeight = 21 + rowHeights.reduce((total, rowHeight) => total + rowHeight, 0) + 4;
     this.doc.setFillColor(...PEACH);
     this.doc.setDrawColor(...BORDER);
     this.doc.setLineWidth(0.35);
@@ -719,30 +788,23 @@ export class PdfBuilder {
       "FD",
     );
     this.doc.setFont("helvetica", "bold");
-    this.doc.setFontSize(8);
+    this.doc.setFontSize(11);
     this.doc.setTextColor(...ORANGE);
     this.doc.text("DOCUMENT CONTROL", this.margin + 7, cardTop + 10);
-    const rows: Array<[string, string]> = [
-      ["Project Name", "LIMS"],
-      ["Requirements Included", String(options.requirementCount)],
-      ["Version Selection", options.versionPolicy],
-      ["Generated Date", options.generatedAt],
-      ["Pack Reference", options.packReference],
-      ["Scope", options.scope],
-    ];
-    this.doc.setFontSize(7.5);
-    rows.forEach(([label, value], index) => {
-      const rowY = cardTop + 21 + index * 8;
+    let rowY = cardTop + 21;
+    rowData.forEach(({ label, valueLines }, index) => {
       this.doc.setFont("helvetica", "bold");
+      this.doc.setFontSize(controlFontSize);
       this.doc.setTextColor(...MUTED);
       this.doc.text(label, this.margin + 8, rowY);
       this.doc.setFont("helvetica", "normal");
+      this.doc.setFontSize(controlFontSize);
       this.doc.setTextColor(...TEXT);
-      this.doc.text(":", this.margin + 56, rowY);
-      const valueLines = this.doc.splitTextToSize(value, this.contentWidth - 74);
+      this.doc.text(":", this.margin + 64, rowY);
       valueLines.forEach((line: string, lineIndex: number) => {
-        this.doc.text(line, this.margin + 62, rowY + lineIndex * 3.7);
+        this.doc.text(line, this.margin + 70, rowY + lineIndex * rowLineHeight);
       });
+      rowY += rowHeights[index];
     });
     this.y = this.pageHeight - FOOTER_HEIGHT;
   }

@@ -3,9 +3,11 @@ import html2canvas from "html2canvas";
 import JSZip from "jszip";
 import {
   generateRiskAssessmentPDF,
+  generateTestScriptsPDF,
   generateValidationPackPDF,
   generateValidationPackZip,
 } from "@/lib/export-utils";
+import { PdfBuilder } from "@/lib/pdf-layout";
 import { fixtureDataset } from "@/lib/__tests__/fixtures";
 
 Object.defineProperty(HTMLCanvasElement.prototype, "toDataURL", {
@@ -75,10 +77,11 @@ describe("validation pack ZIP", () => {
     );
     expect(signatures.every((content) => content.startsWith("%PDF-"))).toBe(true);
     const graphElement = jest.mocked(html2canvas).mock.calls[0]?.[0];
+    const graphSvg = graphElement?.querySelector("svg")?.outerHTML || "";
     expect(graphElement).toBeInstanceOf(HTMLElement);
-    expect(graphElement?.querySelector("svg")?.outerHTML).toContain("#F16C30");
-    expect(graphElement?.querySelector("svg")?.outerHTML).toContain("#FFECE5");
-    expect(graphElement?.querySelector("svg")?.outerHTML).toContain("Requirement");
+    expect(graphSvg).toContain("#FAFAFA");
+    expect(graphSvg).toContain("#FFECE5");
+    expect(graphSvg).toContain("Requirement");
   });
 
   it("generates one consolidated PDF containing the full validation pack", async () => {
@@ -105,5 +108,49 @@ describe("validation pack ZIP", () => {
     const pdf = await blobText(await generateRiskAssessmentPDF(data));
 
     expect([...pdf.matchAll(/\/Type\s*\/Page\b/g)]).toHaveLength(2);
+  });
+
+  it("renders test scripts as numbered actions without introductions or expected results", async () => {
+    const requirement = fixtureDataset.requirements[0];
+    const test = requirement.tests[0];
+    const data = {
+      ...fixtureDataset,
+      requirements: [
+        {
+          ...requirement,
+          tests: [
+            {
+              ...test,
+              script:
+                "Script introduction text.\nPreconditions:\n- User is logged in.\n- Valid sample data exists.\n\nTest Steps:\n1. Submit invalid data. Expected: Validation error appears.\n2. Submit valid data. Expected result: Record is saved.",
+            },
+          ],
+        },
+      ],
+    };
+    const numberedListSpy = jest.spyOn(PdfBuilder.prototype, "numberedList");
+    const bulletsSpy = jest.spyOn(PdfBuilder.prototype, "bullets");
+    const labelParagraphSpy = jest.spyOn(PdfBuilder.prototype, "labelParagraph");
+
+    try {
+      await generateTestScriptsPDF(data);
+      expect(bulletsSpy).toHaveBeenCalledWith([
+        "User is logged in.",
+        "Valid sample data exists.",
+      ]);
+      expect(numberedListSpy).toHaveBeenCalledWith([
+        "Submit invalid data.",
+        "Submit valid data.",
+      ]);
+      expect(
+        labelParagraphSpy.mock.calls.some(([label]) =>
+          ["Script introduction", "Expected result"].includes(label),
+        ),
+      ).toBe(false);
+    } finally {
+      numberedListSpy.mockRestore();
+      bulletsSpy.mockRestore();
+      labelParagraphSpy.mockRestore();
+    }
   });
 });

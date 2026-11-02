@@ -28,6 +28,7 @@ import {
   humanizeKey,
   parseTestScript,
   relatedRiskForAssurance,
+  requirementKey,
   riskBandLabel,
   riskReference,
   testDisplayTitle,
@@ -492,26 +493,23 @@ function renderTestRecord(
     return;
   }
 
-  const rawPreamble = test.script
-    .split(/\n\s*(?:preconditions?\s*:|test\s+steps?\s*:|steps?\s*:)/i)[0]
-    .trim();
-  if (rawPreamble) {
-    builder.labelParagraph("Script introduction", rawPreamble);
-  }
   builder.subheading("Preconditions");
-  builder.paragraph(parsed.preconditions || "No preconditions were stored.");
+  const preconditions = parsed.preconditions
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^\s*[-*•]\s*/, "").trim())
+    .filter(Boolean);
+  if (preconditions.length) {
+    builder.bullets(preconditions);
+  } else {
+    builder.paragraph("No preconditions were stored.");
+  }
   builder.subheading("Test steps");
   if (!parsed.steps.length) {
     builder.paragraph("No numbered test steps could be parsed. The stored script is shown below.");
     builder.paragraph(parsed.raw);
     return;
   }
-  for (const step of parsed.steps) {
-    builder.labelParagraph(`Step ${step.number}`, step.action || "No action text was stored.");
-    builder.labelParagraph("Expected result", step.expected || "Not recorded", {
-      meta: `Step ${step.number}`,
-    });
-  }
+  builder.numberedList(parsed.steps.map((step) => step.action || "No action text was stored."));
 }
 
 export function renderTestScriptsSection(
@@ -1086,6 +1084,7 @@ export async function renderConsolidatedPack(
     requirementCount,
     generatedAt: formatDateTime(data.generated_at),
     packReference: refs.packReference,
+    requirementKeys: data.requirements.map(requirementKey),
     contents: [
       SECTION_TITLES.risk,
       SECTION_TITLES.assurance,

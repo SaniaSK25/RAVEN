@@ -99,7 +99,7 @@ describe("evidence presentation helpers", () => {
       EVIDENCE_GROUPS.flatMap((group) =>
         group.fields.map(([key]) => getEvidenceField(evidence, key)),
       ).filter(Boolean),
-    ).toHaveLength(14);
+    ).toHaveLength(12);
   });
 
   it("handles missing optional fields without inventing evidence", () => {
@@ -132,8 +132,8 @@ describe("assurance decision paths", () => {
     const lines = humanizeDecisionPath({
       checks: [{ name: "severity floor", result: true }],
     });
-    expect(lines.join(" ")).toContain("checks:");
-    expect(lines.join(" ")).toContain("name: severity floor");
+    expect(lines.join(" ")).toContain("Checks:");
+    expect(lines.join(" ")).toContain("Name: severity floor");
     expect(lines.join(" ")).not.toContain("[object Object]");
   });
 });
