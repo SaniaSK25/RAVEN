@@ -7,6 +7,7 @@ from langchain_core.runnables import RunnableLambda
 from pydantic import ValidationError
 
 from app.agents.agent_script_writer import (
+    _limit_preconditions,
     generate_test_script,
     is_generation_required,
 )
@@ -124,3 +125,19 @@ def test_retry_recovers_steps_and_persistent_failure_reraises():
 def test_empty_steps_rejected():
     with pytest.raises(ValidationError):
         ScriptModel(preconditions="Ready.", steps=[])
+
+
+def test_preconditions_are_limited_to_four_lines():
+    result = _limit_preconditions(
+        "- Account exists.\n"
+        "- Test data is loaded.\n"
+        "- User has access.\n"
+        "- System is online.\n"
+        "- Audit logging is enabled."
+    )
+    assert result.splitlines() == [
+        "- Account exists.",
+        "- Test data is loaded.",
+        "- User has access.",
+        "- System is online.",
+    ]

@@ -5,13 +5,18 @@ from app.agents.bedrock_config import TokenCollector, get_llm
 from app.schemas.test_scripts import ScriptPreconditions, ScriptSteps, TestScript
 
 PROMPT_NAME = "test_script_generator"
-PROMPT_VERSION = 4
+PROMPT_VERSION = 5
+
+MAX_PRECONDITIONS = 4
 
 PRECONDITIONS_SYSTEM = (
     "You are an expert Pharmaceutical Software Validation (CSV) Engineer. "
     "Given a software requirement, write ONLY the preconditions: what must "
     "be set up or true before the test begins (system state, test data, "
-    "access). Write plain paragraphs or bullet lines starting with '-'. "
+    "access). Return exactly 3 preconditions when the requirement supports "
+    "that many, and never more than 4. Put each precondition on one concise "
+    "bullet line starting with '-'. Combine related setup details into one "
+    "line instead of adding extra bullets. "
     "Do NOT use numbered steps — numbering is reserved for the test-steps "
     "section. Return the preconditions text and nothing else."
 )
@@ -55,10 +60,12 @@ def _run_part(
             ("human", human_text),
             (
                 "human",
-                "Your previous answer was REJECTED with this validation error:\n"
-                "{error}\n"
-                "Return the FULL answer again with the reported problem fixed. "
-                "Do not omit any field.",
+                (
+                    "Your previous answer was REJECTED with this validation error:\n"
+                    "{error}\n"
+                    "Return the FULL answer again with the reported problem fixed. "
+                    "Do not omit any field."
+                ),
             ),
         ]
     )
@@ -106,6 +113,14 @@ def _log_usage(usage_log, group, model_id, attempt, collector, ok):
     )
 
 
+def _limit_preconditions(text: str) -> str:
+    """Keep generated preconditions to at most four concise bullet lines."""
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if len(lines) <= MAX_PRECONDITIONS:
+        return text.strip()
+    return "\n".join(lines[:MAX_PRECONDITIONS])
+
+
 def generate_test_script(
     requirement_text: str, assurance: dict, max_retries: int = 2, usage_log=None
 ) -> TestScript:
@@ -141,4 +156,7 @@ def generate_test_script(
         max_retries,
         usage_log,
     )
-    return TestScript(preconditions=preconditions.preconditions, steps=steps.steps)
+    return TestScript(
+        preconditions=_limit_preconditions(preconditions.preconditions),
+        steps=steps.steps,
+    )
