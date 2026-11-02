@@ -10,6 +10,8 @@ from app.models.assurance_decision import AssuranceDecision
 from app.models.batch_token_usage import BatchTokenUsage
 from app.models.base_model import ImmutableBaseModel, MutableBaseModel
 from app.models.change_event import ChangeEvent
+from app.models.compliance_assessment_run import ComplianceAssessmentRun
+from app.models.compliance_batch_usage import ComplianceBatchUsage
 from app.models.compliance_result import ComplianceResult
 from app.models.configuration_version import ConfigurationVersion
 from app.models.engine_results import (
@@ -52,6 +54,8 @@ __all__ = [
     "ChangeKind",
     "ChangeStatus",
     "ComplexityLevel",
+    "ComplianceAssessmentRun",
+    "ComplianceBatchUsage",
     "ComplianceResult",
     "ComplianceStatus",
     "ConfigurationVersion",

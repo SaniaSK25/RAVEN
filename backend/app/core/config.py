@@ -58,6 +58,12 @@ class Settings(BaseSettings):
 
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
+    COMPLIANCE_MAX_OUTPUT_TOKENS: int = 256
+    COMPLIANCE_MAX_INPUT_TOKENS: int = 6000
+    COMPLIANCE_MAX_REQUIREMENTS_PER_BATCH: int = 5
+    COMPLIANCE_FULL_COVERAGE_CRITERION: str = "The wording explicitly and sufficiently addresses the named control area as a whole."
+    COMPLIANCE_PARTIAL_COVERAGE_CRITERION: str = "The wording addresses an aspect of the named control area but does not sufficiently address it as a whole."
+
     # ==========================================================
     # CORS
     #
@@ -114,13 +120,8 @@ class Settings(BaseSettings):
         Ensure only supported databases are used.
         """
 
-        if not (
-            value.startswith("sqlite")
-            or value.startswith("postgresql")
-        ):
-            raise ValueError(
-                "DATABASE_URL must use SQLite or PostgreSQL."
-            )
+        if not (value.startswith("sqlite") or value.startswith("postgresql")):
+            raise ValueError("DATABASE_URL must use SQLite or PostgreSQL.")
 
         return value
 
@@ -132,9 +133,7 @@ class Settings(BaseSettings):
         """
 
         if len(value) < 16:
-            raise ValueError(
-                "SECRET_KEY must contain at least 16 characters."
-            )
+            raise ValueError("SECRET_KEY must contain at least 16 characters.")
 
         return value
 
@@ -146,10 +145,19 @@ class Settings(BaseSettings):
         """
 
         if value <= 0:
-            raise ValueError(
-                "ACCESS_TOKEN_EXPIRE_MINUTES must be greater than zero."
-            )
+            raise ValueError("ACCESS_TOKEN_EXPIRE_MINUTES must be greater than zero.")
 
+        return value
+
+    @field_validator(
+        "COMPLIANCE_MAX_OUTPUT_TOKENS",
+        "COMPLIANCE_MAX_INPUT_TOKENS",
+        "COMPLIANCE_MAX_REQUIREMENTS_PER_BATCH",
+    )
+    @classmethod
+    def validate_compliance_limits(cls, value: int) -> int:
+        if value <= 0:
+            raise ValueError("Compliance token and batch limits must be positive.")
         return value
 
 

@@ -69,10 +69,13 @@ requirement version. Ingestion creates requirements using the same backend.
 In the traceability graph, scrolling over the canvas scrolls the page; use the
 graph controls to zoom and fit the chain, or drag the canvas to pan.
 
-Compliance, exports, and dashboard summary views still use demo data. The
-backend does not yet expose complete read/write workflows for those areas. Test
-execution and change-event resolution actions are not initiated by the
-frontend. The Changes page can edit or retire an existing requirement through
-the backend and shows the exact impacted artifact IDs recorded for each event;
-the traceability matrix is the live view for reviewing stale links and
-artifacts.
+Compliance now offers a manually triggered, batched requirement-wording
+classification for five control areas. Opening the page only loads persisted
+assessment state; it does not call the model. Results distinguish fully and
+partially matching requirement keys, and explain that discovered matches may
+not be exhaustive because processing stops once an area is fully covered.
+Exports and dashboard summary views still use demo data. Test execution and
+change-event resolution actions are not initiated by the frontend. The Changes
+page can edit or retire an existing requirement through the backend and shows
+the exact impacted artifact IDs recorded for each event; the traceability
+matrix is the live view for reviewing stale links and artifacts.

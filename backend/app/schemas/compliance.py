@@ -2,10 +2,10 @@ from pydantic import BaseModel
 
 
 class ComplianceEvaluateRequest(BaseModel):
-    """Requirements-only Annex 11 review request.
+    """Manual requirement-wording classification request.
 
-    This intentionally does not accept evidence: the current RAVEN workflow
-    assesses whether the supplied requirement set asks for the right controls.
+    This intentionally does not accept evidence or regulatory clauses. It
+    classifies supplied requirements against the five configured control areas.
     """
 
     requirement_ids: list[str] | None = None

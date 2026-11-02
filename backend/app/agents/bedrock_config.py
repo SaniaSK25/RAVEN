@@ -67,21 +67,27 @@ class TokenCollector(BaseCallbackHandler):
     def on_llm_end(self, response, **kwargs) -> None:
         input_tokens = 0
         output_tokens = 0
+        available = True
         for generations in response.generations:
             for generation in generations:
-                usage = (
-                    getattr(
-                        getattr(generation, "message", None), "usage_metadata", None
-                    )
-                    or {}
-                )
-                input_tokens += usage.get("input_tokens", 0)
-                output_tokens += usage.get("output_tokens", 0)
+                message = getattr(generation, "message", None)
+                usage = getattr(message, "usage_metadata", None) or {}
+                if not usage:
+                    available = False
+                    continue
+                input_value = usage.get("input_tokens")
+                output_value = usage.get("output_tokens")
+                if input_value is None or output_value is None:
+                    available = False
+                    continue
+                input_tokens += input_value
+                output_tokens += output_value
         self.calls.append(
             {
                 "input_tokens": input_tokens,
                 "output_tokens": output_tokens,
                 "total_tokens": input_tokens + output_tokens,
+                "available": available,
             }
         )
 

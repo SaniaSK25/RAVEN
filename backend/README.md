@@ -83,6 +83,30 @@ is a ceiling, and usage is based on tokens actually generated. Evidence notes
 are complete, grounded explanatory sentences, normally 8-12 words and at
 most 160 characters, to reduce output time while retaining context.
 
+## Manual control-area classification
+
+`POST /api/v1/compliance/evaluate` creates a user-requested assessment and
+returns a run ID. It does not run when requirements are imported or when the
+compliance page is opened. Poll `GET /api/v1/compliance/runs/{run_id}` for
+batch progress and the final result; `GET /api/v1/compliance/report` only reads
+the latest saved run. The classifier checks requirement wording against the
+five named control areas, without regulatory clause mapping or claims about
+implementation. Python determines each area's verdict; a full match stops
+further assessment of that area, and a completed run stops when all five have
+full matches. Match lists are therefore discovered matches, not necessarily
+exhaustive.
+
+Input batches use a conservative model-family token estimate over the complete
+prompt and are bounded by `COMPLIANCE_MAX_INPUT_TOKENS` and
+`COMPLIANCE_MAX_REQUIREMENTS_PER_BATCH`. The Bedrock call enforces
+`COMPLIANCE_MAX_OUTPUT_TOKENS` (256 by default). Full and partial wording
+criteria can be adjusted with `COMPLIANCE_FULL_COVERAGE_CRITERION` and
+`COMPLIANCE_PARTIAL_COVERAGE_CRITERION`; these are not regulatory checklists.
+Every invocation stores its estimate separately from provider-reported actual
+usage. If the provider omits usage metadata, actual totals are marked
+unavailable rather than replaced with estimates. Failed or truncated batches
+leave the run incomplete and never produce an `ABSENT` final verdict.
+
 If Bedrock returns `ServiceUnavailableException` after its SDK retries, the API
 marks the batch as failed and responds with HTTP 503; wait briefly and retry the
 batch from the ingestion page. This indicates temporary provider unavailability,
