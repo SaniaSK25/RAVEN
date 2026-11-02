@@ -15,6 +15,7 @@ import {
 import {
   buildReportReferences,
   formatDateTime,
+  requirementKey,
   type ExportDataset,
   type ReportReferences,
 } from "@/lib/validation-pack";
@@ -71,6 +72,7 @@ function sectionPdf(
     requirementCount: data.requirements.length,
     generatedAt,
     packReference: refs.packReference,
+    requirementKeys: data.requirements.map(requirementKey),
     contents: [SECTION_TITLES[section]],
   });
   switch (section) {
