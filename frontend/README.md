@@ -33,8 +33,8 @@ docker-compose up -d --build
 ```
 
 The frontend reaches the backend over the Compose network and is available at
-`http://localhost:8080/raven/`. Nginx listens on container port 80 and maps to
-the host port configured by `RAVEN_HOST_PORT` (default `8080`), allowing this
+`http://localhost:3000/raven/`. Nginx listens on container port 80 and maps to
+the host port configured by `RAVEN_HOST_PORT` (default `3000`), allowing this
 stack to run alongside another application using port 80. On EC2, allow the
 chosen host port in the security group. For deployment setup, follow the
 [backend Docker deployment instructions](../backend/README.md#docker-deployment)
