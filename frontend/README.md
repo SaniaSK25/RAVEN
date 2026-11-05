@@ -25,18 +25,18 @@ submitting later batches, and saved assessments should be checked before retryin
 
 ## Docker deployment
 
-The single root Compose file builds and starts the frontend, backend, and
-PostgreSQL containers together. From the repository root, run:
+The single root Compose file builds and starts the frontend, backend,
+PostgreSQL, and Nginx containers together. From the repository root, run:
 
 ```bash
 docker-compose up -d --build
 ```
 
 The frontend reaches the backend over the Compose network and is available at
-`http://localhost/raven/`. On EC2, it is available at
-`http://<ec2-public-ip>/raven/`. RAVEN and RADAR share host port 80 because the
-application switcher runs only one stack at a time. Allow inbound TCP port 80
-in the EC2 security group. For deployment setup, follow the
+`http://localhost:3000/raven/`. Nginx listens on container port 80 and maps to
+the host port configured by `RAVEN_HOST_PORT` (default `3000`), allowing this
+stack to run alongside another application using port 80. On EC2, allow the
+chosen host port in the security group. For deployment setup, follow the
 [backend Docker deployment instructions](../backend/README.md#docker-deployment)
 to configure secure, persistent database credentials.
 

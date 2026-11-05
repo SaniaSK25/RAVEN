@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   ChevronDown,
   FileJson,
-  FileSpreadsheet,
   FileUp,
   LoaderCircle,
   Microscope,
@@ -16,10 +15,7 @@ import {
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { backendFetch, RAVEN_BASE_PATH } from "@/lib/backend-api";
-import {
-  parseRequirementsFile,
-  type IngestionRow,
-} from "@/lib/ingestion";
+import { parseRequirementsFile, type IngestionRow } from "@/lib/ingestion";
 
 interface ImportResult {
   rowNumber: number;
@@ -301,8 +297,8 @@ export default function IngestionPage() {
             Ingest requirements
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-            Add a CSV or JSON file, review the records, then import them into
-            your RAVEN workspace.
+            Add a CSV or JSON file, review the records, then import them into your
+            RAVEN workspace.
           </p>
         </div>
         {fileName ? (
@@ -710,7 +706,7 @@ export default function IngestionPage() {
             </button>
             {isFormatsExpanded ? <div id="accepted-formats" className="mt-4 space-y-4">
               <div className="flex gap-3">
-                <FileSpreadsheet aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
+                <FileUp aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
                 <div>
                   <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">CSV</p>
                   <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
