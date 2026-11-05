@@ -33,7 +33,7 @@ function response(body: unknown): Response {
   } as Response;
 }
 
-describe("CompliancePage manual classification", () => {
+describe("CompliancePage classification", () => {
   beforeEach(() => {
     mockedFetch.mockReset();
     Object.defineProperty(globalThis, "fetch", {
@@ -43,7 +43,7 @@ describe("CompliancePage manual classification", () => {
     });
   });
 
-  it("loads saved state without automatically starting classification", async () => {
+  it("loads saved state without starting an unnecessary classification", async () => {
     mockedFetch.mockResolvedValue(response({
       assessment_status: "NOT_RUN",
       control_areas: null,
@@ -51,7 +51,7 @@ describe("CompliancePage manual classification", () => {
 
     renderCompliancePage();
 
-    await screen.findByText(/No classification has been run/);
+    await screen.findByText(/No classification has been run yet/);
     expect(screen.queryByText(/Classifies requirement wording against five named control areas/)).toBeNull();
     expect(mockedFetch).toHaveBeenCalledTimes(1);
     expect(String(mockedFetch.mock.calls[0][0])).toContain("/compliance/report");

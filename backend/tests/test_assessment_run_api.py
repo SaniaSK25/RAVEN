@@ -17,18 +17,18 @@ from sqlalchemy.pool import StaticPool
 from app.db.base import Base
 from app.models.assurance_decision import AssuranceDecision
 from app.models.enums import RequirementStatus
-from app.schemas.evidence import (
-    DetectabilityEvidence,
-    EvidenceRecord,
-    ProbabilityEvidence,
-    SeverityEvidence,
-)
 from app.models.requirement import Requirement
 from app.models.requirement_version import RequirementVersion
 from app.models.risk_assessment import RiskAssessment
 from app.models.test_script import TestScript
 from app.models.token_usage import TokenUsage
 from app.models.trace_link import TraceLink
+from app.schemas.evidence import (
+    DetectabilityEvidence,
+    EvidenceRecord,
+    ProbabilityEvidence,
+    SeverityEvidence,
+)
 from app.services.assessment import assess_evidence
 
 
@@ -360,6 +360,55 @@ class TestRunAssessment:
                 assert {
                     link.link_type for link in session.query(TraceLink).all()
                 } >= {"mitigated_by", "verifies"}
+        finally:
+            app.dependency_overrides.pop(get_db, None)
+            session.close()
+
+
+    def test_edit_automatically_runs_analysis_and_resolves_change(self, monkeypatch):
+        import app.api.v1.endpoints.assessments as assessments_endpoint
+        import app.api.v1.endpoints.changes as changes_endpoint
+        import app.api.v1.endpoints.requirements as requirements_endpoint
+
+        session = make_session()
+        req, _ = _seed_requirement(session, key="LIMS-020")
+        analysis_calls = []
+        reanalysis_calls = []
+        classification_calls = []
+
+        def fake_run_assessment(requirement_id, db):
+            analysis_calls.append((requirement_id, db))
+
+        def fake_reanalyze(event_id, payload, db):
+            reanalysis_calls.append((event_id, payload.created_by, db))
+
+        def fake_classify_after_change():
+            classification_calls.append(True)
+
+        monkeypatch.setattr(requirements_endpoint, "SessionLocal", lambda: session)
+        monkeypatch.setattr(
+            requirements_endpoint,
+            "_classify_after_requirement_change",
+            fake_classify_after_change,
+        )
+        monkeypatch.setattr(
+            assessments_endpoint, "run_assessment", fake_run_assessment
+        )
+        monkeypatch.setattr(changes_endpoint, "reanalyze", fake_reanalyze)
+        app, client, get_db = _client(monkeypatch, session)
+        try:
+            response = client.patch(
+                f"/api/v1/requirements/{req.id}",
+                json={"text": "The system shall lock accounts after five failures."},
+            )
+            assert response.status_code == 200, response.text
+            body = response.json()
+            assert body["status"] == "changed"
+            assert analysis_calls == [(body["requirement_id"], session)]
+            assert reanalysis_calls == [
+                (body["event_id"], "automatic-edit-analysis", session)
+            ]
+            assert classification_calls == [True]
         finally:
             app.dependency_overrides.pop(get_db, None)
             session.close()

@@ -2,22 +2,26 @@
 
 Edit creates a new version (history preserved); delete is a soft-delete
 (status RETIRED). Both record a change event, mark impact stale and
-sync links in the same transaction. No LLM is called here.
+sync links in the same transaction. Changed versions automatically trigger
+analysis after the edit transaction commits.
 """
 
 from __future__ import annotations
 
+import logging
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Response
 
 from app.db.dependencies import DBSession
+from app.db.session import SessionLocal
 from app.models.assurance_decision import AssuranceDecision
-from app.models.requirement import Requirement
 from app.models.enums import RequirementStatus
+from app.models.requirement import Requirement
 from app.models.risk_assessment import RiskAssessment
 from app.models.test_script import TestScript
 from app.models.token_usage import TokenUsage
+from app.schemas.changes import ReanalyzePayload
 from app.schemas.requirements import RequirementCreate, RequirementEdit
 from app.schemas.responses import (
     RequirementCreateResponse,
@@ -32,6 +36,38 @@ from app.services.traceability.requirement_ops import (
 )
 
 router = APIRouter(prefix="/requirements", tags=["Requirements"])
+logger = logging.getLogger(__name__)
+
+
+def _analyze_changed_requirement(requirement_id: str, event_id: str) -> None:
+    db = SessionLocal()
+    try:
+        from app.api.v1.endpoints.assessments import run_assessment
+        from app.api.v1.endpoints.changes import reanalyze
+
+        run_assessment(requirement_id, db)
+        reanalyze(
+            event_id,
+            ReanalyzePayload(created_by="automatic-edit-analysis"),
+            db,
+        )
+    except Exception:
+        db.rollback()
+        logger.exception(
+            "Automatic analysis failed for changed requirement %s (change event %s).",
+            requirement_id,
+            event_id,
+        )
+    finally:
+        db.close()
+
+
+def _classify_after_requirement_change() -> None:
+    from app.api.v1.endpoints.compliance import (
+        run_automatic_assessment_after_requirement_change,
+    )
+
+    run_automatic_assessment_after_requirement_change()
 
 
 def _serialise(requirement: Requirement) -> dict:
@@ -220,7 +256,12 @@ def get_one(requirement_id: str, db: DBSession):
 
 
 @router.patch("/{requirement_id}", response_model=RequirementMutationResponse)
-def edit(requirement_id: str, payload: RequirementEdit, db: DBSession):
+def edit(
+    requirement_id: str,
+    payload: RequirementEdit,
+    db: DBSession,
+    background_tasks: BackgroundTasks,
+):
     try:
         outcome = edit_requirement(
             db,
@@ -235,6 +276,13 @@ def edit(requirement_id: str, payload: RequirementEdit, db: DBSession):
     except Exception as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if outcome["status"] == "changed" and outcome.get("event_id"):
+        background_tasks.add_task(
+            _analyze_changed_requirement,
+            outcome["requirement_id"],
+            outcome["event_id"],
+        )
+        background_tasks.add_task(_classify_after_requirement_change)
     return outcome
 
 

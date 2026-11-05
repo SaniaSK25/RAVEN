@@ -60,7 +60,12 @@ actual backend records. Their API calls show loading, empty, and error states
 rather than substituting sample records. Assessment and assurance lists use
 `GET /api/v1/assessments` and `GET /api/v1/assurance`; those screens display
 saved decisions and their rule context but do not recalculate scores. A
-requirement detail can start backend analysis with
+Requirement imports automatically start batched backend analysis for newly
+created requirements. Editing a requirement creates a new version and queues
+automatic analysis in the background; failures are logged and the change remains
+stale for follow-up. Edits also start a fresh compliance classification for the
+active requirement set; the compliance page's run action remains available for
+an explicit rerun. Requirement detail can also start backend analysis with
 `POST /api/v1/assessments/{requirement_id}/run`. If the saved assurance decision
 is scripted, the page offers a separate `Generate test script` action backed by
 `POST /api/v1/assessments/{requirement_id}/generate-script`. Token usage is

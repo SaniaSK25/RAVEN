@@ -1,4 +1,4 @@
-"""Manually triggered, batch-based requirement classification endpoints."""
+"""Batch-based requirement classification endpoints."""
 
 from __future__ import annotations
 
@@ -222,40 +222,17 @@ def _execute_assessment(run_id: str) -> None:
         db.close()
 
 
-@router.get("/rules")
-def rules() -> dict[str, Any]:
-    """Expose the five configured control-area names and classification criteria."""
-    return {
-        "control_areas": classifier.CONTROL_AREAS,
-        "full_coverage_criterion": settings.COMPLIANCE_FULL_COVERAGE_CRITERION,
-        "partial_coverage_criterion": settings.COMPLIANCE_PARTIAL_COVERAGE_CRITERION,
-    }
-
-
-@router.post("/evaluate")
-def evaluate(
-    payload: ComplianceEvaluateRequest,
-    background_tasks: BackgroundTasks,
-    db: DBSession,
-) -> dict[str, Any]:
-    """Create a user-requested assessment; execution continues in the background."""
-    requirements = _requirements(db, payload.requirement_ids)
-    if not requirements:
-        raise HTTPException(
-            status_code=400,
-            detail="No active requirements with a current version were found.",
-        )
+def _create_assessment_run(
+    db: Session,
+    requirements: list[dict[str, Any]],
+) -> ComplianceAssessmentRun:
     model_id = classifier.configured_model_id()
-    try:
-        chunks = classifier.chunk_requirements(
-            requirements,
-            model_id,
-            max_input_tokens=settings.COMPLIANCE_MAX_INPUT_TOKENS,
-            max_requirements=settings.COMPLIANCE_MAX_REQUIREMENTS_PER_BATCH,
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
+    chunks = classifier.chunk_requirements(
+        requirements,
+        model_id,
+        max_input_tokens=settings.COMPLIANCE_MAX_INPUT_TOKENS,
+        max_requirements=settings.COMPLIANCE_MAX_REQUIREMENTS_PER_BATCH,
+    )
     run = ComplianceAssessmentRun(
         status="QUEUED",
         requested_count=len(requirements),
@@ -275,6 +252,61 @@ def evaluate(
     db.add(run)
     db.commit()
     db.refresh(run)
+    return run
+
+
+def run_automatic_assessment_after_requirement_change() -> None:
+    """Reclassify the active requirement set after an edit."""
+    db = SessionLocal()
+    run_id = None
+    try:
+        requirements = _requirements(db)
+        if not requirements:
+            logger.warning(
+                "Skipping automatic requirement classification: "
+                "no active requirements with a current version."
+            )
+            return
+        run = _create_assessment_run(db, requirements)
+        run_id = str(run.id)
+    except Exception:
+        db.rollback()
+        logger.exception("Could not queue automatic requirement classification.")
+    finally:
+        db.close()
+
+    if run_id is not None:
+        _execute_assessment(run_id)
+
+
+@router.get("/rules")
+def rules() -> dict[str, Any]:
+    """Expose the five configured control-area names and classification criteria."""
+    return {
+        "control_areas": classifier.CONTROL_AREAS,
+        "full_coverage_criterion": settings.COMPLIANCE_FULL_COVERAGE_CRITERION,
+        "partial_coverage_criterion": settings.COMPLIANCE_PARTIAL_COVERAGE_CRITERION,
+    }
+
+
+@router.post("/evaluate")
+def evaluate(
+    payload: ComplianceEvaluateRequest,
+    background_tasks: BackgroundTasks,
+    db: DBSession,
+) -> dict[str, Any]:
+    """Create a requested assessment; execution continues in the background."""
+    requirements = _requirements(db, payload.requirement_ids)
+    if not requirements:
+        raise HTTPException(
+            status_code=400,
+            detail="No active requirements with a current version were found.",
+        )
+    try:
+        run = _create_assessment_run(db, requirements)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     background_tasks.add_task(_execute_assessment, str(run.id))
     return _serialize_run(run)
 

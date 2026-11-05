@@ -392,3 +392,65 @@ def test_api_queues_run_without_running_model_and_persists_batch_usage(monkeypat
     assert completed["requirement_routes"] == {"REQ-API-001": "requirement-uuid-1"}
     assert completed["token_usage"]["total_actual_tokens"] == 50
     session.close()
+
+
+def test_requirement_change_automatically_reclassifies_current_requirements(monkeypatch):
+    import hashlib
+
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.pool import StaticPool
+
+    from app.api.v1.endpoints import compliance as compliance_api
+    from app.db.base import Base
+    from app.models.compliance_assessment_run import ComplianceAssessmentRun
+    from app.models.enums import RequirementStatus
+    from app.models.requirement import Requirement
+    from app.models.requirement_version import RequirementVersion
+
+    engine = create_engine(
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
+    Base.metadata.create_all(engine)
+    session = sessionmaker(bind=engine, expire_on_commit=False)()
+    text = "Requirement 73 has updated wording."
+    requirement = Requirement(
+        req_key="REQ-073",
+        title="Requirement 73",
+        description=text,
+        status=RequirementStatus.APPROVED,
+        created_by="test",
+    )
+    session.add(requirement)
+    session.flush()
+    version = RequirementVersion(
+        requirement_id=requirement.id,
+        version_number=2,
+        text=text,
+        hash_sha256=hashlib.sha256(text.encode()).hexdigest(),
+        is_current=True,
+    )
+    session.add(version)
+    session.flush()
+    requirement.current_version_id = version.id
+    session.commit()
+
+    executed_runs = []
+    monkeypatch.setattr(compliance_api, "SessionLocal", lambda: session)
+    monkeypatch.setattr(classifier, "configured_model_id", lambda: "fake-model")
+    monkeypatch.setattr(
+        compliance_api,
+        "_execute_assessment",
+        lambda run_id: executed_runs.append(run_id),
+    )
+
+    compliance_api.run_automatic_assessment_after_requirement_change()
+
+    run = session.query(ComplianceAssessmentRun).one()
+    snapshot = json.loads(run.requirement_snapshot)
+    assert run.status == "QUEUED"
+    assert snapshot[0]["key"] == "REQ-073"
+    assert snapshot[0]["text"] == text
+    assert snapshot[0]["version_number"] == 2
+    assert executed_runs == [str(run.id)]
+    session.close()

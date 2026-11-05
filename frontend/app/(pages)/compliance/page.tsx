@@ -373,8 +373,8 @@ export default function CompliancePage() {
 
       {!loadingReport && !isRunning && !result && run?.assessment_status !== "FAILED" && !error ? (
         <section className="page-panel mt-6 text-sm text-zinc-500 dark:text-zinc-400">
-          No classification has been run. Select “Run Requirement Classification” when
-          you are ready; opening this page will not send an LLM request.
+          No classification has been run yet. Classification starts automatically
+          after a requirement is edited. You can also run it here.
         </section>
       ) : null}
     </DashboardLayout>

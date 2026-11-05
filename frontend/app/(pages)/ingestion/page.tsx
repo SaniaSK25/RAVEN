@@ -17,7 +17,6 @@ import {
 import DashboardLayout from "@/components/DashboardLayout";
 import { backendFetch, RAVEN_BASE_PATH } from "@/lib/backend-api";
 import {
-  parseExcelRequirementsFile,
   parseRequirementsFile,
   type IngestionRow,
 } from "@/lib/ingestion";
@@ -86,6 +85,7 @@ export default function IngestionPage() {
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [analysisResults, setAnalysisResults] = useState<BatchAssessmentItem[]>([]);
   const [analysisError, setAnalysisError] = useState("");
+  const [analysisIdentifiers, setAnalysisIdentifiers] = useState<string[]>([]);
   const [analysisTokenUsage, setAnalysisTokenUsage] = useState({
     input_tokens: 0,
     output_tokens: 0,
@@ -136,6 +136,7 @@ export default function IngestionPage() {
     setProgress(0);
     setAnalysisResults([]);
     setAnalysisError("");
+    setAnalysisIdentifiers([]);
     setIsReviewExpanded(false);
     setAnalysisTokenUsage({ input_tokens: 0, output_tokens: 0, total_tokens: 0 });
     if (file.size > MAX_FILE_SIZE) {
@@ -146,10 +147,7 @@ export default function IngestionPage() {
     }
 
     try {
-      const extension = file.name.split(".").pop()?.toLowerCase();
-      const parsed = extension === "xlsx"
-        ? await parseExcelRequirementsFile(await file.arrayBuffer())
-        : parseRequirementsFile(file.name, await file.text());
+      const parsed = parseRequirementsFile(file.name, await file.text());
       setFileName(file.name);
       setRows(parsed);
     } catch (error) {
@@ -165,6 +163,7 @@ export default function IngestionPage() {
     setIsImporting(true);
     setProgress(0);
     const completed = results.filter((result) => result.status === "imported");
+    const newRequirementIdentifiers: string[] = [];
 
     for (const [index, row] of retryRows.entries()) {
       setProgress(index + 1);
@@ -198,6 +197,9 @@ export default function IngestionPage() {
             body !== null &&
             "reused_existing" in body &&
             body.reused_existing === true;
+          if (!reusedExisting && reqKey) {
+            newRequirementIdentifiers.push(reqKey);
+          }
           completed.push({
             rowNumber: row.rowNumber,
             status: "imported",
@@ -219,14 +221,15 @@ export default function IngestionPage() {
       setResults([...completed]);
     }
     setIsImporting(false);
+    if (newRequirementIdentifiers.length > 0) {
+      await analyzeImportedRequirements(newRequirementIdentifiers);
+    }
   }
 
-  async function analyzeImportedRequirements() {
-    const identifiers = results
-      .filter((result) => result.status === "imported" && result.reqKey)
-      .map((result) => result.reqKey as string);
+  async function analyzeImportedRequirements(identifiers: string[]) {
     if (identifiers.length === 0) return;
 
+    setAnalysisIdentifiers(identifiers);
     setIsAnalyzing(true);
     setAnalysisProgress(0);
     setAnalysisResults([]);
@@ -282,6 +285,7 @@ export default function IngestionPage() {
     setProgress(0);
     setAnalysisResults([]);
     setAnalysisError("");
+    setAnalysisIdentifiers([]);
     setAnalysisTokenUsage({ input_tokens: 0, output_tokens: 0, total_tokens: 0 });
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
@@ -297,7 +301,7 @@ export default function IngestionPage() {
             Ingest requirements
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-            Add a CSV, JSON, or Excel file, review the records, then import them into
+            Add a CSV or JSON file, review the records, then import them into
             your RAVEN workspace.
           </p>
         </div>
@@ -340,8 +344,8 @@ export default function IngestionPage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".csv,.json,.xlsx,application/json,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-              aria-label="Choose a CSV, JSON, or Excel requirements file"
+              accept=".csv,.json,application/json,text/csv"
+              aria-label="Choose a CSV or JSON requirements file"
               className="sr-only"
               disabled={isImporting || isAnalyzing}
               onChange={(event) => {
@@ -377,7 +381,7 @@ export default function IngestionPage() {
                 {fileName || "Drop your file here, or browse"}
               </span>
               <span className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                CSV, JSON, and Excel files only
+                CSV and JSON files only
               </span>
             </button>
             {parseError ? (
@@ -574,27 +578,53 @@ export default function IngestionPage() {
                         id="analysis-heading"
                         className="text-base font-semibold text-zinc-900 dark:text-zinc-50"
                       >
-                        4. Batch-assess imported requirements
+                        4. Automatically analyze new requirements
                       </h2>
                       <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                        Up to 10 requirements are sent together for evidence
-                        extraction. Risk scoring and assurance decisions stay
-                        deterministic; test scripts are not generated here.
+                        New requirements are automatically analyzed in batches
+                        of up to 10 after import. Risk scoring and assurance
+                        decisions stay deterministic; test scripts are not
+                        generated here.
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => void analyzeImportedRequirements()}
-                      disabled={isAnalyzing || isImporting}
-                      className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-600 dark:disabled:bg-zinc-700 dark:disabled:text-zinc-400"
-                    >
-                      {isAnalyzing ? (
-                        <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Microscope aria-hidden="true" className="h-4 w-4" />
-                      )}
-                      {isAnalyzing ? "Analyzing…" : "Analyze imported requirements"}
-                    </button>
+                    {(analysisError ||
+                      analysisResults.some((result) => result.status === "FAILED")) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const failedIdentifiers = analysisError
+                            ? analysisIdentifiers.filter(
+                                (identifier) =>
+                                  !analysisResults.some(
+                                    (result) =>
+                                      result.status === "SUCCEEDED" &&
+                                      (result.requirement_key === identifier ||
+                                        result.requirement_id === identifier),
+                                  ),
+                              )
+                            : analysisResults
+                                .filter((result) => result.status === "FAILED")
+                                .map(
+                                  (result) =>
+                                    result.requirement_key ?? result.requirement_id,
+                                );
+                          void analyzeImportedRequirements(
+                            failedIdentifiers.length > 0
+                              ? failedIdentifiers
+                              : analysisIdentifiers,
+                          );
+                        }}
+                        disabled={isAnalyzing || isImporting}
+                        className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                      >
+                        {isAnalyzing ? (
+                          <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Microscope aria-hidden="true" className="h-4 w-4" />
+                        )}
+                        {isAnalyzing ? "Analyzing…" : "Retry failed analysis"}
+                      </button>
+                    )}
                   </div>
                   {isAnalyzing ? (
                     <p className="text-sm text-zinc-500 dark:text-zinc-400" aria-live="polite">
@@ -670,7 +700,7 @@ export default function IngestionPage() {
                   Accepted formats
                 </span>
                 <span className="mt-1 block text-xs text-zinc-500 dark:text-zinc-400">
-                  {isFormatsExpanded ? "Hide file guidance" : "CSV · JSON · Excel"}
+                  {isFormatsExpanded ? "Hide file guidance" : "CSV · JSON"}
                 </span>
               </span>
               <ChevronDown
@@ -694,15 +724,6 @@ export default function IngestionPage() {
                   <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">JSON</p>
                   <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
                     Use an array of strings or objects with a string <code className="rounded bg-zinc-100 px-1 py-0.5 dark:bg-zinc-800">text</code> property.
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <FileSpreadsheet aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
-                <div>
-                  <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">Excel</p>
-                  <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
-                    Use the first worksheet with a header named <code className="rounded bg-zinc-100 px-1 py-0.5 dark:bg-zinc-800">text</code>.
                   </p>
                 </div>
               </div>
