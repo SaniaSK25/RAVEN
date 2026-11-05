@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   ChevronDown,
   FileJson,
-  FileSpreadsheet,
   FileUp,
   LoaderCircle,
   Microscope,
@@ -16,11 +15,7 @@ import {
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { backendFetch, RAVEN_BASE_PATH } from "@/lib/backend-api";
-import {
-  parseExcelRequirementsFile,
-  parseRequirementsFile,
-  type IngestionRow,
-} from "@/lib/ingestion";
+import { parseRequirementsFile, type IngestionRow } from "@/lib/ingestion";
 
 interface ImportResult {
   rowNumber: number;
@@ -146,10 +141,7 @@ export default function IngestionPage() {
     }
 
     try {
-      const extension = file.name.split(".").pop()?.toLowerCase();
-      const parsed = extension === "xlsx"
-        ? await parseExcelRequirementsFile(await file.arrayBuffer())
-        : parseRequirementsFile(file.name, await file.text());
+      const parsed = parseRequirementsFile(file.name, await file.text());
       setFileName(file.name);
       setRows(parsed);
     } catch (error) {
@@ -297,8 +289,8 @@ export default function IngestionPage() {
             Ingest requirements
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-            Add a CSV, JSON, or Excel file, review the records, then import them into
-            your RAVEN workspace.
+            Add a CSV or JSON file, review the records, then import them into your
+            RAVEN workspace.
           </p>
         </div>
         {fileName ? (
@@ -340,8 +332,8 @@ export default function IngestionPage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".csv,.json,.xlsx,application/json,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-              aria-label="Choose a CSV, JSON, or Excel requirements file"
+              accept=".csv,.json,application/json,text/csv"
+              aria-label="Choose a CSV or JSON requirements file"
               className="sr-only"
               disabled={isImporting || isAnalyzing}
               onChange={(event) => {
@@ -377,7 +369,7 @@ export default function IngestionPage() {
                 {fileName || "Drop your file here, or browse"}
               </span>
               <span className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                CSV, JSON, and Excel files only
+                CSV and JSON files only
               </span>
             </button>
             {parseError ? (
@@ -670,7 +662,7 @@ export default function IngestionPage() {
                   Accepted formats
                 </span>
                 <span className="mt-1 block text-xs text-zinc-500 dark:text-zinc-400">
-                  {isFormatsExpanded ? "Hide file guidance" : "CSV · JSON · Excel"}
+                  {isFormatsExpanded ? "Hide file guidance" : "CSV · JSON"}
                 </span>
               </span>
               <ChevronDown
@@ -680,7 +672,7 @@ export default function IngestionPage() {
             </button>
             {isFormatsExpanded ? <div id="accepted-formats" className="mt-4 space-y-4">
               <div className="flex gap-3">
-                <FileSpreadsheet aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
+                <FileUp aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
                 <div>
                   <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">CSV</p>
                   <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
@@ -694,15 +686,6 @@ export default function IngestionPage() {
                   <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">JSON</p>
                   <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
                     Use an array of strings or objects with a string <code className="rounded bg-zinc-100 px-1 py-0.5 dark:bg-zinc-800">text</code> property.
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <FileSpreadsheet aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
-                <div>
-                  <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">Excel</p>
-                  <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
-                    Use the first worksheet with a header named <code className="rounded bg-zinc-100 px-1 py-0.5 dark:bg-zinc-800">text</code>.
                   </p>
                 </div>
               </div>
