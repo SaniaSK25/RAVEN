@@ -23,6 +23,7 @@ import {
   type BackendPage,
   type BackendRequirement,
 } from "@/lib/backend-api";
+import { filterChangeEvents } from "@/lib/changes-search";
 
 interface ChangeMutationResult {
   status: string;
@@ -45,6 +46,8 @@ export default function ChangesPage() {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [changeMode, setChangeMode] = useState<"edit" | "delete">("edit");
   const [selectedRequirementId, setSelectedRequirementId] = useState("");
+  const [requirementPickerQuery, setRequirementPickerQuery] = useState("");
+  const [isRequirementPickerOpen, setIsRequirementPickerOpen] = useState(false);
   const [draftText, setDraftText] = useState("");
   const [deleteConfirmed, setDeleteConfirmed] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -138,6 +141,9 @@ export default function ChangesPage() {
     if (!selectedRequirementId && requirements.length > 0) {
       const firstRequirement = requirements[0];
       setSelectedRequirementId(firstRequirement.id);
+      setRequirementPickerQuery(
+        `${firstRequirement.req_key ? `${firstRequirement.req_key} — ` : ""}${firstRequirement.description}`,
+      );
       setDraftText(firstRequirement.description);
     }
   }
@@ -145,10 +151,23 @@ export default function ChangesPage() {
   function selectRequirement(requirementId: string) {
     const requirement = requirements.find((item) => item.id === requirementId);
     setSelectedRequirementId(requirementId);
+    setRequirementPickerQuery(
+      requirement
+        ? `${requirement.req_key ? `${requirement.req_key} — ` : ""}${requirement.description}`
+        : "",
+    );
+    setIsRequirementPickerOpen(false);
     setDraftText(requirement?.description ?? "");
     setDeleteConfirmed(false);
     setActionError("");
   }
+
+  const matchingRequirements = requirements.filter((requirement) =>
+    `${requirement.req_key ?? ""} ${requirement.description}`
+      .normalize("NFKC")
+      .toLowerCase()
+      .includes(requirementPickerQuery.trim().normalize("NFKC").toLowerCase()),
+  );
 
   async function refreshBackendRecords() {
     await Promise.all([loadChanges(), loadRequirements()]);
@@ -216,11 +235,7 @@ export default function ChangesPage() {
     }
   }
 
-  const visible = changes.filter((change) =>
-    `${change.requirement_key ?? ""} ${change.current_text ?? ""} ${change.kind} ${change.status}`
-    .toLowerCase()
-      .includes(query.trim().toLowerCase()),
-  );
+  const visible = filterChangeEvents(changes, query);
 
   return (
     <DashboardLayout>
@@ -320,25 +335,79 @@ export default function ChangesPage() {
             </p>
           ) : (
             <form onSubmit={(event) => void saveRequirementChange(event)} className="mt-5 space-y-4">
-              <div>
+              <div className="relative">
                 <label htmlFor="change-requirement" className="mb-1.5 block text-sm font-medium text-zinc-800 dark:text-zinc-200">
                   Requirement
                 </label>
-                <select
+                <input
                   id="change-requirement"
-                  value={selectedRequirementId}
-                  onChange={(event) => selectRequirement(event.target.value)}
+                  type="search"
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-expanded={isRequirementPickerOpen}
+                  aria-controls="change-requirement-options"
+                  autoComplete="off"
+                  placeholder="Search by requirement ID or text…"
+                  value={requirementPickerQuery}
+                  onFocus={() => setIsRequirementPickerOpen(true)}
+                  onBlur={() => setIsRequirementPickerOpen(false)}
+                  onChange={(event) => {
+                    setRequirementPickerQuery(event.target.value);
+                    setSelectedRequirementId("");
+                    setDraftText("");
+                    setIsRequirementPickerOpen(true);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      setIsRequirementPickerOpen(false);
+                      event.currentTarget.blur();
+                    }
+                  }}
                   disabled={isSaving}
                   className="min-h-10 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
-                >
-                  <option value="" disabled>Select a requirement</option>
-                  {requirements.map((requirement) => (
-                    <option key={requirement.id} value={requirement.id}>
-                      {requirement.req_key ? `${requirement.req_key} — ` : ""}
-                      {requirement.description} (v{requirement.version})
-                    </option>
-                  ))}
-                </select>
+                />
+                {isRequirementPickerOpen ? (
+                  <ul
+                    id="change-requirement-options"
+                    role="listbox"
+                    aria-label="Matching requirements"
+                    className="absolute inset-x-0 top-full z-30 mt-1 max-h-72 overflow-y-auto rounded-md border border-zinc-300 bg-white p-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-950"
+                  >
+                    {matchingRequirements.length > 0 ? (
+                      matchingRequirements.map((requirement) => (
+                        <li key={requirement.id} role="presentation">
+                          <button
+                            type="button"
+                            role="option"
+                            aria-selected={requirement.id === selectedRequirementId}
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => selectRequirement(requirement.id)}
+                            className="w-full rounded px-3 py-2 text-left text-sm text-zinc-800 hover:bg-orange-50 focus-visible:bg-orange-50 focus-visible:outline-none dark:text-zinc-100 dark:hover:bg-zinc-800 dark:focus-visible:bg-zinc-800"
+                          >
+                            <span className="block break-words font-medium">
+                              {requirement.req_key ?? requirement.id}
+                            </span>
+                            <span className="mt-0.5 block whitespace-normal break-words text-xs leading-5 text-zinc-600 dark:text-zinc-300">
+                              {requirement.description}
+                            </span>
+                            <span className="mt-1 block text-[11px] text-zinc-500 dark:text-zinc-400">
+                              Version {requirement.version}
+                            </span>
+                          </button>
+                        </li>
+                      ))
+                    ) : (
+                      <li className="px-3 py-3 text-sm text-zinc-500" role="status">
+                        No requirements match this search.
+                      </li>
+                    )}
+                  </ul>
+                ) : null}
+                {!selectedRequirement ? (
+                  <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                    Select a requirement from the matching results before editing or retiring it.
+                  </p>
+                ) : null}
               </div>
 
               {changeMode === "edit" ? (
@@ -469,7 +538,15 @@ export default function ChangesPage() {
       ) : null}
 
       <section aria-label="Search change events" className="page-panel mt-6">
-        <RequirementSearch value={query} onChange={setQuery} />
+        <RequirementSearch
+          value={query}
+          onChange={setQuery}
+          label="Search change events"
+          placeholder="Requirement ID, text, status, or action…"
+        />
+        <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400" aria-live="polite">
+          Showing {visible.length} of {changes.length} change events
+        </p>
       </section>
       <section aria-label="Change events" className="mt-4 space-y-3">
         {loading ? (

@@ -23,6 +23,7 @@ from app.models.prompt_version import PromptVersion
 
 # Core Models
 from app.models.requirement import Requirement
+from app.models.requirement_ingestion_batch import RequirementIngestionBatch
 from app.models.requirement_version import RequirementVersion
 from app.models.risk_assessment import RiskAssessment
 from app.models.stored_evidence import Evidence

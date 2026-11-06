@@ -18,6 +18,34 @@ import {
 const PRECONDITIONS_HEADER = "Preconditions:";
 const STEPS_HEADER = "Test Steps:";
 
+type ComplianceControlArea = {
+  verdict: "COVERED" | "PARTIALLY_COVERED" | "ABSENT";
+  fully_covered_requirements: string[];
+  partially_covered_requirements: string[];
+};
+
+type ComplianceReport = {
+  assessment_status: "NOT_RUN" | "QUEUED" | "RUNNING" | "COMPLETED" | "FAILED";
+  control_areas?: Record<string, ComplianceControlArea> | null;
+  requirement_routes?: Record<string, string>;
+  matching_lists_exhaustive?: boolean | null;
+  error?: string | null;
+};
+
+const COMPLIANCE_AREA_LABELS: Record<string, string> = {
+  audit_trail: "Audit trail",
+  e_signature: "Electronic signature",
+  access_control: "Access control",
+  record_retention: "Record retention",
+  data_integrity: "Data integrity",
+};
+
+const COMPLIANCE_STATUS_STYLES = {
+  "Fully covered": "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200",
+  Partial: "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200",
+  Absent: "border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200",
+};
+
 function splitScript(script: string): { preconditions: string; steps: string } | null {
   const preIndex = script.indexOf(PRECONDITIONS_HEADER);
   const stepsIndex = script.indexOf(STEPS_HEADER);
@@ -139,6 +167,25 @@ export default function RequirementDetailPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState("");
   const [exportSuccess, setExportSuccess] = useState("");
+  const [complianceReport, setComplianceReport] = useState<ComplianceReport | null>(null);
+  const [complianceLoading, setComplianceLoading] = useState(true);
+  const [complianceError, setComplianceError] = useState("");
+  const [showComplianceGaps, setShowComplianceGaps] = useState(false);
+
+  async function loadComplianceReport() {
+    setComplianceLoading(true);
+    setComplianceError("");
+    try {
+      const report = await backendFetch<ComplianceReport>("compliance/report");
+      setComplianceReport(report);
+    } catch (cause) {
+      setComplianceError(
+        cause instanceof Error ? cause.message : "Could not load compliance results.",
+      );
+    } finally {
+      setComplianceLoading(false);
+    }
+  }
 
   useEffect(() => {
     let active = true;
@@ -167,6 +214,30 @@ export default function RequirementDetailPage() {
       })
       .finally(() => {
         if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [id]);
+
+  useEffect(() => {
+    let active = true;
+    backendFetch<ComplianceReport>("compliance/report")
+      .then((report) => {
+        if (active) {
+          setComplianceReport(report);
+          setComplianceError("");
+        }
+      })
+      .catch((cause: unknown) => {
+        if (active) {
+          setComplianceError(
+            cause instanceof Error ? cause.message : "Could not load compliance results.",
+          );
+        }
+      })
+      .finally(() => {
+        if (active) setComplianceLoading(false);
       });
     return () => {
       active = false;
@@ -247,6 +318,17 @@ export default function RequirementDetailPage() {
   const canGenerateScript =
     String(requirement?.assurance?.level ?? "").toLowerCase() === "scripted" &&
     !hasGeneratedScript;
+  const complianceRequirementKey = complianceReport?.requirement_routes
+    ? Object.entries(complianceReport.requirement_routes).find(
+        ([key, route]) =>
+          route === requirement?.id || key === requirement?.req_key,
+      )?.[0]
+    : undefined;
+  const hasComplianceResults =
+    complianceReport?.assessment_status === "COMPLETED" &&
+    Boolean(complianceRequirementKey) &&
+    Boolean(complianceReport.control_areas);
+
   return (
     <DashboardLayout>
       <Link
@@ -323,6 +405,137 @@ export default function RequirementDetailPage() {
             <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-zinc-700 dark:text-zinc-300">
               {requirement.text || requirement.description}
             </p>
+          </section>
+
+          <section className="page-panel mt-4" aria-labelledby="compliance-gaps-heading">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2
+                  id="compliance-gaps-heading"
+                  className="text-base font-semibold text-zinc-900 dark:text-zinc-50"
+                >
+                  Compliance gaps
+                </h2>
+                <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                  Control-area findings from the saved requirement compliance analysis.
+                </p>
+              </div>
+              {hasComplianceResults ? (
+                <button
+                  type="button"
+                  onClick={() => setShowComplianceGaps((visible) => !visible)}
+                  aria-expanded={showComplianceGaps}
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-900"
+                >
+                  {showComplianceGaps ? "Hide gaps" : "Show gaps"}
+                  <ChevronDown
+                    aria-hidden="true"
+                    className={`h-4 w-4 transition-transform ${showComplianceGaps ? "rotate-180" : ""}`}
+                  />
+                </button>
+              ) : null}
+            </div>
+
+            {complianceLoading ? (
+              <p role="status" className="mt-4 flex items-center gap-2 text-sm text-zinc-500">
+                <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" />
+                Loading saved compliance results…
+              </p>
+            ) : complianceError ? (
+              <div role="alert" className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-red-700 dark:text-red-300">{complianceError}</p>
+                <button
+                  type="button"
+                  onClick={() => void loadComplianceReport()}
+                  className="text-sm font-semibold text-accent underline"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : hasComplianceResults ? (
+              <>
+                {showComplianceGaps ? (
+                  <>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {Object.entries(complianceReport.control_areas ?? {}).map(
+                        ([areaKey, area]) => {
+                          const fullyCovered =
+                            area.fully_covered_requirements.includes(
+                              complianceRequirementKey!,
+                            );
+                          const partiallyCovered =
+                            area.partially_covered_requirements.includes(
+                              complianceRequirementKey!,
+                            );
+                          const status = fullyCovered
+                            ? "Fully covered"
+                            : partiallyCovered
+                              ? "Partial"
+                              : "Absent";
+                          return (
+                            <div
+                              key={areaKey}
+                              className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
+                            >
+                              <p className="text-sm font-medium text-zinc-800 dark:text-zinc-100">
+                                {COMPLIANCE_AREA_LABELS[areaKey] ?? areaKey}
+                              </p>
+                              <span
+                                className={`mt-2 inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${COMPLIANCE_STATUS_STYLES[status]}`}
+                              >
+                                {status}
+                              </span>
+                            </div>
+                          );
+                        },
+                      )}
+                    </div>
+                    {complianceReport.matching_lists_exhaustive === false ? (
+                      <p className="mt-3 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+                        “Absent” means this requirement was not listed as fully or partially
+                        covered in the saved analysis. The report marks its match lists as
+                        non-exhaustive, so confirm gaps before treating absence as definitive.
+                      </p>
+                    ) : null}
+                    <Link
+                      href="/compliance"
+                      className="mt-4 inline-flex text-sm font-semibold text-accent underline"
+                    >
+                      View full compliance analysis
+                    </Link>
+                  </>
+                ) : null}
+              </>
+            ) : complianceReport?.assessment_status === "QUEUED" ||
+              complianceReport?.assessment_status === "RUNNING" ? (
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <p role="status" className="text-sm text-zinc-600 dark:text-zinc-300">
+                  Compliance analysis is running; results will appear when it completes.
+                </p>
+                <Link
+                  href="/compliance"
+                  className="text-sm font-semibold text-accent underline"
+                >
+                  View compliance analysis
+                </Link>
+              </div>
+            ) : (
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-zinc-600 dark:text-zinc-300">
+                  {complianceReport?.assessment_status === "FAILED"
+                    ? complianceReport.error ?? "The last compliance analysis failed."
+                    : complianceReport?.assessment_status === "COMPLETED"
+                      ? "The latest completed analysis did not include this requirement."
+                      : "Compliance analysis has not been run yet."}
+                </p>
+                <Link
+                  href="/compliance"
+                  className="inline-flex min-h-10 items-center justify-center rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                >
+                  Run compliance analysis
+                </Link>
+              </div>
+            )}
           </section>
 
           <div className="mt-4 grid gap-4 md:grid-cols-3">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
   Check,
@@ -27,7 +27,7 @@ interface ImportResult {
 interface BatchAssessmentItem {
   requirement_id: string;
   requirement_key: string | null;
-  status: "SUCCEEDED" | "FAILED";
+  status: "PENDING" | "SUCCEEDED" | "FAILED" | "ALREADY_ANALYZED";
   error?: string;
   risk_assessment?: {
     rpn: number;
@@ -40,21 +40,25 @@ interface BatchAssessmentItem {
   } | null;
 }
 
-interface BatchAssessmentResponse {
-  status: string;
+interface IngestionBatchResponse {
+  batch_id: string;
+  status: "IMPORTED" | "PROCESSING" | "PARTIAL" | "COMPLETED";
   requested_count: number;
-  succeeded_count: number;
-  failed_count: number;
-  token_usage: {
-    input_tokens: number;
-    output_tokens: number;
-    total_tokens: number;
-  };
-  items: BatchAssessmentItem[];
+  items: IngestionBatchItem[];
+  analysis_results: BatchAssessmentItem[];
+  error: string | null;
+}
+
+interface IngestionBatchItem {
+  requirement_id: string;
+  requirement_key: string | null;
+  source_row: number | null;
+  reused_existing: boolean;
 }
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const ANALYSIS_BATCH_SIZE = 10;
+const INGESTION_BATCH_ID_KEY = "raven_ingestion_batch_id";
+const INGESTION_ANALYSIS_REQUESTED_KEY = "raven_ingestion_analysis_requested";
 
 function detailFromResponse(body: unknown): string {
   if (
@@ -68,27 +72,188 @@ function detailFromResponse(body: unknown): string {
   return "The backend could not save this requirement.";
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function parseIngestionBatchResponse(value: unknown): IngestionBatchResponse | null {
+  if (!isRecord(value) || !Array.isArray(value.items) || !Array.isArray(value.analysis_results)) {
+    return null;
+  }
+  if (
+    typeof value.batch_id !== "string" ||
+    (value.status !== "IMPORTED" &&
+      value.status !== "PROCESSING" &&
+      value.status !== "PARTIAL" &&
+      value.status !== "COMPLETED") ||
+    typeof value.requested_count !== "number"
+  ) {
+    return null;
+  }
+
+  const items: IngestionBatchItem[] = [];
+  for (const rawItem of value.items) {
+    if (
+      !isRecord(rawItem) ||
+      typeof rawItem.requirement_id !== "string" ||
+      typeof rawItem.reused_existing !== "boolean"
+    ) {
+      return null;
+    }
+    items.push({
+      requirement_id: rawItem.requirement_id,
+      requirement_key:
+        typeof rawItem.requirement_key === "string" ||
+        rawItem.requirement_key === null
+          ? rawItem.requirement_key
+          : null,
+      source_row: typeof rawItem.source_row === "number" ? rawItem.source_row : null,
+      reused_existing: rawItem.reused_existing,
+    });
+  }
+
+  const analysisResults: BatchAssessmentItem[] = [];
+  for (const rawResult of value.analysis_results) {
+    if (
+      !isRecord(rawResult) ||
+      typeof rawResult.requirement_id !== "string" ||
+      (rawResult.status !== "PENDING" &&
+        rawResult.status !== "SUCCEEDED" &&
+        rawResult.status !== "FAILED" &&
+        rawResult.status !== "ALREADY_ANALYZED")
+    ) {
+      return null;
+    }
+    const result: BatchAssessmentItem = {
+      requirement_id: rawResult.requirement_id,
+      requirement_key:
+        typeof rawResult.requirement_key === "string" ||
+        rawResult.requirement_key === null
+          ? rawResult.requirement_key
+          : null,
+      status: rawResult.status,
+    };
+    if (typeof rawResult.error === "string") result.error = rawResult.error;
+    if (
+      isRecord(rawResult.risk_assessment) &&
+      typeof rawResult.risk_assessment.rpn === "number" &&
+      typeof rawResult.risk_assessment.band === "string"
+    ) {
+      result.risk_assessment = {
+        rpn: rawResult.risk_assessment.rpn,
+        band: rawResult.risk_assessment.band,
+      };
+    }
+    if (
+      isRecord(rawResult.assurance_decision) &&
+      typeof rawResult.assurance_decision.assurance_level === "string" &&
+      typeof rawResult.assurance_decision.generate_test === "boolean" &&
+      typeof rawResult.assurance_decision.reason === "string"
+    ) {
+      result.assurance_decision = {
+        assurance_level: rawResult.assurance_decision.assurance_level,
+        generate_test: rawResult.assurance_decision.generate_test,
+        reason: rawResult.assurance_decision.reason,
+      };
+    } else {
+      result.assurance_decision = null;
+    }
+    analysisResults.push(result);
+  }
+
+  return {
+    batch_id: value.batch_id,
+    status: value.status,
+    requested_count: value.requested_count,
+    items,
+    analysis_results: analysisResults,
+    error: typeof value.error === "string" ? value.error : null,
+  };
+}
+
 export default function IngestionPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const resumeAnalysisRequestedRef = useRef(false);
   const [fileName, setFileName] = useState("");
   const [rows, setRows] = useState<IngestionRow[]>([]);
   const [parseError, setParseError] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
-  const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<ImportResult[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisProgress, setAnalysisProgress] = useState(0);
   const [analysisResults, setAnalysisResults] = useState<BatchAssessmentItem[]>([]);
   const [analysisError, setAnalysisError] = useState("");
-  const [analysisIdentifiers, setAnalysisIdentifiers] = useState<string[]>([]);
-  const [analysisTokenUsage, setAnalysisTokenUsage] = useState({
-    input_tokens: 0,
-    output_tokens: 0,
-    total_tokens: 0,
-  });
+  const [ingestionBatchId, setIngestionBatchId] = useState("");
+  const [ingestionBatchStatus, setIngestionBatchStatus] = useState<
+    IngestionBatchResponse["status"] | ""
+  >("");
   const [isReviewExpanded, setIsReviewExpanded] = useState(false);
   const [isFormatsExpanded, setIsFormatsExpanded] = useState(false);
+
+  const restoreIngestionBatch = useCallback((batch: IngestionBatchResponse) => {
+    setIngestionBatchId(batch.batch_id);
+    setIngestionBatchStatus(batch.status);
+    setResults(
+      batch.items.map((item, index) => ({
+        rowNumber: item.source_row ?? index + 1,
+        status: "imported",
+        message: item.reused_existing
+          ? `${item.requirement_key ?? "Requirement"} already exists; existing record reused`
+          : `${item.requirement_key ?? "Requirement"} created`,
+        reqKey: item.requirement_key ?? undefined,
+      })),
+    );
+    setAnalysisResults(batch.analysis_results);
+    setAnalysisError(batch.error ?? "");
+  }, []);
+
+  useEffect(() => {
+    const savedBatchId = window.localStorage.getItem(INGESTION_BATCH_ID_KEY);
+    if (!savedBatchId) return;
+    resumeAnalysisRequestedRef.current =
+      window.localStorage.getItem(INGESTION_ANALYSIS_REQUESTED_KEY) === savedBatchId;
+    backendFetch<IngestionBatchResponse>(`requirements/batch/${savedBatchId}`)
+      .then(restoreIngestionBatch)
+      .catch((error: unknown) => {
+        setAnalysisError(
+          error instanceof Error ? error.message : "Could not restore the previous import.",
+        );
+      });
+  }, [restoreIngestionBatch]);
+
+  useEffect(() => {
+    if (
+      !ingestionBatchId ||
+      (!isAnalyzing && ingestionBatchStatus !== "PROCESSING")
+    ) {
+      return;
+    }
+
+    let active = true;
+    let timer: number;
+    const refreshProgress = async () => {
+      try {
+        const batch = await backendFetch<IngestionBatchResponse>(
+          `requirements/batch/${ingestionBatchId}`,
+        );
+        if (active) restoreIngestionBatch(batch);
+      } catch (error) {
+        if (active) {
+          setAnalysisError(
+            error instanceof Error ? error.message : "Could not refresh analysis progress.",
+          );
+        }
+      } finally {
+        if (active) timer = window.setTimeout(refreshProgress, 2000);
+      }
+    };
+
+    timer = window.setTimeout(refreshProgress, 2000);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [ingestionBatchId, ingestionBatchStatus, isAnalyzing, restoreIngestionBatch]);
 
   const readyRows = useMemo(
     () => rows.filter((row) => row.status === "ready"),
@@ -98,9 +263,7 @@ export default function IngestionPage() {
   const duplicateCount = rows.filter((row) => row.status === "duplicate").length;
   const importedCount = results.filter((result) => result.status === "imported").length;
   const failedCount = results.filter((result) => result.status === "failed").length;
-  const processedCount = isImporting
-    ? Math.min(Math.max(progress, importedCount + failedCount), readyRows.length)
-    : importedCount + failedCount;
+  const processedCount = importedCount + failedCount;
   const importProgressPercent = readyRows.length
     ? Math.round((processedCount / readyRows.length) * 100)
     : 0;
@@ -125,16 +288,28 @@ export default function IngestionPage() {
       ),
     [analysisResults],
   );
+  const analysisProcessedCount = analysisResults.filter(
+    (item) => item.status !== "PENDING",
+  ).length;
+  const analysisFailedCount = analysisResults.filter(
+    (item) => item.status === "FAILED",
+  ).length;
+  const analysisProgressPercent = importedCount
+    ? Math.round((analysisProcessedCount / importedCount) * 100)
+    : 0;
+  const analysisBusy = isAnalyzing || ingestionBatchStatus === "PROCESSING";
 
   async function loadFile(file: File) {
     setParseError("");
     setResults([]);
-    setProgress(0);
     setAnalysisResults([]);
     setAnalysisError("");
-    setAnalysisIdentifiers([]);
+    setIngestionBatchId("");
+    setIngestionBatchStatus("");
+    window.localStorage.removeItem(INGESTION_BATCH_ID_KEY);
+    window.localStorage.removeItem(INGESTION_ANALYSIS_REQUESTED_KEY);
+    resumeAnalysisRequestedRef.current = false;
     setIsReviewExpanded(false);
-    setAnalysisTokenUsage({ input_tokens: 0, output_tokens: 0, total_tokens: 0 });
     if (file.size > MAX_FILE_SIZE) {
       setRows([]);
       setFileName("");
@@ -157,138 +332,133 @@ export default function IngestionPage() {
 
   async function importRequirements() {
     setIsImporting(true);
-    setProgress(0);
-    const completed = results.filter((result) => result.status === "imported");
-    const newRequirementIdentifiers: string[] = [];
-
-    for (const [index, row] of retryRows.entries()) {
-      setProgress(index + 1);
-      try {
-        const response = await fetch(`${RAVEN_BASE_PATH}/api/ingestion`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+    setAnalysisError("");
+    try {
+      const response = await fetch(`${RAVEN_BASE_PATH}/api/ingestion`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requirements: retryRows.map((row) => ({
             description: row.text,
             text: row.text,
             created_by: "ingestion-ui",
-          }),
-        });
-        const body: unknown = await response.json();
-        if (!response.ok) {
-          completed.push({
-            rowNumber: row.rowNumber,
-            status: "failed",
-            message: detailFromResponse(body),
-          });
-        } else {
-          const reqKey =
-            typeof body === "object" &&
-            body !== null &&
-            "req_key" in body &&
-            typeof body.req_key === "string"
-              ? body.req_key
-              : undefined;
-          const reusedExisting =
-            typeof body === "object" &&
-            body !== null &&
-            "reused_existing" in body &&
-            body.reused_existing === true;
-          if (!reusedExisting && reqKey) {
-            newRequirementIdentifiers.push(reqKey);
-          }
-          completed.push({
-            rowNumber: row.rowNumber,
-            status: "imported",
-            message: reusedExisting
-              ? `${reqKey ?? "Requirement"} already exists; existing record reused`
-              : reqKey
-                ? `${reqKey} created`
-                : "Requirement created",
-            reqKey,
-          });
-        }
-      } catch {
-        completed.push({
-          rowNumber: row.rowNumber,
-          status: "failed",
-          message: "Could not reach the ingestion service.",
-        });
+            source_row: row.rowNumber,
+          })),
+        }),
+      });
+      const body: unknown = await response.json();
+      if (!response.ok) throw new Error(detailFromResponse(body));
+      const batch = parseIngestionBatchResponse(body);
+      if (!batch || batch.items.length !== retryRows.length) {
+        throw new Error("The ingestion service returned an invalid import result.");
       }
-      setResults([...completed]);
-    }
-    setIsImporting(false);
-    if (newRequirementIdentifiers.length > 0) {
-      await analyzeImportedRequirements(newRequirementIdentifiers);
+      window.localStorage.setItem(INGESTION_BATCH_ID_KEY, batch.batch_id);
+      window.localStorage.removeItem(INGESTION_ANALYSIS_REQUESTED_KEY);
+      resumeAnalysisRequestedRef.current = false;
+      restoreIngestionBatch(batch);
+    } catch (error) {
+      setAnalysisError(
+        error instanceof Error ? error.message : "Could not import requirements.",
+      );
+      setResults([
+        ...results.filter((result) => result.status === "imported"),
+        ...retryRows.map((row) => ({
+          rowNumber: row.rowNumber,
+          status: "failed" as const,
+          message: "The requirements could not be imported.",
+        })),
+      ]);
+    } finally {
+      setIsImporting(false);
     }
   }
 
-  async function analyzeImportedRequirements(identifiers: string[]) {
-    if (identifiers.length === 0) return;
-
-    setAnalysisIdentifiers(identifiers);
+  const analyzeImportedRequirements = useCallback(async () => {
+    if (!ingestionBatchId || ingestionBatchStatus === "COMPLETED") return;
+    window.localStorage.setItem(INGESTION_ANALYSIS_REQUESTED_KEY, ingestionBatchId);
+    resumeAnalysisRequestedRef.current = true;
     setIsAnalyzing(true);
-    setAnalysisProgress(0);
-    setAnalysisResults([]);
     setAnalysisError("");
     setIsReviewExpanded(false);
     setIsFormatsExpanded(false);
-    setAnalysisTokenUsage({ input_tokens: 0, output_tokens: 0, total_tokens: 0 });
-    const outcomes: BatchAssessmentItem[] = [];
-    const tokenTotals = { input_tokens: 0, output_tokens: 0, total_tokens: 0 };
-    const batches = Math.ceil(identifiers.length / ANALYSIS_BATCH_SIZE);
-
-    for (let start = 0; start < identifiers.length; start += ANALYSIS_BATCH_SIZE) {
-      const chunk = identifiers.slice(start, start + ANALYSIS_BATCH_SIZE);
-      try {
-        const response = await backendFetch<BatchAssessmentResponse>(
-          "assessments/batch-run",
-          {
-            method: "POST",
-            body: JSON.stringify({ requirement_ids: chunk }),
-          },
+    try {
+      let batch: IngestionBatchResponse;
+      while (true) {
+        batch = await backendFetch<IngestionBatchResponse>(
+          `requirements/batch/${ingestionBatchId}/analyze`,
+          { method: "POST" },
         );
-        outcomes.push(...response.items);
-        tokenTotals.input_tokens += response.token_usage.input_tokens;
-        tokenTotals.output_tokens += response.token_usage.output_tokens;
-        tokenTotals.total_tokens += response.token_usage.total_tokens;
-      } catch (error) {
-        setAnalysisError((current) =>
-          [
-            current,
-            `Batch ${Math.floor(start / ANALYSIS_BATCH_SIZE) + 1} of ${batches}: ${
-              error instanceof Error ? error.message : "Analysis failed."
-            }`,
-          ]
-            .filter(Boolean)
-            .join("\n"),
-        );
-        setAnalysisProgress(outcomes.length);
-        break;
+        restoreIngestionBatch(batch);
+        if (batch.status === "PARTIAL" || batch.status === "COMPLETED") break;
       }
-      setAnalysisResults([...outcomes]);
-      setAnalysisTokenUsage({ ...tokenTotals });
-      setAnalysisProgress(outcomes.length);
+      window.localStorage.removeItem(INGESTION_ANALYSIS_REQUESTED_KEY);
+      resumeAnalysisRequestedRef.current = false;
+    } catch (error) {
+      setAnalysisError(
+        error instanceof Error ? error.message : "Analysis failed.",
+      );
+      try {
+        const batch = await backendFetch<IngestionBatchResponse>(
+          `requirements/batch/${ingestionBatchId}`,
+        );
+        restoreIngestionBatch(batch);
+        if (batch.status !== "PROCESSING" && batch.status !== "IMPORTED") {
+          window.localStorage.removeItem(INGESTION_ANALYSIS_REQUESTED_KEY);
+          resumeAnalysisRequestedRef.current = false;
+        }
+      } catch (restoreError) {
+        resumeAnalysisRequestedRef.current = false;
+        setAnalysisError(
+          restoreError instanceof Error
+            ? restoreError.message
+            : "Could not restore analysis progress.",
+        );
+      }
+    } finally {
+      setIsAnalyzing(false);
     }
-    setIsAnalyzing(false);
-  }
+  }, [ingestionBatchId, ingestionBatchStatus, restoreIngestionBatch]);
+
+  useEffect(() => {
+    if (!resumeAnalysisRequestedRef.current || isAnalyzing || !ingestionBatchId) return;
+    if (
+      ingestionBatchStatus === "IMPORTED" ||
+      ingestionBatchStatus === "PARTIAL"
+    ) {
+      const timer = window.setTimeout(() => {
+        void analyzeImportedRequirements();
+      }, 0);
+      return () => window.clearTimeout(timer);
+    } else if (ingestionBatchStatus === "COMPLETED") {
+      window.localStorage.removeItem(INGESTION_ANALYSIS_REQUESTED_KEY);
+      resumeAnalysisRequestedRef.current = false;
+    }
+  }, [
+    analyzeImportedRequirements,
+    ingestionBatchId,
+    ingestionBatchStatus,
+    isAnalyzing,
+  ]);
 
   function clearSelection() {
-    if (isImporting || isAnalyzing) return;
+    if (isImporting || analysisBusy) return;
     setFileName("");
     setRows([]);
     setParseError("");
     setResults([]);
-    setProgress(0);
     setAnalysisResults([]);
     setAnalysisError("");
-    setAnalysisIdentifiers([]);
-    setAnalysisTokenUsage({ input_tokens: 0, output_tokens: 0, total_tokens: 0 });
+    setIngestionBatchId("");
+    setIngestionBatchStatus("");
+    window.localStorage.removeItem(INGESTION_BATCH_ID_KEY);
+    window.localStorage.removeItem(INGESTION_ANALYSIS_REQUESTED_KEY);
+    resumeAnalysisRequestedRef.current = false;
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   return (
     <DashboardLayout>
-      <div className="page-header-shell mx-auto flex w-full max-w-5xl flex-col justify-between gap-4 sm:flex-row sm:items-end">
+      <div className="page-header-shell mx-auto flex w-full max-w-7xl flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <p className="text-xs font-semibold tracking-[0.18em] text-accent uppercase">
             Requirement workspace
@@ -305,7 +475,7 @@ export default function IngestionPage() {
           <button
             type="button"
             onClick={clearSelection}
-            disabled={isImporting || isAnalyzing}
+            disabled={isImporting || analysisBusy}
             className="inline-flex items-center justify-center gap-2 self-start rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 sm:self-auto dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
           >
             <X aria-hidden="true" className="h-4 w-4" />
@@ -314,7 +484,7 @@ export default function IngestionPage() {
         ) : null}
       </div>
 
-      <div className="mx-auto mt-7 grid w-full max-w-5xl min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="mx-auto mt-6 grid w-full max-w-7xl min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_260px]">
         <div className="min-w-0 space-y-5">
           <section
             aria-labelledby="upload-heading"
@@ -343,7 +513,7 @@ export default function IngestionPage() {
               accept=".csv,.json,application/json,text/csv"
               aria-label="Choose a CSV or JSON requirements file"
               className="sr-only"
-              disabled={isImporting || isAnalyzing}
+              disabled={isImporting || analysisBusy}
               onChange={(event) => {
                 const file = event.currentTarget.files?.[0];
                 if (file) void loadFile(file);
@@ -351,7 +521,7 @@ export default function IngestionPage() {
             />
             <button
               type="button"
-              disabled={isImporting || isAnalyzing}
+              disabled={isImporting || analysisBusy}
               onClick={() => fileInputRef.current?.click()}
               onDragOver={(event) => {
                 event.preventDefault();
@@ -391,8 +561,10 @@ export default function IngestionPage() {
             ) : null}
           </section>
 
-          {rows.length > 0 ? (
+          {rows.length > 0 || importedCount > 0 ? (
             <>
+              {rows.length > 0 ? (
+                <>
               <section
                 aria-labelledby="review-heading"
                 className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-zinc-800 dark:bg-zinc-950"
@@ -493,7 +665,7 @@ export default function IngestionPage() {
                   </h2>
                   <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                     {isImporting
-                      ? `Saving row ${progress} of ${retryRows.length}…`
+                      ? `Saving ${retryRows.length} requirements to the database…`
                       : failedCount > 0
                         ? `${failedCount} failed row${failedCount === 1 ? "" : "s"} can be retried.`
                         : importedCount > 0
@@ -501,7 +673,7 @@ export default function IngestionPage() {
                           : `${retryRows.length} requirement${retryRows.length === 1 ? "" : "s"} will be created.`}
                   </p>
                 </div>
-                {(isImporting || importedCount > 0) && readyRows.length > 0 ? (
+                {!isImporting && (importedCount > 0 || failedCount > 0) && readyRows.length > 0 ? (
                   <div className="mt-4 min-w-0 sm:col-span-2" aria-live="polite">
                     <div className="mb-1.5 flex items-center justify-between text-xs font-medium text-zinc-500 dark:text-zinc-400">
                       <span>{isImporting ? "Import progress" : "Import complete"}</span>
@@ -528,7 +700,7 @@ export default function IngestionPage() {
                 <button
                   type="button"
                   onClick={() => void importRequirements()}
-                  disabled={retryRows.length === 0 || isImporting || isAnalyzing}
+                  disabled={retryRows.length === 0 || isImporting || analysisBusy}
                   className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-600 dark:disabled:bg-zinc-700 dark:disabled:text-zinc-400"
                 >
                   {isImporting ? (
@@ -563,10 +735,12 @@ export default function IngestionPage() {
                   </div>
                 ) : null}
               </section>
-              {importedCount > 0 ? (
+                </>
+              ) : null}
+              {importedCount > 0 && ingestionBatchStatus !== "COMPLETED" ? (
                 <section
                   aria-labelledby="analysis-heading"
-                  className="space-y-4 rounded-xl border border-zinc-200 bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] sm:p-6 dark:border-zinc-800 dark:bg-zinc-950"
+                  className="space-y-5 rounded-xl border border-zinc-200 bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] sm:p-6 dark:border-zinc-800 dark:bg-zinc-950"
                 >
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -574,42 +748,20 @@ export default function IngestionPage() {
                         id="analysis-heading"
                         className="text-base font-semibold text-zinc-900 dark:text-zinc-50"
                       >
-                        4. Automatically analyze new requirements
+                        4. Analyze imported requirements
                       </h2>
                       <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                        New requirements are automatically analyzed in batches
-                        of up to 10 after import. Risk scoring and assurance
-                        decisions stay deterministic; test scripts are not
-                        generated here.
+                        All requirements are saved before analysis starts. Start
+                        analysis when you’re ready; progress is saved and can
+                        be resumed after a refresh. Analysis runs in batches
+                        of up to 10.
                       </p>
                     </div>
-                    {(analysisError ||
-                      analysisResults.some((result) => result.status === "FAILED")) && (
+                    {ingestionBatchId &&
+                      ingestionBatchStatus !== "PROCESSING" && (
                       <button
                         type="button"
-                        onClick={() => {
-                          const failedIdentifiers = analysisError
-                            ? analysisIdentifiers.filter(
-                                (identifier) =>
-                                  !analysisResults.some(
-                                    (result) =>
-                                      result.status === "SUCCEEDED" &&
-                                      (result.requirement_key === identifier ||
-                                        result.requirement_id === identifier),
-                                  ),
-                              )
-                            : analysisResults
-                                .filter((result) => result.status === "FAILED")
-                                .map(
-                                  (result) =>
-                                    result.requirement_key ?? result.requirement_id,
-                                );
-                          void analyzeImportedRequirements(
-                            failedIdentifiers.length > 0
-                              ? failedIdentifiers
-                              : analysisIdentifiers,
-                          );
-                        }}
+                        onClick={() => void analyzeImportedRequirements()}
                         disabled={isAnalyzing || isImporting}
                         className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-md border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
                       >
@@ -618,23 +770,102 @@ export default function IngestionPage() {
                         ) : (
                           <Microscope aria-hidden="true" className="h-4 w-4" />
                         )}
-                        {isAnalyzing ? "Analyzing…" : "Retry failed analysis"}
+                        {isAnalyzing
+                          ? "Analyzing…"
+                          : ingestionBatchStatus === "PARTIAL"
+                            ? "Retry failed analysis"
+                            : "Analyze requirements"}
                       </button>
                     )}
                   </div>
-                  {isAnalyzing ? (
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400" aria-live="polite">
-                      Processed {analysisProgress} of {importedCount} imported requirements.
-                    </p>
-                  ) : null}
+                  <div className="rounded-lg bg-zinc-50 p-4 dark:bg-zinc-900/60" aria-live="polite">
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-medium text-zinc-800 dark:text-zinc-100">
+                        {isAnalyzing || ingestionBatchStatus === "PROCESSING"
+                          ? "Analyzing requirements in batches…"
+                          : ingestionBatchStatus === "PARTIAL"
+                            ? "Analysis needs attention"
+                            : "Ready to analyze"}
+                      </p>
+                      <span className="text-xs font-medium tabular-nums text-zinc-500 dark:text-zinc-400">
+                        {analysisProcessedCount} of {importedCount} processed
+                      </span>
+                    </div>
+                    <div
+                      className="h-2.5 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700"
+                      role="progressbar"
+                      aria-label="Requirement analysis progress"
+                      aria-valuemin={0}
+                      aria-valuemax={importedCount}
+                      aria-valuenow={analysisProcessedCount}
+                    >
+                      <div
+                        className={`h-full rounded-full transition-[width] duration-300 ${
+                          analysisFailedCount > 0
+                            ? "bg-amber-500"
+                            : "bg-accent"
+                        }`}
+                        style={{ width: `${analysisProgressPercent}%` }}
+                      />
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
+                      <span>
+                        {analysisResults.filter(
+                          (item) =>
+                            item.status === "SUCCEEDED" ||
+                            item.status === "ALREADY_ANALYZED",
+                        ).length}{" "}
+                        complete
+                      </span>
+                      {analysisFailedCount > 0 ? (
+                        <span className="text-amber-700 dark:text-amber-300">
+                          {analysisFailedCount} need retry
+                        </span>
+                      ) : null}
+                      {ingestionBatchStatus === "IMPORTED" ? (
+                        <span>Progress is saved and can be resumed after a refresh.</span>
+                      ) : null}
+                    </div>
+                  </div>
                   {analysisError ? (
                     <p className="whitespace-pre-line text-sm text-red-700 dark:text-red-300" role="alert">
                       {analysisError}
                     </p>
                   ) : null}
+                  {analysisFailedCount > 0 ? (
+                    <ul
+                      className="space-y-1 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200"
+                      aria-label="Analysis errors"
+                    >
+                      {analysisResults
+                        .filter((result) => result.status === "FAILED")
+                        .map((result) => (
+                          <li key={result.requirement_id}>
+                            {result.error ?? "An analysis failed. Retry to try again."}
+                          </li>
+                        ))}
+                    </ul>
+                  ) : null}
                   {analysisResults.length > 0 ? (
                     <div className="space-y-4" aria-live="polite">
                       <div className="flex flex-wrap gap-2 text-xs">
+                        <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+                          {analysisResults.filter(
+                            (result) => result.status === "SUCCEEDED",
+                          ).length}{" "}
+                          analyzed
+                        </span>
+                        <span className="rounded-full bg-zinc-100 px-2.5 py-1 font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+                          {analysisResults.filter(
+                            (result) => result.status === "ALREADY_ANALYZED",
+                          ).length}{" "}
+                          already analyzed
+                        </span>
+                        {analysisFailedCount > 0 ? (
+                          <span className="rounded-full bg-red-50 px-2.5 py-1 text-red-800 dark:bg-red-950 dark:text-red-200">
+                            {analysisFailedCount} failed
+                          </span>
+                        ) : null}
                         {Object.entries(riskDistribution).map(([band, count]) => (
                           <span
                             key={band}
@@ -643,37 +874,7 @@ export default function IngestionPage() {
                             {band}: {count}
                           </span>
                         ))}
-                        <span className="rounded-full bg-blue-50 px-2.5 py-1 text-blue-800 dark:bg-blue-950 dark:text-blue-200">
-                          Exact batch usage: {analysisTokenUsage.total_tokens} tokens
-                          {" · "}{analysisTokenUsage.input_tokens} in
-                          {" · "}{analysisTokenUsage.output_tokens} out
-                        </span>
                       </div>
-                      <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                        {analysisResults.map((result) => (
-                          <li key={result.requirement_id} className="py-3 text-sm">
-                            <p className="font-medium text-zinc-900 dark:text-zinc-100">
-                              {result.requirement_key ?? result.requirement_id}
-                              {result.risk_assessment
-                                ? ` · ${result.risk_assessment.band} risk (RPN ${result.risk_assessment.rpn})`
-                                : ""}
-                            </p>
-                            {result.status === "FAILED" ? (
-                              <p className="mt-1 text-xs text-red-700 dark:text-red-300">
-                                {result.error ?? "Assessment failed."}
-                              </p>
-                            ) : result.assurance_decision ? (
-                              <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
-                                {result.assurance_decision.assurance_level}:{" "}
-                                {result.assurance_decision.reason}
-                                {!result.assurance_decision.generate_test
-                                  ? " No scripted test was required."
-                                  : " Script generation is deferred."}
-                              </p>
-                            ) : null}
-                          </li>
-                        ))}
-                      </ul>
                     </div>
                   ) : null}
                 </section>

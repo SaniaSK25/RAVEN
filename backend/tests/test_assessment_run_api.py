@@ -16,6 +16,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.db.base import Base
 from app.models.assurance_decision import AssuranceDecision
+from app.models.configuration_version import ConfigurationVersion
 from app.models.enums import RequirementStatus
 from app.models.requirement import Requirement
 from app.models.requirement_version import RequirementVersion
@@ -166,6 +167,267 @@ def _patch(monkeypatch, record, script=None):
 
 
 class TestRunAssessment:
+    def test_recompute_apply_updates_assessment_with_valid_risk_band(self, monkeypatch):
+        from test_intake import EXPLORATORY_RECORD
+
+        import app.api.v1.endpoints.assessments as assessments_endpoint
+        import app.api.v1.endpoints.config as config_endpoint
+        from app.services import pipeline
+
+        session = make_session()
+        requirement, _ = _seed_requirement(session, key="LIMS-BANDS-APPLY")
+        monkeypatch.setattr(
+            assessments_endpoint,
+            "extract_evidence",
+            lambda text: EXPLORATORY_RECORD,
+        )
+        monkeypatch.setattr(
+            assessments_endpoint,
+            "load_band_config",
+            lambda: {"low_max": 70, "medium_max": 80},
+        )
+        monkeypatch.setattr(
+            pipeline,
+            "load_band_config",
+            lambda: {"low_max": 70, "medium_max": 80},
+        )
+        monkeypatch.setattr(config_endpoint, "_write_bands_yaml", lambda *_: None)
+        app, client, get_db = _client(monkeypatch, session)
+        try:
+            with client as http:
+                initial = http.post(
+                    f"/api/v1/assessments/{requirement.req_key}/run"
+                )
+                assert initial.status_code == 201, initial.text
+                assert initial.json()["risk_assessment"]["band"] == "LOW"
+                old_assessment_id = initial.json()["risk_assessment"]["id"]
+
+                applied = http.post(
+                    "/api/v1/config/recompute/apply",
+                    json={"low_max": 45, "medium_max": 67, "confirm": True},
+                )
+                assert applied.status_code == 200, applied.text
+                assert applied.json()["changed"] == 1
+                assurance = http.get("/api/v1/assurance").json()
+                assert assurance["total"] == 1
+                assert assurance["items"][0]["assurance_level"] == "EXPLORATORY"
+
+            current = (
+                session.query(RiskAssessment)
+                .filter(RiskAssessment.is_current.is_(True))
+                .one()
+            )
+            assert current.band.name == "MEDIUM"
+            old_decision = (
+                session.query(AssuranceDecision)
+                .filter_by(risk_assessment_id=UUID(old_assessment_id))
+                .one()
+            )
+            assert old_decision.freshness == "superseded"
+        finally:
+            app.dependency_overrides.pop(get_db, None)
+            session.close()
+
+    def test_recompute_apply_is_repeatable_when_bands_do_not_change(self, monkeypatch):
+        import app.api.v1.endpoints.config as config_endpoint
+
+        session = make_session()
+        record = fake_record_scripted()
+        stored = assess_evidence(record, low_max=45, medium_max=67)
+        stored["band"] = stored["band"].upper()
+        writes = []
+        monkeypatch.setattr(
+            config_endpoint,
+            "_load_all_current_assessments",
+            lambda db: [(record, stored)],
+        )
+        monkeypatch.setattr(
+            config_endpoint,
+            "_write_bands_yaml",
+            lambda low_max, medium_max: writes.append((low_max, medium_max)),
+        )
+        app, client, get_db = _client(monkeypatch, session)
+        try:
+            with client as http:
+                preview = http.post(
+                    "/api/v1/config/recompute/preview",
+                    json={"low_max": 45, "medium_max": 67, "dry_run": True},
+                )
+                assert preview.status_code == 200, preview.text
+                assert preview.json()["changed"] == 0
+
+                first_apply = http.post(
+                    "/api/v1/config/recompute/apply",
+                    json={"low_max": 45, "medium_max": 67, "confirm": True},
+                )
+                assert first_apply.status_code == 200, first_apply.text
+                assert first_apply.json()["changed"] == 0
+
+                second_apply = http.post(
+                    "/api/v1/config/recompute/apply",
+                    json={"low_max": 45, "medium_max": 67, "confirm": True},
+                )
+                assert second_apply.status_code == 200, second_apply.text
+                assert second_apply.json()["changed"] == 0
+
+            assert writes == [(45, 67), (45, 67)]
+            assert session.query(ConfigurationVersion).count() == 1
+            assert session.query(RiskAssessment).count() == 0
+        finally:
+            app.dependency_overrides.pop(get_db, None)
+            session.close()
+
+    def test_ingestion_analyzes_requirements_in_a_single_batch(self, monkeypatch):
+        import app.api.v1.endpoints.assessments as endpoint
+
+        session = make_session()
+        batch_calls = []
+        assessment_config_calls = []
+        record = fake_record_unscripted()
+        original_assess_evidence = endpoint.assess_evidence
+
+        def fake_load_band_config():
+            return {"low_max": 35, "medium_max": 55}
+
+        def assess_with_current_bands(evidence, **thresholds):
+            assessment_config_calls.append(thresholds)
+            return original_assess_evidence(evidence, **thresholds)
+
+        def fake_extract_batch(inputs, usage_log=None):
+            batch_calls.append(inputs)
+            usage_log.append(
+                {
+                    "input_tokens": 8,
+                    "output_tokens": 4,
+                    "group": "test",
+                    "model": "test",
+                    "attempt": 1,
+                    "ok": True,
+                }
+            )
+            return {requirement_id: record for requirement_id, _ in inputs}
+
+        monkeypatch.setattr(endpoint, "extract_evidence_batch", fake_extract_batch)
+        monkeypatch.setattr(endpoint, "load_band_config", fake_load_band_config)
+        monkeypatch.setattr(endpoint, "assess_evidence", assess_with_current_bands)
+        app, client, get_db = _client(monkeypatch, session)
+        try:
+            with client as http:
+                response = http.post(
+                    "/api/v1/requirements/batch",
+                    json={
+                        "requirements": [
+                            {
+                                "description": f"The system shall automatically analyze {index}.",
+                                "text": f"The system shall automatically analyze {index}.",
+                                "created_by": "ingestion-test",
+                            }
+                            for index in range(12)
+                        ]
+                    },
+                )
+                assert response.status_code == 201, response.text
+                imported_batch = response.json()
+                assert imported_batch["status"] == "IMPORTED"
+                assert all(
+                    item["status"] == "PENDING"
+                    for item in imported_batch["analysis_results"]
+                )
+                assert len(imported_batch["items"]) == 12
+                assert len(batch_calls) == 0
+                assert session.query(RiskAssessment).count() == 0
+                assert session.query(Requirement).count() == 12
+
+                first_analysis = http.post(
+                    f"/api/v1/requirements/batch/{imported_batch['batch_id']}/analyze"
+                )
+                assert first_analysis.status_code == 200, first_analysis.text
+                assert first_analysis.json()["status"] == "IMPORTED"
+                assert len(batch_calls) == 1
+                assert len(batch_calls[0]) == 10
+                assert session.query(RiskAssessment).count() == 10
+                refreshed_batch = http.get(
+                    f"/api/v1/requirements/batch/{imported_batch['batch_id']}"
+                )
+                assert refreshed_batch.status_code == 200, refreshed_batch.text
+                refreshed_results = refreshed_batch.json()["analysis_results"]
+                assert sum(
+                    item["status"] == "SUCCEEDED" for item in refreshed_results
+                ) == 10
+                assert sum(
+                    item["status"] == "PENDING" for item in refreshed_results
+                ) == 2
+                analyzed = http.post(
+                    f"/api/v1/requirements/batch/{imported_batch['batch_id']}/analyze"
+                )
+                repeated = http.get(
+                    f"/api/v1/requirements/batch/{imported_batch['batch_id']}"
+                )
+                no_op_retry = http.post(
+                    f"/api/v1/requirements/batch/{imported_batch['batch_id']}/analyze"
+                )
+            assert analyzed.status_code == 200, analyzed.text
+            body = analyzed.json()
+            assert body["status"] == "COMPLETED"
+            assert all(
+                item["status"] == "SUCCEEDED" for item in body["analysis_results"]
+            )
+            assert body["token_usage"]["total_tokens"] == 24
+            assert len(batch_calls) == 2
+            assert len(batch_calls[0]) == 10
+            assert len(batch_calls[1]) == 2
+            assert assessment_config_calls == [
+                {"low_max": 35, "medium_max": 55}
+            ] * 12
+            assert session.query(RiskAssessment).count() == 12
+            assert repeated.status_code == 200, repeated.text
+            assert repeated.json()["status"] == "COMPLETED"
+            assert len(repeated.json()["analysis_results"]) == 12
+            assert no_op_retry.status_code == 200, no_op_retry.text
+            assert no_op_retry.json()["status"] == "COMPLETED"
+            assert len(batch_calls) == 2
+            assert session.query(RiskAssessment).count() == 12
+        finally:
+            app.dependency_overrides.pop(get_db, None)
+            session.close()
+
+    def test_on_demand_assessment_uses_saved_band_thresholds(self, monkeypatch):
+        import app.api.v1.endpoints.assessments as endpoint
+        from app.services import pipeline
+
+        session = make_session()
+        requirement, _ = _seed_requirement(session, key="LIMS-BANDS-001")
+        observed_thresholds = []
+        record = fake_record_unscripted()
+        original_assess_evidence = pipeline.assess_evidence
+
+        def fake_extract(text, usage_log=None):
+            return record
+
+        def fake_load_band_config():
+            return {"low_max": 35, "medium_max": 55}
+
+        def assess_with_current_bands(evidence, **thresholds):
+            observed_thresholds.append(thresholds)
+            return original_assess_evidence(evidence, **thresholds)
+
+        monkeypatch.setattr(endpoint, "extract_evidence", fake_extract)
+        monkeypatch.setattr(pipeline, "load_band_config", fake_load_band_config)
+        monkeypatch.setattr(pipeline, "assess_evidence", assess_with_current_bands)
+        app, client, get_db = _client(monkeypatch, session)
+        try:
+            with client as http:
+                response = http.post(
+                    f"/api/v1/assessments/{requirement.req_key}/run"
+                )
+            assert response.status_code == 201, response.text
+            assert observed_thresholds == [
+                {"low_max": 35, "medium_max": 55}
+            ]
+        finally:
+            app.dependency_overrides.pop(get_db, None)
+            session.close()
+
     def test_run_persists_risk_and_assurance_with_script(self, monkeypatch):
         import app.api.v1.endpoints.assessments as endpoint
 

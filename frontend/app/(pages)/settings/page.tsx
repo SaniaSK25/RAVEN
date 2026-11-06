@@ -56,6 +56,8 @@ interface RecomputeApplyResponse {
 
 const POINTS_MIN = 20;
 const POINTS_MAX = 100;
+const DEFAULT_LOW_MAX = 45;
+const DEFAULT_MEDIUM_MAX = 67;
 /** Highest value the Medium cutoff may reach (points). */
 const MEDIUM_CEILING = 80;
 /** Narrowest Medium band the UI allows (points); a floor keeps every band meaningful. */
@@ -78,7 +80,10 @@ export default function Settings() {
   const [confirmSave, setConfirmSave] = useState(false);
 
   // Form state
-  const [formValues, setFormValues] = useState({ low_max: 45, medium_max: 67 });
+  const [formValues, setFormValues] = useState({
+    low_max: DEFAULT_LOW_MAX,
+    medium_max: DEFAULT_MEDIUM_MAX,
+  });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [exampleScores, setExampleScores] = useState({
     severity: 3,
@@ -165,6 +170,16 @@ export default function Settings() {
     setConfirmSave(true);
   };
 
+  const handleRestoreDefaults = () => {
+    updateThresholds({
+      low_max: DEFAULT_LOW_MAX,
+      medium_max: DEFAULT_MEDIUM_MAX,
+    });
+    setActiveTab("bands");
+    setSuccess("Default thresholds restored in the form. Save or apply them to persist the changes.");
+    setError(null);
+  };
+
   const confirmSaveConfig = async () => {
     try {
       setSaving(true);
@@ -213,8 +228,8 @@ export default function Settings() {
 
   const handleApply = async () => {
     if (!validateForm()) return;
-    if (!preview || preview.changed === 0) {
-      setError("No changes to apply. Run preview first.");
+    if (!preview) {
+      setError("Run preview first so you can review the impact.");
       return;
     }
 
@@ -263,16 +278,27 @@ export default function Settings() {
       <div className="space-y-6">
       {/* Header */}
       <div className="page-header-shell">
-        <div className="flex items-center gap-3">
-          <Scale aria-hidden="true" className="h-6 w-6 text-accent" />
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-              Risk band settings
-            </h1>
-            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              Understand the scoring rules, adjust band cutoffs, then preview and apply changes.
-            </p>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Scale aria-hidden="true" className="h-6 w-6 text-accent" />
+            <div>
+              <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+                Risk band settings
+              </h1>
+              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                Understand the scoring rules, adjust band cutoffs, then preview and apply changes.
+              </p>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={handleRestoreDefaults}
+            disabled={!config || configLoading || previewing || saving || loading}
+            className="inline-flex shrink-0 items-center gap-2 rounded-md border border-accent bg-white px-4 py-2 text-sm font-semibold text-accent shadow-sm hover:bg-orange-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+          >
+            <RefreshCw aria-hidden="true" className="h-4 w-4" />
+            Restore defaults (45 / 67)
+          </button>
         </div>
       </div>
 
@@ -526,6 +552,7 @@ export default function Settings() {
                 </label>
                 <div className="mt-1.5 relative">
                   <BandNumberInput
+                    key={`low-${formValues.low_max}-${formValues.medium_max}`}
                     id="low_max"
                     value={formValues.low_max}
                     min={POINTS_MIN}
@@ -562,6 +589,7 @@ export default function Settings() {
                 </label>
                 <div className="mt-1.5 relative">
                   <BandNumberInput
+                    key={`medium-${formValues.low_max}-${formValues.medium_max}`}
                     id="medium_max"
                     value={formValues.medium_max}
                     min={formValues.low_max + MIN_BAND_GAP}
@@ -650,7 +678,20 @@ export default function Settings() {
                   "Preview Recompute"
                 )}
               </button>
+              <button
+                type="button"
+                onClick={handleRestoreDefaults}
+                disabled={!config || configLoading || previewing || saving || loading}
+                className="inline-flex items-center gap-2 rounded-md border border-accent bg-white px-4 py-2 text-sm font-semibold text-accent shadow-sm hover:bg-orange-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+              >
+                <RefreshCw aria-hidden="true" className="h-4 w-4" />
+                Restore default values (45 / 67)
+              </button>
             </div>
+            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+              Defaults: Low max {DEFAULT_LOW_MAX} points · Medium max {DEFAULT_MEDIUM_MAX} points.
+              Restoring values does not save them until you choose Save Configuration or Apply Recompute.
+            </p>
               </>
             )}
           </div>
@@ -808,7 +849,7 @@ export default function Settings() {
               <button
                 type="button"
                 onClick={handleApply}
-                disabled={loading}
+                disabled={loading || previewing || saving}
                 className="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <RefreshCw className="h-4 w-4" />
@@ -1121,11 +1162,6 @@ function BandNumberInput({
   describedBy?: string;
 }) {
   const [draft, setDraft] = useState(String(value));
-
-  // Follow external updates (slider drags, saved-value refreshes).
-  useEffect(() => {
-    setDraft(String(value));
-  }, [value]);
 
   const draftNum = Number.parseInt(draft, 10);
   const outOfRange = draft !== "" && !(draftNum >= min && draftNum <= max);

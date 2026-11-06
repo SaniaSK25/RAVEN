@@ -31,6 +31,7 @@ from app.schemas.responses import (
     RiskAssessmentPageResponse,
 )
 from app.services.assessment import assess_evidence
+from app.services.bands import load_band_config
 from app.services.persistence import save_assessment
 from app.services.pipeline import (
     PROMPTS,
@@ -302,7 +303,7 @@ def run_batch_assessment(payload: BatchAssessmentRequest, db: DBSession):
             evidence = evidence_by_id[requirement_id].model_copy(
                 update={"requirement_version_id": str(version.id)}
             )
-            assessment = assess_evidence(evidence)
+            assessment = assess_evidence(evidence, **load_band_config())
             ensure_prompt_version(
                 db,
                 PROMPTS["extractor_name"],

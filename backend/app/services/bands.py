@@ -19,7 +19,7 @@ def load_band_config(path: str | Path | None = None) -> dict:
     """Load ``{low_max, medium_max}`` from bands.yaml.
 
     Missing file or missing keys fall back to spec defaults
-    (low_max=20, medium_max=50). No external dependencies: parsed
+    (low_max=45, medium_max=67). No external dependencies: parsed
     with a minimal ``key: int`` reader so ``pyyaml`` is not required.
     """
     low_max, medium_max = DEFAULT_LOW_MAX, DEFAULT_MEDIUM_MAX

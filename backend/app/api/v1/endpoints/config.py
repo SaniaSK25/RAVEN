@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
+from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
 from app.db.dependencies import DBSession
-from app.models.enums import RequirementStatus
+from app.models.enums import RequirementStatus, RiskBand
 from app.models.requirement import Requirement
-from app.models.risk_assessment import RiskAssessment
 from app.models.requirement_version import RequirementVersion
+from app.models.risk_assessment import RiskAssessment
 from app.models.stored_evidence import Evidence
 from app.schemas.evidence import EvidenceRecord
 from app.services.assessment import assess_evidence
@@ -182,12 +182,12 @@ def _load_all_current_assessments(db: DBSession) -> list[tuple[EvidenceRecord, d
     )
 
     from app.schemas.evidence import (
-        EvidenceField,
-        SeverityEvidence,
-        ProbabilityEvidence,
-        DetectabilityEvidence,
         ComplexityLevel,
+        DetectabilityEvidence,
         DetectionLevel,
+        EvidenceField,
+        ProbabilityEvidence,
+        SeverityEvidence,
     )
 
     items: list[tuple[EvidenceRecord, dict]] = []
@@ -386,32 +386,27 @@ def recompute_apply(
             detail="Must set confirm=true to persist recompute changes",
         )
 
+    _write_bands_yaml(payload.low_max, payload.medium_max)
     items = _load_all_current_assessments(db)
     if not items:
         return RecomputeApplyResponse(
             success=True,
-            message="No current assessments to recompute.",
+            message="Band thresholds saved. No current assessments needed recomputing.",
             total=0,
             changed=0,
             unchanged=0,
             band_distribution={"before": {}, "after": {}},
         )
 
-    # First, write the new config
-    _write_bands_yaml(payload.low_max, payload.medium_max)
-
     # Then recompute and persist
-    from app.services.persistence import ensure_configuration_version
-    from app.models.configuration_version import ConfigurationVersion
-    from app.services.assurance import decide_assurance
-    from app.models.assurance_decision import AssuranceDecision
-    from app.models.enums import AssuranceLevel
-    from datetime import datetime, timezone
-    from uuid import uuid4
-
     # Create a new configuration version
     import hashlib
     import json
+
+    from app.models.assurance_decision import AssuranceDecision
+    from app.models.configuration_version import ConfigurationVersion
+    from app.models.enums import AssuranceLevel
+    from app.services.assurance import decide_assurance
 
     config_payload = {
         "low_max": payload.low_max,
@@ -420,15 +415,22 @@ def recompute_apply(
     config_hash = hashlib.sha256(
         json.dumps(config_payload, sort_keys=True).encode()
     ).hexdigest()
-    new_version = f"{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
-
-    cfg = ConfigurationVersion(
-        version=new_version,
-        config_hash=config_hash,
-        description=f"Band thresholds: low_max={payload.low_max}, medium_max={payload.medium_max}",
+    cfg = (
+        db.query(ConfigurationVersion)
+        .filter(ConfigurationVersion.config_hash == config_hash)
+        .first()
     )
-    db.add(cfg)
-    db.flush()
+    if cfg is None:
+        new_version = f"bands-{config_hash[:12]}"
+        cfg = ConfigurationVersion(
+            version=new_version,
+            config_hash=config_hash,
+            description=f"Band thresholds: low_max={payload.low_max}, medium_max={payload.medium_max}",
+        )
+        db.add(cfg)
+        db.flush()
+    else:
+        new_version = cfg.version
 
     changed_count = 0
     before_bands: dict[str, int] = {}
@@ -448,18 +450,21 @@ def recompute_apply(
         )
         after_bands[new_band_display] = after_bands.get(new_band_display, 0) + 1
 
-        if new_band != old_band:
+        if new_band_display != old_band_display:
             changed_count += 1
         else:
             # Identical rows are left untouched — only differing rows get a
             # new assessment row (contract in services/recompute.py).
             continue
 
+        requirement_version_id = UUID(str(record.requirement_version_id))
+        evidence_id = UUID(str(record.evidence_id))
+
         # Create new risk assessment
         from app.models.engine_results import (
-            SeverityResult,
-            ProbabilityResult,
             DetectabilityResult,
+            ProbabilityResult,
+            SeverityResult,
         )
 
         sev_res = SeverityResult(
@@ -474,6 +479,10 @@ def recompute_apply(
             rule_id=fresh["probability"]["rule_id"],
             rule_version=fresh["probability"]["rule_version"],
             decision_path=fresh["probability"]["decision_path"],
+            weighted_sum=float(fresh["probability"]["decision_path"][-1]["sum"]),
+            gamp_modifier=float(
+                fresh["probability"]["decision_path"][-1]["gamp_modifier"]
+            ),
             reasoning=fresh["probability"]["reasoning"],
         )
         det_res = DetectabilityResult(
@@ -481,6 +490,9 @@ def recompute_apply(
             rule_id=fresh["detectability"]["rule_id"],
             rule_version=fresh["detectability"]["rule_version"],
             decision_path=fresh["detectability"]["decision_path"],
+            controls_floor=fresh["detectability"]["decision_path"][-1].get(
+                "controls_floor"
+            ),
             reasoning=fresh["detectability"]["reasoning"],
         )
         db.add_all([sev_res, prob_res, det_res])
@@ -490,7 +502,7 @@ def recompute_apply(
         old_assessment = (
             db.query(RiskAssessment)
             .filter(
-                RiskAssessment.requirement_version_id == record.requirement_version_id,
+                RiskAssessment.requirement_version_id == requirement_version_id,
                 RiskAssessment.is_current.is_(True),
             )
             .first()
@@ -499,11 +511,18 @@ def recompute_apply(
             old_assessment.is_current = False
             old_assessment.freshness = "superseded"
             old_assessment.status = "SUPERSEDED"
+            db.query(AssuranceDecision).filter(
+                AssuranceDecision.risk_assessment_id == old_assessment.id,
+                AssuranceDecision.freshness != "superseded",
+            ).update(
+                {"freshness": "superseded"},
+                synchronize_session=False,
+            )
 
         # Create new assessment
         new_assessment = RiskAssessment(
-            requirement_version_id=record.requirement_version_id,
-            evidence_id=record.evidence_id,
+            requirement_version_id=requirement_version_id,
+            evidence_id=evidence_id,
             severity_result_id=sev_res.id,
             probability_result_id=prob_res.id,
             detectability_result_id=det_res.id,
@@ -514,7 +533,7 @@ def recompute_apply(
             gamp_reason=fresh["gamp_reason"],
             rpn=fresh["rpn"],
             rpn_points=fresh["rpn_points"],
-            band=new_band,
+            band=RiskBand(new_band.upper()),
             status="FINAL",
             is_current=True,
             freshness="fresh",

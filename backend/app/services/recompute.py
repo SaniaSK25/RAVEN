@@ -24,6 +24,7 @@ from __future__ import annotations
 
 from app.schemas.evidence import EvidenceRecord
 from app.services.assessment import assess_evidence
+from app.services.rpn import DEFAULT_LOW_MAX, DEFAULT_MEDIUM_MAX
 
 _COMPARED_FIELDS = (
     "gxp_impact",
@@ -33,6 +34,12 @@ _COMPARED_FIELDS = (
     "rpn",
     "band",
 )
+
+
+def _normalize_band(value: object) -> str:
+    if hasattr(value, "value"):
+        value = value.value
+    return str(value or "").strip().title()
 
 
 def _freeze(result: dict) -> dict:
@@ -52,15 +59,15 @@ def _freeze(result: dict) -> dict:
             "rule_id": result["detectability"]["rule_id"],
         },
         "rpn": result["rpn"],
-        "band": result["band"],
+        "band": _normalize_band(result["band"]),
     }
 
 
 def recompute_one(
     record: EvidenceRecord,
     stored: dict,
-    low_max: int = 20,
-    medium_max: int = 50,
+    low_max: int = DEFAULT_LOW_MAX,
+    medium_max: int = DEFAULT_MEDIUM_MAX,
 ) -> dict:
     """Re-run the engines for one record and diff against ``stored``.
 
@@ -87,8 +94,8 @@ def recompute_one(
 
 def recompute_many(
     items: list[tuple[EvidenceRecord, dict]],
-    low_max: int = 20,
-    medium_max: int = 50,
+    low_max: int = DEFAULT_LOW_MAX,
+    medium_max: int = DEFAULT_MEDIUM_MAX,
     dry_run: bool = True,
 ) -> dict:
     """Recompute a batch; report distribution without persisting.

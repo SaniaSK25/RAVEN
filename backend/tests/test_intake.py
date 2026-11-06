@@ -14,14 +14,14 @@ import import_requirements as intake
 from app.db.base import Base
 from app.models.assurance_decision import AssuranceDecision
 from app.models.configuration_version import ConfigurationVersion
-from app.schemas.evidence import EvidenceRecord
-from app.schemas.test_scripts import TestScript as PydanticScript
 from app.models.prompt_version import PromptVersion
 from app.models.requirement import Requirement
 from app.models.requirement_version import RequirementVersion
 from app.models.risk_assessment import RiskAssessment
 from app.models.stored_evidence import Evidence as StoredEvidence
 from app.models.test_script import TestScript as StoredScript
+from app.schemas.evidence import EvidenceRecord
+from app.schemas.test_scripts import TestScript as PydanticScript
 from app.services.assessment import assess_evidence
 
 
@@ -138,7 +138,14 @@ def test_import_two_sentences_gets_sequential_keys():
     assert r2 == {"status": "imported", "req_key": "REQ-0002"}
 
 
-def test_import_persists_linked_rows():
+def test_import_persists_linked_rows(monkeypatch):
+    from app.services import pipeline
+
+    monkeypatch.setattr(
+        pipeline,
+        "load_band_config",
+        lambda: {"low_max": 45, "medium_max": 67},
+    )
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(bind=engine)
     with Session(engine) as session:
@@ -196,7 +203,14 @@ def test_duplicate_sentence_skipped():
         assert session.query(Requirement).count() == 1
 
 
-def test_exploratory_writes_no_script():
+def test_exploratory_writes_no_script(monkeypatch):
+    from app.services import pipeline
+
+    monkeypatch.setattr(
+        pipeline,
+        "load_band_config",
+        lambda: {"low_max": 45, "medium_max": 67},
+    )
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(bind=engine)
     with Session(engine) as session:

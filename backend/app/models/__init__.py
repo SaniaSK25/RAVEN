@@ -38,6 +38,7 @@ from app.models.enums import (
 from app.models.id_counter import IdCounter
 from app.models.prompt_version import PromptVersion
 from app.models.requirement import Requirement
+from app.models.requirement_ingestion_batch import RequirementIngestionBatch
 from app.models.requirement_version import RequirementVersion
 from app.models.risk_assessment import RiskAssessment
 from app.models.stored_evidence import Evidence
@@ -69,6 +70,7 @@ __all__ = [
     "ProbabilityResult",
     "PromptVersion",
     "Requirement",
+    "RequirementIngestionBatch",
     "RequirementStatus",
     "RequirementVersion",
     "RiskAssessment",

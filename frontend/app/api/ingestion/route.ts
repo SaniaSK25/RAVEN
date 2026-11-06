@@ -4,16 +4,30 @@ interface RequirementPayload {
   created_by: string;
 }
 
-function isRequirementPayload(value: unknown): value is RequirementPayload {
+interface RequirementBatchPayload {
+  requirements: RequirementPayload[];
+}
+
+function isRequirementBatchPayload(value: unknown): value is RequirementBatchPayload {
   if (typeof value !== "object" || value === null) return false;
   const payload = value as Record<string, unknown>;
   return (
-    typeof payload.description === "string" &&
-    payload.description.trim().length > 0 &&
-    typeof payload.text === "string" &&
-    payload.text.trim().length > 0 &&
-    typeof payload.created_by === "string" &&
-    payload.created_by.trim().length > 0
+    Array.isArray(payload.requirements) &&
+    payload.requirements.length >= 1 &&
+    payload.requirements.every(
+      (item) =>
+        typeof item === "object" &&
+        item !== null &&
+        "description" in item &&
+        typeof item.description === "string" &&
+        item.description.trim().length > 0 &&
+        "text" in item &&
+        typeof item.text === "string" &&
+        item.text.trim().length > 0 &&
+        "created_by" in item &&
+        typeof item.created_by === "string" &&
+        item.created_by.trim().length > 0,
+    )
   );
 }
 
@@ -25,9 +39,9 @@ export async function POST(request: Request) {
     return Response.json({ detail: "Request body must be valid JSON." }, { status: 400 });
   }
 
-  if (!isRequirementPayload(payload)) {
+  if (!isRequirementBatchPayload(payload)) {
     return Response.json(
-      { detail: "A description, text, and created_by value are required." },
+      { detail: "Provide at least one requirement with description, text, and created_by values." },
       { status: 400 },
     );
   }
@@ -37,7 +51,7 @@ export async function POST(request: Request) {
   ).replace(/\/+$/, "");
   let backendResponse: Response;
   try {
-    backendResponse = await fetch(`${backendUrl}/api/v1/requirements`, {
+    backendResponse = await fetch(`${backendUrl}/api/v1/requirements/batch`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

@@ -15,9 +15,9 @@ from test_intake import EXPLORATORY_RECORD, SCRIPTED_RECORD
 
 from app.db.base import Base
 from app.models.assurance_decision import AssuranceDecision
-from app.schemas.test_scripts import TestScript as PydanticScript
 from app.models.risk_assessment import RiskAssessment
 from app.models.test_script import TestScript as StoredScript
+from app.schemas.test_scripts import TestScript as PydanticScript
 
 
 def make_session():
@@ -75,7 +75,14 @@ def test_parse_selection():
         analyze.parse_selection("   ", keys)
 
 
-def test_analyze_selection_assesses_subset():
+def test_analyze_selection_assesses_subset(monkeypatch):
+    from app.services import pipeline
+
+    monkeypatch.setattr(
+        pipeline,
+        "load_band_config",
+        lambda: {"low_max": 45, "medium_max": 67},
+    )
     engine = make_session()
     store_only(engine, "First item.")
     store_only(engine, "tooltip item here.")

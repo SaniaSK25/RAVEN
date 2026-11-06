@@ -5,16 +5,23 @@ import { Search, X } from "lucide-react";
 interface RequirementSearchProps {
   value: string;
   onChange: (value: string) => void;
+  label?: string;
+  placeholder?: string;
 }
 
-export default function RequirementSearch({ value, onChange }: RequirementSearchProps) {
+export default function RequirementSearch({
+  value,
+  onChange,
+  label = "Search requirements",
+  placeholder = "Search by ID or text…",
+}: RequirementSearchProps) {
   return (
     <div role="search" className="w-full sm:max-w-sm">
       <label
         htmlFor="requirements-search"
         className="mb-1.5 block text-[13px] font-medium text-zinc-700 dark:text-zinc-300"
       >
-        Search requirements
+        {label}
       </label>
       <div className="relative">
         <Search
@@ -26,7 +33,7 @@ export default function RequirementSearch({ value, onChange }: RequirementSearch
           type="search"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Search by ID or text…"
+          placeholder={placeholder}
           autoComplete="off"
           className="search-input w-full rounded-xl border border-zinc-300 bg-white py-2.5 pr-9 pl-9 text-sm text-zinc-900 shadow-[0_1px_2px_rgba(15,23,42,0.04)] placeholder:text-zinc-400 transition-colors focus:border-orange-300 focus:outline-none focus:ring-4 focus:ring-orange-100 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-orange-500 dark:focus:ring-orange-950/60"
         />

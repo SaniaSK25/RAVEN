@@ -8,7 +8,9 @@ analysis after the edit transaction commits.
 
 from __future__ import annotations
 
+import json
 import logging
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Response
@@ -18,11 +20,16 @@ from app.db.session import SessionLocal
 from app.models.assurance_decision import AssuranceDecision
 from app.models.enums import RequirementStatus
 from app.models.requirement import Requirement
+from app.models.requirement_ingestion_batch import RequirementIngestionBatch
 from app.models.risk_assessment import RiskAssessment
 from app.models.test_script import TestScript
 from app.models.token_usage import TokenUsage
 from app.schemas.changes import ReanalyzePayload
-from app.schemas.requirements import RequirementCreate, RequirementEdit
+from app.schemas.requirements import (
+    RequirementBatchCreate,
+    RequirementCreate,
+    RequirementEdit,
+)
 from app.schemas.responses import (
     RequirementCreateResponse,
     RequirementDetailResponse,
@@ -37,6 +44,7 @@ from app.services.traceability.requirement_ops import (
 
 router = APIRouter(prefix="/requirements", tags=["Requirements"])
 logger = logging.getLogger(__name__)
+INGESTION_PROCESSING_TIMEOUT = timedelta(minutes=15)
 
 
 def _analyze_changed_requirement(requirement_id: str, event_id: str) -> None:
@@ -131,7 +139,11 @@ def list_requirements(
 
 
 @router.post("", status_code=201, response_model=RequirementCreateResponse)
-def create(payload: RequirementCreate, db: DBSession, response: Response):
+def create(
+    payload: RequirementCreate,
+    db: DBSession,
+    response: Response,
+):
     try:
         requirement, created = create_requirement(
             db,
@@ -147,7 +159,233 @@ def create(payload: RequirementCreate, db: DBSession, response: Response):
     except Exception as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     return {**_serialise(requirement), "reused_existing": not created}
+
+
+@router.post("/batch", status_code=201)
+def create_requirement_batch(payload: RequirementBatchCreate, db: DBSession):
+    """Import every supplied requirement without running analysis."""
+    imported = []
+    try:
+        for item in payload.requirements:
+            requirement, created = create_requirement(
+                db,
+                title=item.req_key or "Requirement",
+                description=item.description,
+                text=item.text,
+                req_key=item.req_key,
+                created_by=item.created_by,
+            )
+            imported.append((requirement, created))
+
+        snapshot = [
+            {
+                "requirement_id": str(requirement.id),
+                "requirement_key": requirement.req_key,
+                "reused_existing": not created,
+                "source_row": item.source_row,
+            }
+            for item, (requirement, created) in zip(
+                payload.requirements, imported, strict=True
+            )
+        ]
+        batch = RequirementIngestionBatch(
+            status="IMPORTED",
+            requested_count=len(snapshot),
+            requirement_snapshot=json.dumps(snapshot),
+            analysis_results="[]",
+            token_totals=json.dumps(
+                {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
+            ),
+        )
+        db.add(batch)
+        db.commit()
+        db.refresh(batch)
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return _serialize_ingestion_batch(batch)
+
+
+def _serialize_ingestion_batch(batch: RequirementIngestionBatch) -> dict:
+    snapshot = json.loads(batch.requirement_snapshot)
+    results = json.loads(batch.analysis_results)
+    saved_results = {item["requirement_id"]: item for item in results}
+    analysis_results = []
+    for imported in snapshot:
+        result = saved_results.get(imported["requirement_id"])
+        analysis_results.append(
+            {
+                **(result or {}),
+                "requirement_id": imported["requirement_id"],
+                "requirement_key": imported["requirement_key"],
+                "source_row": imported.get("source_row"),
+                "status": result["status"] if result else "PENDING",
+            }
+        )
+    return {
+        "batch_id": str(batch.id),
+        "status": batch.status,
+        "requested_count": batch.requested_count,
+        "items": snapshot,
+        "analysis_results": analysis_results,
+        "token_usage": json.loads(batch.token_totals),
+        "error": batch.error,
+    }
+
+
+def _recover_stale_ingestion_batch(batch: RequirementIngestionBatch) -> bool:
+    if batch.status != "PROCESSING" or batch.updated_at is None:
+        return False
+    last_updated = batch.updated_at
+    if last_updated.tzinfo is None:
+        last_updated = last_updated.replace(tzinfo=UTC)
+    if datetime.now(UTC) - last_updated <= INGESTION_PROCESSING_TIMEOUT:
+        return False
+    batch.status = "PARTIAL"
+    batch.error = "Analysis stopped before the last batch was saved. Resume to continue."
+    return True
+
+
+@router.get("/batch/{batch_id}")
+def get_requirement_batch(batch_id: str, db: DBSession):
+    try:
+        parsed_id = UUID(batch_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Import batch not found.") from exc
+    batch = db.get(RequirementIngestionBatch, parsed_id)
+    if batch is None:
+        raise HTTPException(status_code=404, detail="Import batch not found.")
+    if _recover_stale_ingestion_batch(batch):
+        db.commit()
+    return _serialize_ingestion_batch(batch)
+
+
+@router.post("/batch/{batch_id}/analyze")
+def analyze_requirement_batch(batch_id: str, db: DBSession):
+    try:
+        parsed_id = UUID(batch_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Import batch not found.") from exc
+    batch = (
+        db.query(RequirementIngestionBatch)
+        .filter(RequirementIngestionBatch.id == parsed_id)
+        .with_for_update()
+        .first()
+    )
+    if batch is None:
+        raise HTTPException(status_code=404, detail="Import batch not found.")
+    if batch.status == "PROCESSING" and not _recover_stale_ingestion_batch(batch):
+        raise HTTPException(status_code=409, detail="This import batch is already processing.")
+
+    snapshot = json.loads(batch.requirement_snapshot)
+    saved_results = {
+        item["requirement_id"]: item for item in json.loads(batch.analysis_results)
+    }
+    pending = []
+    failed_pending = []
+    seen_requirement_ids = set()
+    for imported in snapshot:
+        requirement_id = imported["requirement_id"]
+        if requirement_id in seen_requirement_ids:
+            continue
+        seen_requirement_ids.add(requirement_id)
+        requirement = db.get(Requirement, UUID(requirement_id))
+        if requirement is None or requirement.current_version_id is None:
+            saved_results[imported["requirement_id"]] = {
+                **imported,
+                "status": "FAILED",
+                "error": "Requirement or current version no longer exists.",
+            }
+            continue
+        current_analysis = (
+            db.query(RiskAssessment)
+            .filter(
+                RiskAssessment.requirement_version_id
+                == requirement.current_version_id,
+                RiskAssessment.is_current.is_(True),
+                RiskAssessment.freshness != "superseded",
+            )
+            .first()
+        )
+        if current_analysis is not None:
+            existing_result = saved_results.get(imported["requirement_id"])
+            if existing_result is None or existing_result["status"] in {
+                "PENDING",
+                "FAILED",
+            }:
+                saved_results[imported["requirement_id"]] = {
+                    **imported,
+                    "status": "ALREADY_ANALYZED",
+                }
+            continue
+        if saved_results.get(requirement_id, {}).get("status") == "FAILED":
+            failed_pending.append(imported)
+        else:
+            pending.append(imported)
+
+    next_chunk = (pending or failed_pending)[:10]
+    batch.error = None
+    if next_chunk:
+        batch.status = "PROCESSING"
+        batch.updated_at = datetime.now(UTC)
+        batch.analysis_results = json.dumps(list(saved_results.values()))
+        db.commit()
+        try:
+            from app.api.v1.endpoints.assessments import run_batch_assessment
+            from app.schemas.batch_assessments import BatchAssessmentRequest
+
+            result = run_batch_assessment(
+                BatchAssessmentRequest(
+                    requirement_ids=[item["requirement_id"] for item in next_chunk]
+                ),
+                db,
+            )
+            for analysis in result["items"]:
+                imported = next(
+                    item
+                    for item in next_chunk
+                    if item["requirement_id"] == analysis["requirement_id"]
+                )
+                saved_results[analysis["requirement_id"]] = {
+                    **imported,
+                    **analysis,
+                }
+            totals = json.loads(batch.token_totals)
+            for key in ("input_tokens", "output_tokens", "total_tokens"):
+                totals[key] += result["token_usage"][key]
+            batch.token_totals = json.dumps(totals)
+        except HTTPException as exc:
+            batch.status = "PARTIAL"
+            batch.error = str(exc.detail)
+            batch.analysis_results = json.dumps(list(saved_results.values()))
+            db.commit()
+            raise
+        except Exception as exc:
+            db.rollback()
+            batch = db.get(RequirementIngestionBatch, parsed_id)
+            batch.status = "PARTIAL"
+            batch.error = "Analysis failed unexpectedly. Resume to retry the unfinished batch."
+            batch.analysis_results = json.dumps(list(saved_results.values()))
+            db.commit()
+            logger.exception(
+                "Unexpected error analyzing ingestion batch %s.",
+                batch_id,
+            )
+            raise HTTPException(
+                status_code=500, detail=f"Batch analysis failed: {exc}"
+            ) from exc
+
+    batch.analysis_results = json.dumps(list(saved_results.values()))
+    failed = any(item.get("status") == "FAILED" for item in saved_results.values())
+    remaining = len(pending) + len(failed_pending) > len(next_chunk)
+    batch.status = (
+        "IMPORTED" if remaining else "PARTIAL" if failed else "COMPLETED"
+    )
+    db.commit()
+    return _serialize_ingestion_batch(batch)
 
 
 @router.get("/{requirement_id}", response_model=RequirementDetailResponse)

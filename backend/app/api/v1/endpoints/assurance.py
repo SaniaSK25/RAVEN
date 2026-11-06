@@ -13,6 +13,7 @@ from fastapi import APIRouter, Query
 
 from app.db.dependencies import DBSession
 from app.models.assurance_decision import AssuranceDecision
+from app.models.enums import RequirementStatus
 from app.models.requirement import Requirement
 from app.models.requirement_version import RequirementVersion
 from app.models.risk_assessment import RiskAssessment
@@ -94,7 +95,12 @@ def list_decisions(
         .join(Requirement, RequirementVersion.requirement_id == Requirement.id)
     )
     if not include_superseded:
-        query = query.filter(AssuranceDecision.freshness != "superseded")
+        query = query.filter(
+            AssuranceDecision.freshness != "superseded",
+            RiskAssessment.is_current.is_(True),
+            RiskAssessment.freshness != "superseded",
+            Requirement.status != RequirementStatus.RETIRED,
+        )
     if freshness:
         query = query.filter(AssuranceDecision.freshness == freshness)
     if requirement_key:

@@ -73,8 +73,17 @@ function computeDashboard(
   let scripted = 0;
   let exploratory = 0;
   let unscripted = 0;
+  const classifiedRequirements = new Set<string>();
   for (const record of assurance.items) {
-    if (!record.is_current_version) continue;
+    if (
+      !record.requirement_id ||
+      !record.is_current_version ||
+      record.assessment_freshness?.toLowerCase() === "superseded" ||
+      classifiedRequirements.has(record.requirement_id)
+    ) {
+      continue;
+    }
+    classifiedRequirements.add(record.requirement_id);
     if (record.assurance_level === "SCRIPTED") scripted += 1;
     else if (record.assurance_level === "EXPLORATORY") exploratory += 1;
     else unscripted += 1;
@@ -324,8 +333,8 @@ export default function Home() {
                 />
                 <DistributionSection
                   title="Assurance Distribution"
-                  description="Current decisions grouped by the level of testing required."
-                  totalLabel="assurance decisions"
+                  description="Each requirement is counted once; requirements without a current decision are shown as not yet classified."
+                  totalLabel="requirements"
                   rows={[
                     {
                       key: "scripted",
@@ -350,6 +359,20 @@ export default function Home() {
                       color: "#8b5cf6",
                       badgeClassName:
                         "border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-900 dark:bg-violet-950 dark:text-violet-200",
+                    },
+                    {
+                      key: "unclassified",
+                      label: "Not yet classified",
+                      value: Math.max(
+                        0,
+                        data.totalRequirements -
+                          data.scripted -
+                          data.exploratory -
+                          data.unscripted,
+                      ),
+                      color: "#a1a1aa",
+                      badgeClassName:
+                        "border-zinc-300 bg-zinc-100 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
                     },
                   ]}
                 />

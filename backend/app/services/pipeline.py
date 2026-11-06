@@ -29,6 +29,7 @@ from app.agents.agent_script_writer import (
 )
 from app.models.token_usage import TokenUsage
 from app.services.assessment import assess_evidence
+from app.services.bands import load_band_config
 from app.services.persistence import (
     ensure_prompt_version,
     save_assessment,
@@ -128,7 +129,7 @@ def run_full_analysis(
         and getattr(record, "model_copy", None) is not None
     ):
         record = record.model_copy(update={"requirement_version_id": str(version.id)})
-    assessment = assess_evidence(record)
+    assessment = assess_evidence(record, **load_band_config())
     script = None
     if generate_script and is_generation_required(assessment["assurance"]):
         try:
