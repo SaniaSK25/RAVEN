@@ -388,15 +388,6 @@ export default function TraceabilityPage() {
                 }}
               />
             </div>
-            <button
-              type="button"
-              onClick={() => void loadTraceability()}
-              disabled={loading}
-              className="inline-flex min-h-10 items-center gap-2 rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
-            >
-              <RefreshCw aria-hidden="true" className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-              Refresh
-            </button>
           </div>
           <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
             Search by requirement ID or description. All matching requirements are shown below. Use "Show graph" to view each requirement's relationship graph.
@@ -530,7 +521,7 @@ export default function TraceabilityPage() {
           <section className="mt-4 rounded-lg border border-zinc-200 bg-white p-5 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
             {query.trim()
               ? "No requirements match that search."
-              : "No traceability data available. Refresh to load requirements."}
+              : "No traceability data available."}
           </section>
         )}
 

@@ -65,9 +65,9 @@ created requirements. Editing a requirement creates a new version and queues
 automatic analysis in the background; failures are logged and the change remains
 stale for follow-up. Edits also start a fresh compliance classification for the
 active requirement set; the compliance page's run action remains available for
-an explicit rerun. Requirement detail can also start backend analysis with
-`POST /api/v1/assessments/{requirement_id}/run`. If the saved assurance decision
-is scripted, the page offers a separate `Generate test script` action backed by
+an explicit rerun. The requirement detail page displays the saved analysis; it
+does not offer a manual analysis action. If the saved assurance decision is
+scripted, the page offers a separate `Generate test script` action backed by
 `POST /api/v1/assessments/{requirement_id}/generate-script`. Token usage is
 stored per analysis/script-generation run and summarized for the current
 requirement version. Ingestion creates requirements using the same backend.
