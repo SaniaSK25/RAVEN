@@ -55,4 +55,5 @@ docker-compose down
 ```
 
 Do not run global container stop/prune commands. Do not use
-`docker-compose down --volumes` unless intentionally deleting RAVEN's database.
+`docker-compose down --volumes` unless intentionally deleting RAVEN's database
+and persisted band-threshold configuration.

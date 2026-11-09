@@ -709,7 +709,7 @@ export default function Settings() {
                 Recompute Preview
               </h2>
               <span className="text-sm text-zinc-500 dark:text-zinc-400">
-                Dry-run — no data will be modified
+                Preview only — calculates changes without saving them.
               </span>
             </div>
 

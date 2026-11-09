@@ -19,6 +19,7 @@ COPY . .
 RUN mkdir -p /app/data && \
     groupadd --system raven && \
     useradd --system --gid raven --home-dir /app raven && \
+    chown -R raven:raven /app/config/rules && \
     chown raven:raven /app/data && \
     mkdir -p /tmp/uv-cache && \
     chown -R raven:raven /tmp/uv-cache

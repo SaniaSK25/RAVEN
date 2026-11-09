@@ -22,6 +22,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    volumes:
+      - raven_band_config:/app/config/rules
     restart: always
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-production}
@@ -78,4 +80,5 @@ services:
         condition: service_started
 
 volumes:
+  raven_band_config:
   raven_postgres_data:
